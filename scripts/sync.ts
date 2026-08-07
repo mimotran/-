@@ -5,17 +5,15 @@
  * 读数据、解析字段）的结果打出来，比对着看板猜哪里错了快得多。
  */
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { writeSnapshot } from '../lib/data/snapshot';
 import { isFeishuConfigured, loadFeishuConfig } from '../lib/feishu/config';
 import { listBitableTables } from '../lib/feishu/bitable';
 import { listSheets } from '../lib/feishu/sheets';
 import { resolveSource, syncFromFeishu } from '../lib/feishu/sync';
 import { resolveWikiNode } from '../lib/feishu/wiki';
+import { loadLocalEnv } from './env';
 
-loadEnvFile('.env.local');
-loadEnvFile('.env');
+loadLocalEnv();
 
 async function main() {
   const cfg = loadFeishuConfig();
@@ -68,22 +66,6 @@ async function main() {
     console.log('');
     console.log(`⚠ ${snapshot.warnings.length} 条告警：`);
     for (const warning of snapshot.warnings) console.log(`    ${warning}`);
-  }
-}
-
-/** 极简 .env 解析，避免为一个脚本引入 dotenv */
-function loadEnvFile(filename: string): void {
-  try {
-    const content = readFileSync(resolve(process.cwd(), filename), 'utf8');
-    for (const line of content.split('\n')) {
-      const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-      if (!match) continue;
-      const value = match[2].replace(/^["']|["']$/g, '');
-      // 已经存在的环境变量优先，方便 CI 里覆盖
-      if (process.env[match[1]] === undefined) process.env[match[1]] = value;
-    }
-  } catch {
-    // 文件不存在很正常，忽略
   }
 }
 

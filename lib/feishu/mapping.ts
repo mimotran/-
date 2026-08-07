@@ -63,6 +63,35 @@ export function normalizeHeader(raw: string): string {
     .toLowerCase();
 }
 
+/**
+ * 拿真实表头跑一遍别名表，看每个看板字段落到哪一列。
+ *
+ * `npm run headers` 用它输出对齐报告：column 为 null 的字段在表里没有对应列，
+ * 解析时会静默取 0 —— 看板上就是一片「0」，而不是报错，所以对齐必须靠这个显式检查。
+ */
+export interface HeaderMatch<T> {
+  field: keyof T;
+  /** 命中的真实列名；没有任何别名命中时为 null */
+  column: string | null;
+}
+
+export function matchHeaders<T>(headers: string[], aliases: FieldAliases<T>): HeaderMatch<T>[] {
+  const index = new Map<string, string>();
+  for (const header of headers) {
+    const key = normalizeHeader(header);
+    // 同名列只认第一个，和 pick 的行为保持一致
+    if (!index.has(key)) index.set(key, header);
+  }
+
+  return (Object.keys(aliases) as Array<keyof T>).map((field) => {
+    for (const alias of aliases[field]) {
+      const hit = index.get(normalizeHeader(alias));
+      if (hit !== undefined) return { field, column: hit };
+    }
+    return { field, column: null };
+  });
+}
+
 /** 在一行记录里按别名找值 */
 export function pick(row: Record<string, unknown>, aliases: readonly string[]): unknown {
   const normalized = new Map<string, unknown>();

@@ -9,6 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "sync": "tsx scripts/sync.ts",
+    "headers": "tsx scripts/headers.ts",
     "check": "tsx scripts/check-consistency.ts"
   },
   "dependencies": {
