@@ -325,13 +325,13 @@ export interface GoalMetricDef {
 }
 
 /** 率搭档的定义：只用来取值和加权，不单独成行 */
-interface RateCompanion {
+export interface RateCompanion {
   pick: (a: Aggregate) => number;
   higherIsBetter: boolean;
   weightBy: string;
 }
 
-const RATE_COMPANIONS: Record<string, RateCompanion> = {
+export const RATE_COMPANIONS: Record<string, RateCompanion> = {
   refundRate: { pick: (a) => a.refundRate, higherIsBetter: false, weightBy: 'gmv' },
   adCostRateInsite: { pick: (a) => a.adCostRateInsite, higherIsBetter: false, weightBy: 'gmv' },
   adCostRateOffsite: { pick: (a) => a.adCostRateOffsite, higherIsBetter: false, weightBy: 'gmv' },

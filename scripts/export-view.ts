@@ -8,7 +8,7 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { getSnapshot } from '../lib/data/source';
-import { STORE_CORE, STORE_EXTRA, buildView } from '../lib/metrics';
+import { GOAL_METRICS, RATE_COMPANIONS, STORE_CORE, STORE_EXTRA, buildView } from '../lib/metrics';
 import { loadLocalEnv } from './env';
 
 loadLocalEnv();
@@ -45,6 +45,16 @@ async function main() {
   const payload = {
     daily,
     storeMetrics: { core: spec(STORE_CORE), extra: spec(STORE_EXTRA) },
+    // 目标定义 + 月度目标：预览页要靠它们算任意自定义区间的达成
+    goalMetrics: GOAL_METRICS.map((m) => ({
+      key: m.key, label: m.label, group: m.group, format: m.format,
+      higherIsBetter: m.higherIsBetter, rateKey: m.rateKey ?? null,
+      weightBy: m.weightBy ?? null, emphasis: m.emphasis === true,
+    })),
+    rateCompanions: Object.fromEntries(
+      Object.entries(RATE_COMPANIONS).map(([k, v]) => [k, { higherIsBetter: v.higherIsBetter, weightBy: v.weightBy }]),
+    ),
+    targets: snapshot.targets,
     source: snapshot.source,
     syncedAt: snapshot.syncedAt,
     latestDate: view.latestDate,
