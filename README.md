@@ -27,7 +27,7 @@ npm run dev        # http://localhost:3000
 | `wiki:wiki:readonly` | 查看知识库（数据表挂在知识库里就必须开） |
 | `sheets:spreadsheet:readonly` | 查看电子表格 |
 | `bitable:app:readonly` | 查看多维表格（用多维表格时才需要） |
-| `drive:drive:readonly` | 查看云空间文件（上面几个的前置依赖） |
+| `drive:drive:readonly` | 读表格数据走的是 sheets v2 接口，它的权限报错只说 "No permission"、不说缺什么，开上当保险 |
 
 然后「版本管理与发布」→ 创建版本 → 申请发布。**必须发布**，否则下一步搜不到这个应用。
 
