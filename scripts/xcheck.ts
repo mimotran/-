@@ -4,7 +4,7 @@
  * 重写就有走样的风险，这个脚本把两边的结果摆在一起比。
  */
 import { getSnapshot } from '../lib/data/source';
-import { aggregateRange, buildGoals } from '../lib/metrics';
+import { aggregateRange, buildGoals, buildTrend } from '../lib/metrics';
 import { loadLocalEnv } from './env';
 
 loadLocalEnv();
@@ -55,6 +55,27 @@ async function main() {
     };
   });
 
-  console.log(JSON.stringify({ aggregates: out, goals }));
+  // 趋势序列：预览页要支持任意区间，也重写了一份逐日派生
+  const trendRanges = [
+    { from: '2026-07-08', to: '2026-08-06' },
+    { from: '2026-06-01', to: '2026-06-30' },
+  ];
+  const trends = trendRanges.map((r) => ({
+    range: `${r.from}~${r.to}`,
+    points: buildTrend(snap.daily, r).map((t) => ({
+      date: t.date,
+      gmv: Math.round(t.gmv),
+      deviceSales: t.deviceSales,
+      refundRate: +t.refundRate.toFixed(8),
+      uv: t.uv,
+      roiInsite: +t.roiInsite.toFixed(6),
+      roiOffsite: +t.roiOffsite.toFixed(6),
+      conversionRate: +t.conversionRate.toFixed(8),
+      adCostInsite: Math.round(t.adCostInsite),
+      adGmvOffsite: Math.round(t.adGmvOffsite),
+    })),
+  }));
+
+  console.log(JSON.stringify({ aggregates: out, goals, trends }));
 }
 main();

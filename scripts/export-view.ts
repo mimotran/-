@@ -72,8 +72,6 @@ async function main() {
       aggregate: stat.aggregate,
     })),
     goals: view.goals,
-    trend: view.trend,
-    trendRange: view.trendRange,
     insite: view.insite,
     offsite: view.offsite,
     products: view.products,
