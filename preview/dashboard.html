@@ -3,7 +3,8 @@
 /* ---------------------------------------------------------------------------
    设计令牌
    配色取自 Plaud CN Online Dashboard：暖中性底 + 春绿主色 + 浅蓝图表色。
-   涨跌色：上升绿、下降红。
+   涨跌色按**好坏**着色，不按方向：GMV 涨了绿，退款率 / 投放费涨了红。
+   箭头仍然表示方向，所以「▲ 红」读作「涨了，而且这是坏事」。
 --------------------------------------------------------------------------- */
 :root {
   /* 底色是极淡的冷灰，不是米黄 —— 参考图的白卡片浮在灰底上，暖底会让整页发脏 */
@@ -231,8 +232,8 @@ body {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11.5px; padding: 4px 9px; border-radius: 7px; white-space: nowrap;
 }
-.pill-up   { background: var(--gain-bg); color: var(--gain); }
-.pill-down { background: var(--loss-bg); color: var(--loss); }
+.pill-good { background: var(--gain-bg); color: var(--gain); }
+.pill-bad  { background: var(--loss-bg); color: var(--loss); }
 .pill-flat { background: var(--flat-bg); color: var(--flat); }
 .pill b { font-weight: 600; font-variant-numeric: tabular-nums; }
 
@@ -585,7 +586,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   <div class="footnote">
     <b>口径</b>　昨日比前一天；本月 MTD 比<b>上月同期</b>（1 号到同一个日号），不是整个上月；全年累计比去年同期。没有可比数据时显示「无数据」，不显示 0%。<br>
     <b>比率</b>　全部先汇总再相除。先算每日退款率再取平均是错的 —— 那等于给成交 3 万和 300 万的日子同样的权重。<br>
-    <b>涨跌色</b>　上升绿、下降红。颜色只表达<b>方向</b>，不表达好坏 —— 退款率、投放费上升同样是绿的，是好是坏看指标本身。<br>
+    <b>涨跌色</b>　颜色表达<b>好坏</b>，箭头表达<b>方向</b>：GMV ▲ 绿、退款率 ▲ 红、投放费 ▲ 红。「▲ 红」读作「涨了，而且这是坏事」。<br>
     <b>拆解口径</b>　投放 / 产品 / 流量的明细按本月 MTD 统计 —— 一天的样本太小，排出来的触点榜每天都在抖。<br>
     <b>图表</b>　绝不用双轴：量纲不同的指标不塞进一张图，两条轴的对齐方式是任意的，会凭空造出并不存在的相关性。
   </div>
@@ -630,16 +631,21 @@ const cnDate = (d) => `${d.slice(0, 4)} 年 ${+d.slice(5, 7)} 月 ${+d.slice(8, 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /**
- * 涨跌胶囊。上升绿、下降红。
- * 注意这是按**方向**着色，不是按好坏：退款率上涨也会是绿的，
- * 「涨了是好是坏」由标签文字承担，颜色只说涨跌。
+ * 涨跌胶囊。
+ *
+ * 颜色表达**好坏**，箭头表达**方向** —— 两件事分开编码：
+ * GMV ▲ 是绿的，退款率 ▲ 是红的，投放费 ▲ 也是红的。
+ * 只按方向着色会把「费用涨了」显示成绿色，读者会当成利好。
+ *
+ * higherIsBetter 由数据自带（lib/metrics.ts 里每个指标都声明了），不在这里猜。
  */
-function pill(label, rate) {
+function pill(label, rate, higherIsBetter = true) {
   if (rate === null || rate === undefined || !isFinite(rate)) {
     return `<span class="pill pill-flat">${esc(label)} <b>无数据</b></span>`;
   }
   const flat = Math.abs(rate) < 0.0005;
-  const cls = flat ? 'pill-flat' : rate > 0 ? 'pill-up' : 'pill-down';
+  const good = higherIsBetter ? rate > 0 : rate < 0;
+  const cls = flat ? 'pill-flat' : good ? 'pill-good' : 'pill-bad';
   const arrow = flat ? '' : rate > 0 ? '▲' : '▼';
   return `<span class="pill ${cls}">${esc(label)} ${arrow} <b>${(Math.abs(rate) * 100).toFixed(1)}%</b></span>`;
 }
@@ -736,6 +742,7 @@ $('srcbanner').innerHTML = DATA.source === 'mock'
   const top = [...DATA.products.lines].sort((a, b) => b.gmv - a.gmv)[0];
   const roi = y.aggregate.roi;
   const d = (r) => r === null ? '无数据' : `${r > 0 ? '↑' : '↓'}${(Math.abs(r) * 100).toFixed(1)}%`;
+  // 速览里两个数都是 GMV，涨即好
   const c = (r) => r === null ? 'var(--flat)' : r > 0 ? 'var(--gain)' : 'var(--loss)';
   $('glance').innerHTML =
     `昨日 GMV <b class="tnum">${fmtCurrency(g.value)}</b>，环比前日 <b class="tnum" style="color:${c(g.delta)}">${d(g.delta)}</b>，` +
@@ -756,8 +763,8 @@ $('srcbanner').innerHTML = DATA.source === 'mock'
       ${num(y.aggregate.gmv, 'currency')}
       <div class="hero-sub tnum">销量 ${fmtInt(y.aggregate.deviceSales)} 台</div>
       <div class="hero-pills">
-        ${pill('环比前日', y.core.find((k) => k.key === 'gmv').delta)}
-        ${pill('退款率', y.core.find((k) => k.key === 'refundRate').delta)}
+        ${pill('环比前日', y.core.find((k) => k.key === 'gmv').delta, true)}
+        ${pill('退款率', y.core.find((k) => k.key === 'refundRate').delta, false)}
       </div>
       <div class="hero-note">退款率 ${fmtPct(y.aggregate.refundRate, 1)}｜投放费率 ${fmtPct(y.aggregate.adCostRate, 1)}</div>
     </div>
@@ -766,7 +773,7 @@ $('srcbanner').innerHTML = DATA.source === 'mock'
       <div class="hero-top"><span class="hero-label">本月累计 MTD</span><span class="hero-scope">${mdShort(m.range.from)}–${mdShort(m.range.to)}</span></div>
       ${num(m.aggregate.gmv, 'currency')}
       <div class="hero-sub tnum">销量 ${fmtInt(m.aggregate.deviceSales)} 台</div>
-      <div class="hero-pills">${pill('环比上月同期', m.core.find((k) => k.key === 'gmv').delta)}</div>
+      <div class="hero-pills">${pill('环比上月同期', m.core.find((k) => k.key === 'gmv').delta, true)}</div>
       <div class="hero-note">对比 ${m.compareRange ? m.compareRange.from.slice(5) + '–' + m.compareRange.to.slice(5) + '（同期对齐）' : '无可比数据'}</div>
     </div>
 
@@ -774,7 +781,7 @@ $('srcbanner').innerHTML = DATA.source === 'mock'
       <div class="hero-top"><span class="hero-label">年累计</span><span class="hero-scope">${yr.range.from.slice(0, 4)} 年</span></div>
       ${num(yr.aggregate.gmv, 'currency')}
       <div class="hero-sub tnum">销量 ${fmtInt(yr.aggregate.deviceSales)} 台</div>
-      <div class="hero-pills">${pill('环比去年同期', yr.core.find((k) => k.key === 'gmv').delta)}</div>
+      <div class="hero-pills">${pill('环比去年同期', yr.core.find((k) => k.key === 'gmv').delta, true)}</div>
       <div class="hero-note tnum">日均 ${fmtCurrency(yr.aggregate.gmv / days)}/天</div>
     </div>
 
@@ -878,7 +885,7 @@ function kpiCard(k, cmpLabel, spark) {
     <div class="kpi-label">${esc(k.label)}</div>
     <div class="kpi-val"><span class="kpi-num tnum">${n}</span><span class="kpi-unit">${u}${k.format === 'currency' ? '元' : ''}</span></div>
     ${spark ? `<div class="kpi-spark">${spark}</div>` : ''}
-    <div class="kpi-foot">${pill(cmpLabel, k.delta)}</div>
+    <div class="kpi-foot">${pill(cmpLabel, k.delta, k.higherIsBetter !== false)}</div>
   </div>`;
 }
 
@@ -927,12 +934,13 @@ function renderTraffic(i) {
   const a = DATA.stats[i].aggregate, s = DATA.stats[i];
   const dOf = (key) => (s.core.find((k) => k.key === key) || {}).delta ?? null;
   const items = [
-    { key: 'uv', label: 'UV', value: a.uv, format: 'integer', delta: dOf('uv') },
-    { key: 'searchUv', label: '搜索 UV', value: a.searchUv, format: 'integer', delta: dOf('searchUv') },
-    { key: 'share', label: '搜索 UV 占比', value: a.searchUvShare, format: 'percent', delta: null },
-    { key: 'cvr', label: '支付转化率', value: a.conversionRate, format: 'percent', delta: null },
-    { key: 'uvValue', label: 'UV 价值', value: a.uvValue, format: 'decimal', delta: null },
-    { key: 'cart', label: '加购人数', value: a.addToCart, format: 'integer', delta: null },
+    // 流量这一组全部是「越高越好」
+    { key: 'uv', label: 'UV', value: a.uv, format: 'integer', delta: dOf('uv'), higherIsBetter: true },
+    { key: 'searchUv', label: '搜索 UV', value: a.searchUv, format: 'integer', delta: dOf('searchUv'), higherIsBetter: true },
+    { key: 'share', label: '搜索 UV 占比', value: a.searchUvShare, format: 'percent', delta: null, higherIsBetter: true },
+    { key: 'cvr', label: '支付转化率', value: a.conversionRate, format: 'percent', delta: null, higherIsBetter: true },
+    { key: 'uvValue', label: 'UV 价值', value: a.uvValue, format: 'decimal', delta: null, higherIsBetter: true },
+    { key: 'cart', label: '加购人数', value: a.addToCart, format: 'integer', delta: null, higherIsBetter: true },
   ];
   $('traffic-kpis').innerHTML = items.map((k) => kpiCard(k, s.compareLabel, '')).join('');
 }
@@ -1145,7 +1153,7 @@ const bd = `${DATA.breakdownLabel}口径 · ${DATA.breakdownRange.from} 至 ${DA
     <div class="line-name"><span class="legend-swatch" style="background:${LINE_COLORS[i % 5]}"></span>${esc(l.label)}</div>
     <div class="line-num tnum">${fmtCurrency(l.gmv)}</div>
     <div class="line-meta tnum">销量 ${fmtInt(l.quantity)}｜退款率 ${fmtPct(l.refundRate, 1)}</div>
-    <div style="margin-top:8px">${pill('环比', l.gmvDelta)}</div>
+    <div style="margin-top:8px">${pill('环比', l.gmvDelta, true)}</div>
   </div>`).join('');
 
   ranking($('product-rank'), I.map((r) => ({ label: r.title, value: r.gmv })), fmtCurrency, CH.brand);
