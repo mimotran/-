@@ -203,7 +203,7 @@ body {
   background: var(--card); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow);
 }
-.kpi, .goal, .hero-card { border-radius: 14px; }
+.kpi, .gcard { border-radius: 12px; }
 .card-pad { padding: 18px 20px; }
 
 .card-head {
@@ -224,22 +224,6 @@ body {
   padding: 3px 9px; border-radius: 6px;
 }
 .glance-text { font-size: 13.5px; line-height: 1.7; color: var(--ink); }
-
-/* --- 概览四卡 ------------------------------------------------------------ */
-.hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 34px; }
-@media (max-width: 1080px) { .hero { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 620px)  { .hero { grid-template-columns: 1fr; } }
-
-.hero-card { padding: 18px 20px 20px; display: flex; flex-direction: column; }
-.hero-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.hero-label { font-size: 13px; font-weight: 600; }
-.hero-scope { font-size: 11.5px; color: var(--ink-3); }
-.hero-figure { margin: 14px 0 0; display: flex; align-items: baseline; gap: 3px; }
-.hero-num { font-size: 29px; font-weight: 600; letter-spacing: -.02em; line-height: 1.05; }
-.hero-unit { font-size: 12.5px; color: var(--ink-3); font-weight: 500; }
-.hero-sub { margin-top: 8px; font-size: 12.5px; color: var(--ink-2); }
-.hero-pills { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
-.hero-note { margin-top: auto; padding-top: 10px; font-size: 11.5px; color: var(--ink-3); }
 
 .pill {
   display: inline-flex; align-items: center; gap: 5px;
@@ -417,7 +401,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 620px) {
   .wrap { padding: 16px 14px 56px; }
   .freshness .live { display: none; }
-  .hero-num { font-size: 26px; }
   .section-title { font-size: 19px; }
   .glance { padding: 12px 16px; }
   .card-pad { padding: 15px 16px; }
@@ -463,8 +446,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     <span class="glance-tag">速览</span>
     <p class="glance-text" id="glance"></p>
   </div>
-
-  <div class="hero" id="hero"></div>
 
   <section class="section" id="sec-goal">
     <div class="section-head">
@@ -787,57 +768,6 @@ $('srcbanner').innerHTML = DATA.source === 'mock'
     `主机销量 <b class="tnum">${fmtInt(y.aggregate.deviceSales)}</b> 台，综合 ROI <b class="tnum">${fmtMult(roi)}</b>。` +
     `本月累计 <b class="tnum">${fmtCurrency(gm.value)}</b>，较上月同期 <b class="tnum" style="color:${c(gm.delta)}">${d(gm.delta)}</b>，` +
     `<b>${esc(top.label)}</b> 领跑（占 ${fmtPct(top.gmvShare, 1)}）。`;
-})();
-
-// --- 概览四卡 --------------------------------------------------------------
-(function () {
-  const [y, m, yr] = DATA.stats;
-  const num = (v, f) => { const [n, u] = fmtBy(v, f); return `<div class="hero-figure"><span class="hero-num tnum">${n}</span><span class="hero-unit">${u}${f === 'currency' && !u ? '元' : u ? '元' : ''}</span></div>`; };
-  const days = yr.aggregate.days || 1;
-
-  $('hero').innerHTML = `
-    <div class="card hero-card">
-      <div class="hero-top"><span class="hero-label">昨日销售</span><span class="hero-scope">${mdShort(y.range.to)} ${wk}</span></div>
-      ${num(y.aggregate.gmv, 'currency')}
-      <div class="hero-sub tnum">销量 ${fmtInt(y.aggregate.deviceSales)} 台</div>
-      <div class="hero-pills">
-        ${pill('环比前日', y.core.find((k) => k.key === 'gmv').delta, true)}
-        ${pill('退款率', y.core.find((k) => k.key === 'refundRate').delta, false)}
-      </div>
-      <div class="hero-note">退款率 ${fmtPct(y.aggregate.refundRate, 1)}｜投放费率 ${fmtPct(y.aggregate.adCostRate, 1)}</div>
-    </div>
-
-    <div class="card hero-card">
-      <div class="hero-top"><span class="hero-label">本月累计 MTD</span><span class="hero-scope">${mdShort(m.range.from)}–${mdShort(m.range.to)}</span></div>
-      ${num(m.aggregate.gmv, 'currency')}
-      <div class="hero-sub tnum">销量 ${fmtInt(m.aggregate.deviceSales)} 台</div>
-      <div class="hero-pills">${pill('环比上月同期', m.core.find((k) => k.key === 'gmv').delta, true)}</div>
-      <div class="hero-note">对比 ${m.compareRange ? m.compareRange.from.slice(5) + '–' + m.compareRange.to.slice(5) + '（同期对齐）' : '无可比数据'}</div>
-    </div>
-
-    <div class="card hero-card">
-      <div class="hero-top"><span class="hero-label">年累计</span><span class="hero-scope">${yr.range.from.slice(0, 4)} 年</span></div>
-      ${num(yr.aggregate.gmv, 'currency')}
-      <div class="hero-sub tnum">销量 ${fmtInt(yr.aggregate.deviceSales)} 台</div>
-      <div class="hero-pills">${pill('环比去年同期', yr.core.find((k) => k.key === 'gmv').delta, true)}</div>
-      <div class="hero-note tnum">日均 ${fmtCurrency(yr.aggregate.gmv / days)}/天</div>
-    </div>
-
-    <div class="card hero-card">
-      <div class="hero-top"><span class="hero-label">本月结构</span><span class="hero-scope">${mdShort(m.range.from)}–${mdShort(m.range.to)}</span></div>
-      <div class="grid2" style="gap:8px;margin-top:10px">
-        <div class="chart" id="donut-line"></div>
-        <div class="chart" id="donut-ads"></div>
-      </div>
-      <div class="hero-note">左：分产品线 GMV　右：站内 / 站外投放费</div>
-    </div>`;
-
-  const lines = DATA.products.lines.map((l, i) => ({ name: l.label, value: l.gmv, color: LINE_COLORS[i % 5] }));
-  donut($('donut-line'), lines, fmtCurrency);
-  donut($('donut-ads'), [
-    { name: '站内', value: m.aggregate.adCostInsite, color: CH.sky },
-    { name: '站外', value: m.aggregate.adCostOffsite, color: CH.violet },
-  ], fmtCurrency);
 })();
 
 /** 环形图。中心标出占比最高的一项 —— 圆环本身不标数值，具体值交给 tooltip 和图例 */
