@@ -7,8 +7,11 @@
    箭头仍然表示方向，所以「▲ 红」读作「涨了，而且这是坏事」。
 --------------------------------------------------------------------------- */
 :root {
-  /* 底色是极淡的冷灰，不是米黄 —— 参考图的白卡片浮在灰底上，暖底会让整页发脏 */
+  /* 底色是极淡的冷灰，不是米黄 —— 参考图的白卡片浮在灰底上，暖底会让整页发脏。
+     底部渐入淡天蓝，和 Plaud CN Online Dashboard 一致 */
   --ground: #f4f4f2;
+  --ground-grad: linear-gradient(180deg,
+    #fbfbfa 0%, #f5f5f3 30%, #eef4f8 58%, #e0f0fa 82%, #d3eaf7 100%);
   --card: #ffffff;
   --card-2: #fafafa;
   --line: #ebebe8;
@@ -48,6 +51,9 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --ground: #131416;
+    /* 暗色下渐变要克制：同样往蓝偏，但只是一点点，否则底部会像另开了一块面板 */
+    --ground-grad: linear-gradient(180deg,
+      #17181b 0%, #141517 32%, #141a20 62%, #141f28 84%, #152530 100%);
     --card: #1c1e21;
     --card-2: #222428;
     --line: #2d3035;
@@ -80,6 +86,8 @@
 
 :root[data-theme="dark"] {
   --ground: #131416;
+  --ground-grad: linear-gradient(180deg,
+    #17181b 0%, #141517 32%, #141a20 62%, #141f28 84%, #152530 100%);
   --card: #1c1e21;
   --card-2: #222428;
   --line: #2d3035;
@@ -117,7 +125,12 @@
 
 body {
   margin: 0;
-  background: var(--ground);
+  min-height: 100vh;
+  /* 纯色兜底在前，渐变叠在上面 —— 渐变不生效时仍有明确底色，不会借宿主的底 */
+  background-color: var(--ground);
+  background-image: var(--ground-grad);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   color: var(--ink);
   font-family: var(--font);
   font-size: 13px;
@@ -389,9 +402,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .footnote {
   margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line);
-  font-size: 11.5px; color: var(--ink-3); line-height: 1.8;
+  font-size: 11.5px; color: var(--ink-2); line-height: 1.8;
 }
-.footnote b { color: var(--ink-2); font-weight: 600; }
+.footnote b { color: var(--ink); font-weight: 600; }
 .banner {
   display: flex; gap: 9px; align-items: flex-start;
   padding: 10px 16px; border-radius: 10px; margin-bottom: 14px;
