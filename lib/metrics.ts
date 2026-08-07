@@ -220,7 +220,7 @@ interface KpiSpec {
 }
 
 /** 店铺核心指标：需求里点名要放在首屏的 8 项 */
-const STORE_CORE: KpiSpec[] = [
+export const STORE_CORE: KpiSpec[] = [
   { key: 'gmv', label: 'GMV', pick: (a) => a.gmv, format: 'currency', higherIsBetter: true },
   { key: 'deviceSales', label: '主机销量', pick: (a) => a.deviceSales, format: 'integer', higherIsBetter: true },
   { key: 'refund', label: '退款金额', pick: (a) => a.refund, format: 'currency', higherIsBetter: false },
@@ -232,7 +232,7 @@ const STORE_CORE: KpiSpec[] = [
 ];
 
 /** 次级指标：默认收在「展开更多」里，需要时再看 */
-const STORE_EXTRA: KpiSpec[] = [
+export const STORE_EXTRA: KpiSpec[] = [
   { key: 'gmvAfterRefund', label: '退后 GMV', pick: (a) => a.gmvAfterRefund, format: 'currency', higherIsBetter: true },
   { key: 'buyers', label: '支付人数', pick: (a) => a.buyers, format: 'integer', higherIsBetter: true },
   { key: 'orders', label: '支付订单数', pick: (a) => a.orders, format: 'integer', higherIsBetter: true },
