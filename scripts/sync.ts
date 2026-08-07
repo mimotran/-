@@ -92,6 +92,8 @@ main().catch((err) => {
   console.error('✗ 同步失败：', err instanceof Error ? err.message : err);
   console.error('');
   console.error('常见原因：');
+  console.error('  · 出网被拦（报错里出现 allowlist / 403 / 不是 JSON）→ 运行环境的出站白名单要放行');
+  console.error('    open.feishu.cn；在 CI 或受限容器里跑时最常见，本机一般没这问题');
   console.error('  · 应用没被加进知识库/文档的协作者 → 打开文档「···」→ 添加文档应用');
   console.error('  · 权限没开或没发版 → 开放平台「权限管理」勾选只读权限后创建版本并发布');
   console.error('  · wiki token 当成了 spreadsheet token → 用 FEISHU_WIKI_TOKEN 而不是 FEISHU_SPREADSHEET_TOKEN');

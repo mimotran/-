@@ -53,6 +53,26 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * 安全地把响应体当 JSON 解析。
+ *
+ * 直接 res.json() 在出问题时会抛出「Unexpected token 'H'」这种毫无指向性的错误 ——
+ * 而真正的原因往往是中间有代理/网关，返回的是 HTML 错误页或纯文本，
+ * 根本没到飞书。把原始响应带进报错里，排查时能少走很多弯路。
+ */
+async function parseJson<T>(res: Response, context: string): Promise<T> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    const preview = text.replace(/\s+/g, ' ').slice(0, 200);
+    throw new FeishuError(
+      `${context} 返回的不是 JSON（HTTP ${res.status}）。` +
+        `多半是网络中间有代理或防火墙拦截，请求没到飞书。响应开头：${preview || '(空)'}`,
+    );
+  }
+}
+
 export async function getTenantAccessToken(cfg: FeishuConfig = loadFeishuConfig()): Promise<string> {
   const now = Date.now();
   if (tokenCache && tokenCache.expiresAt > now) return tokenCache.token;
@@ -64,7 +84,13 @@ export async function getTenantAccessToken(cfg: FeishuConfig = loadFeishuConfig(
     cache: 'no-store',
   });
 
-  const body = (await res.json()) as { code: number; msg: string; tenant_access_token?: string; expire?: number };
+  const body = await parseJson<{
+    code: number;
+    msg: string;
+    tenant_access_token?: string;
+    expire?: number;
+  }>(res, '获取 tenant_access_token');
+
   if (body.code !== 0 || !body.tenant_access_token) {
     throw new FeishuError(`获取 tenant_access_token 失败：${body.msg}（code ${body.code}）`, body.code);
   }
@@ -91,7 +117,7 @@ export async function feishuGet<T>(
     cache: 'no-store',
   });
 
-  const body = (await res.json()) as FeishuEnvelope<T>;
+  const body = await parseJson<FeishuEnvelope<T>>(res, `飞书接口 ${path}`);
   if (body.code !== 0) {
     throw new FeishuError(`飞书接口 ${path} 返回错误：${body.msg}（code ${body.code}）`, body.code);
   }
