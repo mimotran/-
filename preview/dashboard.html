@@ -3,8 +3,7 @@
 /* ---------------------------------------------------------------------------
    设计令牌
    配色取自 Plaud CN Online Dashboard：暖中性底 + 春绿主色 + 浅蓝图表色。
-   涨跌色按中文财经惯例「红涨绿跌」，和参考看板保持一致 —— 团队每天看的是
-   那套配色，换成西方惯例反而会读错。
+   涨跌色：上升绿、下降红。
 --------------------------------------------------------------------------- */
 :root {
   /* 底色是极淡的冷灰，不是米黄 —— 参考图的白卡片浮在灰底上，暖底会让整页发脏 */
@@ -26,10 +25,12 @@
   --slate: #9ea1a8;
   --amber: #ffb45c;
 
-  --up: #e5484d;
-  --up-bg: #fdeced;
-  --down: #05a97a;
-  --down-bg: #e3f8f0;
+  /* 上升＝绿，下降＝红。命名按语义（gain/loss）而不是方向，
+     免得改了配色还要回头改一遍所有引用 */
+  --gain: #05a97a;
+  --gain-bg: #e3f8f0;
+  --loss: #e5484d;
+  --loss-bg: #fdeced;
   --flat: #9ea1a8;
   --flat-bg: #f3f3f1;
 
@@ -62,10 +63,10 @@
     --slate: #9ea1a8;
     --amber: #ffbe6e;
 
-    --up: #ff6b6f;
-    --up-bg: #3b1f21;
-    --down: #16c391;
-    --down-bg: #0e332a;
+    --gain: #16c391;
+    --gain-bg: #0e332a;
+    --loss: #ff6b6f;
+    --loss-bg: #3b1f21;
     --flat: #9ea1a8;
     --flat-bg: #26292e;
 
@@ -94,10 +95,10 @@
   --slate: #9ea1a8;
   --amber: #ffbe6e;
 
-  --up: #ff6b6f;
-  --up-bg: #3b1f21;
-  --down: #16c391;
-  --down-bg: #0e332a;
+  --gain: #16c391;
+  --gain-bg: #0e332a;
+  --loss: #ff6b6f;
+  --loss-bg: #3b1f21;
   --flat: #9ea1a8;
   --flat-bg: #26292e;
 
@@ -230,8 +231,8 @@ body {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11.5px; padding: 4px 9px; border-radius: 7px; white-space: nowrap;
 }
-.pill-up   { background: var(--up-bg);   color: var(--up); }
-.pill-down { background: var(--down-bg); color: var(--down); }
+.pill-up   { background: var(--gain-bg); color: var(--gain); }
+.pill-down { background: var(--loss-bg); color: var(--loss); }
 .pill-flat { background: var(--flat-bg); color: var(--flat); }
 .pill b { font-weight: 600; font-variant-numeric: tabular-nums; }
 
@@ -584,7 +585,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   <div class="footnote">
     <b>口径</b>　昨日比前一天；本月 MTD 比<b>上月同期</b>（1 号到同一个日号），不是整个上月；全年累计比去年同期。没有可比数据时显示「无数据」，不显示 0%。<br>
     <b>比率</b>　全部先汇总再相除。先算每日退款率再取平均是错的 —— 那等于给成交 3 万和 300 万的日子同样的权重。<br>
-    <b>涨跌色</b>　按中文财经惯例<b>红涨绿跌</b>，与 Plaud CN Online Dashboard 一致。<br>
+    <b>涨跌色</b>　上升绿、下降红。颜色只表达<b>方向</b>，不表达好坏 —— 退款率、投放费上升同样是绿的，是好是坏看指标本身。<br>
     <b>拆解口径</b>　投放 / 产品 / 流量的明细按本月 MTD 统计 —— 一天的样本太小，排出来的触点榜每天都在抖。<br>
     <b>图表</b>　绝不用双轴：量纲不同的指标不塞进一张图，两条轴的对齐方式是任意的，会凭空造出并不存在的相关性。
   </div>
@@ -629,8 +630,9 @@ const cnDate = (d) => `${d.slice(0, 4)} 年 ${+d.slice(5, 7)} 月 ${+d.slice(8, 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /**
- * 涨跌胶囊。按中文财经惯例：红涨绿跌 —— 和参考看板一致。
- * 注意这是按**方向**着色，不是按好坏：退款率上涨也是红的，语义靠标签文字承担。
+ * 涨跌胶囊。上升绿、下降红。
+ * 注意这是按**方向**着色，不是按好坏：退款率上涨也会是绿的，
+ * 「涨了是好是坏」由标签文字承担，颜色只说涨跌。
  */
 function pill(label, rate) {
   if (rate === null || rate === undefined || !isFinite(rate)) {
@@ -734,7 +736,7 @@ $('srcbanner').innerHTML = DATA.source === 'mock'
   const top = [...DATA.products.lines].sort((a, b) => b.gmv - a.gmv)[0];
   const roi = y.aggregate.roi;
   const d = (r) => r === null ? '无数据' : `${r > 0 ? '↑' : '↓'}${(Math.abs(r) * 100).toFixed(1)}%`;
-  const c = (r) => r === null ? 'var(--flat)' : r > 0 ? 'var(--up)' : 'var(--down)';
+  const c = (r) => r === null ? 'var(--flat)' : r > 0 ? 'var(--gain)' : 'var(--loss)';
   $('glance').innerHTML =
     `昨日 GMV <b class="tnum">${fmtCurrency(g.value)}</b>，环比前日 <b class="tnum" style="color:${c(g.delta)}">${d(g.delta)}</b>，` +
     `主机销量 <b class="tnum">${fmtInt(y.aggregate.deviceSales)}</b> 台，综合 ROI <b class="tnum">${fmtMult(roi)}</b>。` +
@@ -837,8 +839,8 @@ function renderGoals() {
     // 差距 2 个点以内算持平 —— 写「落后 0.6%」却标成绿色是自相矛盾的
     const flat = !g.finished && Math.abs(lead) < 0.02;
     const ok = g.finished ? p >= 1 : lead >= 0;
-    const color = flat ? 'var(--flat)' : ok ? 'var(--down)' : 'var(--up)';
-    const fill = flat || ok ? 'var(--brand)' : 'var(--up)';
+    const color = flat ? 'var(--flat)' : ok ? 'var(--gain)' : 'var(--loss)';
+    const fill = flat || ok ? 'var(--brand)' : 'var(--loss)';
     const status = g.finished ? (p >= 1 ? '已达成' : `未达成，差 ${fmt(Math.max(0, target - actual))}`)
       : flat ? '基本持平' : lead > 0 ? `超前 ${fmtPct(lead, 1)}` : `落后 ${fmtPct(-lead, 1)}`;
     return `<div class="card goal">
