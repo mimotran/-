@@ -1,0 +1,1100 @@
+<title>Plaud 天猫数据看板</title>
+<style>
+/* ---------------------------------------------------------------------------
+   设计令牌
+   配色取自 Plaud CN Online Dashboard：暖中性底 + 春绿主色 + 浅蓝图表色。
+   涨跌色按中文财经惯例「红涨绿跌」，和参考看板保持一致 —— 团队每天看的是
+   那套配色，换成西方惯例反而会读错。
+--------------------------------------------------------------------------- */
+:root {
+  --ground: #f2f1ec;
+  --card: #ffffff;
+  --card-2: #fafaf8;
+  --line: #e7e6e0;
+  --line-soft: #f0efe9;
+
+  --ink: #17181a;
+  --ink-2: #6e7075;
+  --ink-3: #a0a2a7;
+
+  --brand: #00c88c;
+  --sky: #56c7f2;
+  --violet: #9b6bf0;
+  --slate: #8b8d93;
+  --amber: #efb13c;
+
+  --up: #e0483d;
+  --up-bg: #fdedeb;
+  --down: #00a472;
+  --down-bg: #e4f6ee;
+  --flat: #8b8d93;
+  --flat-bg: #f0efe9;
+
+  --pill-on: #17181a;
+  --pill-on-ink: #ffffff;
+
+  --shadow: 0 1px 2px rgb(23 24 26 / .04), 0 8px 24px -12px rgb(23 24 26 / .10);
+  --radius: 14px;
+
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+          "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #121315;
+    --card: #1b1d20;
+    --card-2: #212328;
+    --line: #2c2f34;
+    --line-soft: #24272b;
+
+    --ink: #f4f4f5;
+    --ink-2: #a7a9af;
+    --ink-3: #74767c;
+
+    --brand: #1ed69c;
+    --sky: #63cdf5;
+    --violet: #a97cf5;
+    --slate: #9a9ca2;
+    --amber: #f0bb54;
+
+    --up: #ff6b5e;
+    --up-bg: #3a1f1d;
+    --down: #21bd88;
+    --down-bg: #10322a;
+    --flat: #9a9ca2;
+    --flat-bg: #26292e;
+
+    --pill-on: #f4f4f5;
+    --pill-on-ink: #17181a;
+
+    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px -12px rgb(0 0 0 / .6);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #121315;
+  --card: #1b1d20;
+  --card-2: #212328;
+  --line: #2c2f34;
+  --line-soft: #24272b;
+
+  --ink: #f4f4f5;
+  --ink-2: #a7a9af;
+  --ink-3: #74767c;
+
+  --brand: #1ed69c;
+  --sky: #63cdf5;
+  --violet: #a97cf5;
+  --slate: #9a9ca2;
+  --amber: #f0bb54;
+
+  --up: #ff6b5e;
+  --up-bg: #3a1f1d;
+  --down: #21bd88;
+  --down-bg: #10322a;
+  --flat: #9a9ca2;
+  --flat-bg: #26292e;
+
+  --pill-on: #f4f4f5;
+  --pill-on-ink: #17181a;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px -12px rgb(0 0 0 / .6);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tnum { font-variant-numeric: tabular-nums; }
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+/* --- 顶栏 --------------------------------------------------------------- */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  backdrop-filter: saturate(1.6) blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-in {
+  max-width: 1280px; margin: 0 auto; padding: 0 24px;
+  height: 58px; display: flex; align-items: center; gap: 28px;
+}
+.brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.brand-mark {
+  width: 26px; height: 26px; border-radius: 7px;
+  background: var(--ink); color: var(--card);
+  display: grid; place-items: center;
+  font-weight: 700; font-size: 14px; letter-spacing: -.03em;
+}
+.brand-name { font-size: 14px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+
+.navtabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.navtabs::-webkit-scrollbar { display: none; }
+.navtab {
+  appearance: none; background: none; border: 0; cursor: pointer;
+  font: inherit; font-size: 13px; color: var(--ink-2);
+  padding: 6px 10px; border-radius: 8px; white-space: nowrap;
+  transition: color .15s, background .15s;
+}
+.navtab:hover { color: var(--ink); background: var(--line-soft); }
+.navtab[aria-current="true"] { color: var(--ink); font-weight: 600; }
+
+.freshness {
+  margin-left: auto; display: flex; align-items: center; gap: 12px;
+  font-size: 12px; color: var(--ink-2); white-space: nowrap;
+}
+.live { display: inline-flex; align-items: center; gap: 5px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
+
+/* --- 布局 --------------------------------------------------------------- */
+.wrap { max-width: 1280px; margin: 0 auto; padding: 24px 24px 72px; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.card-pad { padding: 18px 20px; }
+
+.card-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.card-title { font-size: 14px; font-weight: 600; margin: 0; }
+.card-sub { font-size: 12px; color: var(--ink-3); margin: 2px 0 0; }
+
+/* --- 速览 --------------------------------------------------------------- */
+.glance {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  padding: 14px 20px; margin-bottom: 16px;
+}
+.glance-tag {
+  flex-shrink: 0; font-size: 11px; font-weight: 600; letter-spacing: .04em;
+  background: var(--line-soft); color: var(--ink-2);
+  padding: 3px 9px; border-radius: 6px;
+}
+.glance-text { font-size: 13.5px; line-height: 1.7; color: var(--ink); }
+
+/* --- 概览四卡 ------------------------------------------------------------ */
+.hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 34px; }
+@media (max-width: 1080px) { .hero { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px)  { .hero { grid-template-columns: 1fr; } }
+
+.hero-card { padding: 18px 20px 20px; display: flex; flex-direction: column; }
+.hero-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.hero-label { font-size: 13px; font-weight: 600; }
+.hero-scope { font-size: 11.5px; color: var(--ink-3); }
+.hero-figure { margin: 14px 0 0; display: flex; align-items: baseline; gap: 3px; }
+.hero-num { font-size: 40px; font-weight: 500; letter-spacing: -.025em; line-height: 1; }
+.hero-unit { font-size: 14px; color: var(--ink-2); font-weight: 500; }
+.hero-sub { margin-top: 8px; font-size: 12.5px; color: var(--ink-2); }
+.hero-pills { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.hero-note { margin-top: auto; padding-top: 10px; font-size: 11.5px; color: var(--ink-3); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; padding: 4px 9px; border-radius: 7px; white-space: nowrap;
+}
+.pill-up   { background: var(--up-bg);   color: var(--up); }
+.pill-down { background: var(--down-bg); color: var(--down); }
+.pill-flat { background: var(--flat-bg); color: var(--flat); }
+.pill b { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* --- 分区 --------------------------------------------------------------- */
+.section { scroll-margin-top: 74px; margin-top: 38px; }
+.section-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.section-no {
+  font-size: 11px; font-weight: 600; color: var(--ink-3);
+  letter-spacing: .12em; display: block; margin-bottom: 2px;
+}
+.section-title { font-size: 21px; font-weight: 600; margin: 0; letter-spacing: -.02em; }
+.section-desc { font-size: 12.5px; color: var(--ink-2); margin: 6px 0 0; max-width: 66ch; }
+
+/* --- 分段控件 ------------------------------------------------------------ */
+.seg {
+  display: inline-flex; gap: 2px; padding: 3px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+}
+.seg button {
+  appearance: none; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 12px; color: var(--ink-2);
+  padding: 5px 12px; border-radius: 7px; white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] {
+  background: var(--pill-on); color: var(--pill-on-ink); font-weight: 600;
+}
+
+/* --- KPI 网格 ------------------------------------------------------------ */
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 1080px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px)  { .kpis { grid-template-columns: 1fr; } }
+
+.kpi { padding: 14px 16px; }
+.kpi-label { font-size: 12px; color: var(--ink-2); }
+.kpi-val { margin-top: 5px; display: flex; align-items: baseline; gap: 3px; }
+.kpi-num { font-size: 25px; font-weight: 500; letter-spacing: -.02em; line-height: 1.1; }
+.kpi-unit { font-size: 12px; color: var(--ink-2); }
+.kpi-foot { margin-top: 9px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kpi-spark { margin-top: 8px; height: 26px; }
+.kpi-cmp { font-size: 11px; color: var(--ink-3); }
+
+/* --- 目标 --------------------------------------------------------------- */
+.goals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 1080px) { .goals { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px)  { .goals { grid-template-columns: 1fr; } }
+
+.goal { padding: 15px 17px; }
+.goal-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.goal-name { font-size: 13.5px; font-weight: 600; }
+.goal-scope { font-size: 11px; color: var(--ink-3); margin-left: 6px; font-weight: 400; }
+.goal-rate { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.goal-nums { margin-top: 4px; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.goal-nums span { color: var(--ink-3); }
+.track {
+  position: relative; height: 9px; margin-top: 11px;
+  background: var(--line-soft); border-radius: 99px; overflow: hidden;
+}
+.track-fill { height: 100%; border-radius: 99px; }
+.track-mark { position: absolute; top: -2px; width: 2px; height: 13px; background: var(--ink); opacity: .5; border-radius: 2px; }
+.goal-foot { margin-top: 9px; display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--ink-3); }
+
+/* --- 图表 --------------------------------------------------------------- */
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.tip {
+  position: absolute; z-index: 20; pointer-events: none; opacity: 0;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow); padding: 10px 12px; font-size: 12px;
+  min-width: 168px; transition: opacity .12s;
+}
+.tip-date { font-weight: 600; margin-bottom: 6px; }
+.tip-row { display: flex; align-items: center; gap: 7px; margin-top: 3px; white-space: nowrap; }
+.tip-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.tip-name { color: var(--ink-2); }
+.tip-val { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+.tip-sep { margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--line); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.legend-swatch { width: 9px; height: 9px; border-radius: 2px; }
+
+/* --- 排行 --------------------------------------------------------------- */
+.rank { display: flex; flex-direction: column; gap: 9px; }
+.rank-row { display: grid; grid-template-columns: 116px 1fr auto; align-items: center; gap: 12px; }
+.rank-name { font-size: 12.5px; color: var(--ink-2); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-bar { height: 20px; background: var(--line-soft); border-radius: 5px; overflow: hidden; }
+.rank-fill { height: 100%; border-radius: 5px; }
+.rank-val { font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 78px; text-align: right; }
+@media (max-width: 560px) { .rank-row { grid-template-columns: 84px 1fr auto; } }
+
+/* --- 表格 --------------------------------------------------------------- */
+.tablewrap { overflow-x: auto; margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+thead th {
+  position: sticky; top: 0; background: var(--card-2);
+  text-align: left; font-weight: 500; color: var(--ink-2);
+  padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+tbody td { padding: 8px 12px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 940px) { .grid2 { grid-template-columns: 1fr; } }
+
+.chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 9px; margin-top: 14px; }
+.chip {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; font-size: 12.5px;
+}
+.chip-name { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip-val { font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+.lines { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 16px; }
+@media (max-width: 1080px) { .lines { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 620px)  { .lines { grid-template-columns: repeat(2, 1fr); } }
+.line-card { border: 1px solid var(--line); border-radius: 11px; padding: 12px 13px; }
+.line-name { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.line-num { margin-top: 5px; font-size: 18px; font-weight: 500; letter-spacing: -.02em; }
+.line-meta { margin-top: 3px; font-size: 11.5px; color: var(--ink-3); }
+
+/* --- 响应式 --------------------------------------------------------------
+   flex / grid 子项默认 min-width:auto，宽表格会把整个 body 撑出横向滚动条，
+   而不是在自己的 .tablewrap 里滚。所有容器子项显式归零。
+--------------------------------------------------------------------------- */
+.stack > *, .grid2 > *, .card, .chart, .tablewrap { min-width: 0; }
+.navtabs { min-width: 0; flex: 1 1 auto; }
+
+@media (max-width: 900px) {
+  .topbar-in {
+    height: auto; padding: 10px 16px;
+    flex-wrap: wrap; gap: 8px 16px;
+  }
+  .navtabs { order: 3; width: 100%; flex-basis: 100%; }
+  .freshness { margin-left: auto; font-size: 11.5px; }
+}
+
+@media (max-width: 620px) {
+  .wrap { padding: 16px 14px 56px; }
+  .freshness .live { display: none; }
+  .hero-num { font-size: 34px; }
+  .section-title { font-size: 19px; }
+  .glance { padding: 12px 16px; }
+  .card-pad { padding: 15px 16px; }
+  .section-head { align-items: flex-start; }
+}
+
+.footnote {
+  margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line);
+  font-size: 11.5px; color: var(--ink-3); line-height: 1.8;
+}
+.footnote b { color: var(--ink-2); font-weight: 600; }
+.banner {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 12px 16px; border-radius: 10px; margin-bottom: 16px;
+  background: color-mix(in srgb, var(--amber) 12%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--amber) 34%, transparent);
+  font-size: 12.5px; color: var(--ink-2);
+}
+.banner b { color: var(--ink); }
+</style>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">P</span>
+      <span class="brand-name">Plaud 天猫数据看板</span>
+    </div>
+    <nav class="navtabs" id="navtabs" aria-label="板块导航"></nav>
+    <div class="freshness">
+      <span id="asof"></span>
+      <span class="live"><span class="live-dot" aria-hidden="true"></span>每日 09:30 自动同步</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="srcbanner"></div>
+
+  <div class="card glance">
+    <span class="glance-tag">速览</span>
+    <p class="glance-text" id="glance"></p>
+  </div>
+
+  <div class="hero" id="hero"></div>
+
+  <section class="section" id="sec-goal">
+    <div class="section-head">
+      <div>
+        <span class="section-no">01</span>
+        <h2 class="section-title">目标达成</h2>
+        <p class="section-desc">进度条上的竖线是<b>计划进度</b> —— 按月度目标的分布加权，不是日历天数。下半年的量压在双 11 上，按天数算会把正常的 8 月误判成落后。</p>
+      </div>
+      <div class="seg" id="goal-seg" role="group" aria-label="目标口径"></div>
+    </div>
+    <div class="goals" id="goals"></div>
+  </section>
+
+  <section class="section" id="sec-store">
+    <div class="section-head">
+      <div>
+        <span class="section-no">02</span>
+        <h2 class="section-title">店铺整体</h2>
+        <p class="section-desc">核心 8 项直接展示，其余 8 项收在展开里。比率均为区间内先汇总再相除，不是每日比率的平均。</p>
+      </div>
+      <div class="seg" id="store-seg" role="group" aria-label="统计周期"></div>
+    </div>
+    <div class="stack">
+      <div id="store-kpis" class="kpis"></div>
+      <div style="display:flex;justify-content:flex-start">
+        <button class="navtab" id="store-more" aria-expanded="false" style="border:1px solid var(--line)">展开其他 8 项指标</button>
+      </div>
+      <div id="store-extra" class="kpis" hidden></div>
+      <div class="card card-pad">
+        <div class="card-head">
+          <div>
+            <h3 class="card-title">趋势</h3>
+            <p class="card-sub" id="store-trend-sub"></p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="seg" id="store-metric" role="group" aria-label="趋势指标"></div>
+            <div class="seg" id="store-range" role="group" aria-label="趋势区间"></div>
+          </div>
+        </div>
+        <div class="chart" id="store-chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="sec-insite">
+    <div class="section-head">
+      <div>
+        <span class="section-no">03</span>
+        <h2 class="section-title">站内投放</h2>
+        <p class="section-desc">头部同时给出合计、站内、站外三组 —— 只看站内自己的 ROI 容易得出错误的加预算结论。</p>
+      </div>
+      <div class="seg" id="insite-seg" role="group" aria-label="统计周期"></div>
+    </div>
+    <div class="stack">
+      <div id="insite-kpis" class="kpis"></div>
+      <div class="card card-pad">
+        <div class="card-head">
+          <div>
+            <h3 class="card-title">分触点投放</h3>
+            <p class="card-sub" id="insite-sub"></p>
+          </div>
+        </div>
+        <div class="rank" id="insite-rank"></div>
+        <div class="chips" id="insite-chips"></div>
+        <div class="tablewrap"><table id="insite-table"></table></div>
+      </div>
+      <div class="card card-pad">
+        <div class="card-head">
+          <div><h3 class="card-title">投放趋势</h3><p class="card-sub">站内与站外同轴对比</p></div>
+          <div class="seg" id="ads-metric" role="group" aria-label="投放趋势指标"></div>
+        </div>
+        <div class="chart" id="ads-chart"></div>
+        <div class="legend" id="ads-legend"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="sec-offsite">
+    <div class="section-head">
+      <div>
+        <span class="section-no">04</span>
+        <h2 class="section-title">站外投放</h2>
+        <p class="section-desc">站外以拉新为主，ROI 天然低于站内，但带来的是新客。不要拿两者的 ROI 直接比高低。</p>
+      </div>
+      <div class="seg" id="offsite-seg" role="group" aria-label="统计周期"></div>
+    </div>
+    <div class="stack">
+      <div id="offsite-kpis" class="kpis"></div>
+      <div class="card card-pad">
+        <div class="card-head">
+          <div>
+            <h3 class="card-title">分渠道投放</h3>
+            <p class="card-sub" id="offsite-sub"></p>
+          </div>
+        </div>
+        <div class="rank" id="offsite-rank"></div>
+        <div class="chips" id="offsite-chips"></div>
+        <div class="tablewrap"><table id="offsite-table"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="sec-product">
+    <div class="section-head">
+      <div>
+        <span class="section-no">05</span>
+        <h2 class="section-title">产品</h2>
+        <p class="section-desc" id="product-desc"></p>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="card card-pad">
+        <div class="card-head">
+          <div><h3 class="card-title">产品线结构</h3><p class="card-sub" id="product-sub"></p></div>
+        </div>
+        <div class="grid2">
+          <div class="chart" id="product-donut"></div>
+          <div id="product-legend"></div>
+        </div>
+        <div class="lines" id="product-lines"></div>
+      </div>
+      <div class="card card-pad">
+        <div class="card-head"><div><h3 class="card-title">单链接排行</h3><p class="card-sub">按 GMV 排序｜名义类目统一用一个颜色，长度已经编码了大小</p></div></div>
+        <div class="rank" id="product-rank"></div>
+        <div class="tablewrap"><table id="product-table"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="sec-traffic">
+    <div class="section-head">
+      <div>
+        <span class="section-no">06</span>
+        <h2 class="section-title">流量</h2>
+        <p class="section-desc">总览 → 搜索 UV → 搜索关键词。关键词是唯一能直接指导投放动作的粒度。</p>
+      </div>
+      <div class="seg" id="traffic-seg" role="group" aria-label="统计周期"></div>
+    </div>
+    <div class="stack">
+      <div id="traffic-kpis" class="kpis"></div>
+      <div class="card card-pad">
+        <div class="card-head">
+          <div><h3 class="card-title">流量趋势</h3><p class="card-sub">总 UV 与搜索 UV 同轴可比，都是访客数</p></div>
+        </div>
+        <div class="chart" id="traffic-chart"></div>
+        <div class="legend" id="traffic-legend"></div>
+      </div>
+      <div class="card card-pad">
+        <div class="card-head"><div><h3 class="card-title">搜索关键词</h3><p class="card-sub" id="kw-sub"></p></div></div>
+        <div class="rank" id="kw-rank"></div>
+        <div class="tablewrap"><table id="kw-table"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footnote">
+    <b>口径</b>　昨日比前一天；本月 MTD 比<b>上月同期</b>（1 号到同一个日号），不是整个上月；全年累计比去年同期。没有可比数据时显示「无数据」，不显示 0%。<br>
+    <b>比率</b>　全部先汇总再相除。先算每日退款率再取平均是错的 —— 那等于给成交 3 万和 300 万的日子同样的权重。<br>
+    <b>涨跌色</b>　按中文财经惯例<b>红涨绿跌</b>，与 Plaud CN Online Dashboard 一致。<br>
+    <b>拆解口径</b>　投放 / 产品 / 流量的明细按本月 MTD 统计 —— 一天的样本太小，排出来的触点榜每天都在抖。<br>
+    <b>图表</b>　绝不用双轴：量纲不同的指标不塞进一张图，两条轴的对齐方式是任意的，会凭空造出并不存在的相关性。
+  </div>
+</main>
+
+<script>
+/* eslint-disable */
+const DATA = {"source":"mock","syncedAt":"2026-08-07T07:13:42.008Z","latestDate":"2026-08-06","earliestDate":"2025-01-01","stats":[{"key":"yesterday","label":"昨日","compareLabel":"环比前日","range":{"from":"2026-08-06","to":"2026-08-06"},"compareRange":{"from":"2026-08-05","to":"2026-08-05"},"core":[{"key":"gmv","label":"GMV","value":58962,"format":"currency","delta":-0.02027184207902695,"higherIsBetter":true},{"key":"deviceSales","label":"主机销量","value":35,"format":"integer","delta":-0.027777777777777776,"higherIsBetter":true},{"key":"refund","label":"退款金额","value":15814,"format":"currency","delta":-0.05475194261805141,"higherIsBetter":false},{"key":"refundRate","label":"退款率","value":0.2682066415657542,"format":"percent","delta":-0.035193538391499184,"higherIsBetter":false},{"key":"adCost","label":"投放费","value":4931,"format":"currency","delta":0.07476024411508282,"higherIsBetter":false},{"key":"adCostRate","label":"投放费率","value":0.08363013466300329,"format":"percent","delta":0.09699842290515766,"higherIsBetter":false},{"key":"uv","label":"UV","value":1764,"format":"integer","delta":-0.061202767429483766,"higherIsBetter":true},{"key":"searchUv","label":"搜索 UV","value":651,"format":"integer","delta":-0.012139605462822459,"higherIsBetter":true}],"extra":[{"key":"gmvAfterRefund","label":"退后 GMV","value":43148,"format":"currency","delta":-0.006996225720335082,"higherIsBetter":true},{"key":"buyers","label":"支付人数","value":47,"format":"integer","delta":0.044444444444444446,"higherIsBetter":true},{"key":"orders","label":"支付订单数","value":52,"format":"integer","delta":0.04,"higherIsBetter":true},{"key":"aov","label":"客单价","value":1254.5106382978724,"format":"currency","delta":-0.06196240199055761,"higherIsBetter":true},{"key":"conversionRate","label":"支付转化率","value":0.026643990929705215,"format":"percent","delta":0.1125346434870244,"higherIsBetter":true},{"key":"uvValue","label":"UV 价值","value":33.425170068027214,"format":"decimal","delta":0.04359932467885963,"higherIsBetter":true},{"key":"addToCart","label":"加购人数","value":184,"format":"integer","delta":-0.20689655172413793,"higherIsBetter":true},{"key":"newCustomerRate","label":"新客率","value":0.8678979681828974,"format":"percent","delta":-0.02988734382379355,"higherIsBetter":true}],"ads":[{"key":"adCost","label":"合计投放费","value":4931,"format":"currency","delta":0.07476024411508282,"higherIsBetter":false},{"key":"roi","label":"合计 ROI","value":8.239505171364835,"format":"multiple","delta":-0.0682986709167975,"higherIsBetter":true},{"key":"adCostInsite","label":"站内投放费","value":1867,"format":"currency","delta":0.09181286549707603,"higherIsBetter":false},{"key":"roiInsite","label":"站内 ROI","value":14.771826459560792,"format":"multiple","delta":-0.13694740857424642,"higherIsBetter":true},{"key":"adCostOffsite","label":"站外投放费","value":3064,"format":"currency","delta":0.06462821403752605,"higherIsBetter":false},{"key":"roiOffsite","label":"站外 ROI","value":4.259138381201044,"format":"multiple","delta":0.08418541138303598,"higherIsBetter":true}],"aggregate":{"days":1,"gmv":58962,"deviceSales":35,"gmvAfterRefund":43148,"refund":15814,"uv":1764,"searchUv":651,"buyers":47,"orders":52,"addToCart":184,"newCustomerGmv":51173,"adCost":4931,"adCostInsite":1867,"adCostOffsite":3064,"adGmv":40629,"adGmvInsite":27579,"adGmvOffsite":13050,"refundRate":0.2682066415657542,"adCostRate":0.08363013466300329,"adCostRateInsite":0.03166446185678912,"adCostRateOffsite":0.05196567280621417,"conversionRate":0.026643990929705215,"aov":1254.5106382978724,"uvValue":33.425170068027214,"newCustomerRate":0.8678979681828974,"searchUvShare":0.36904761904761907,"roi":8.239505171364835,"roiInsite":14.771826459560792,"roiOffsite":4.259138381201044}},{"key":"mtd","label":"本月 MTD","compareLabel":"环比前月","range":{"from":"2026-08-01","to":"2026-08-06"},"compareRange":{"from":"2026-07-01","to":"2026-07-06"},"core":[{"key":"gmv","label":"GMV","value":360740,"format":"currency","delta":-0.07113871379722325,"higherIsBetter":true},{"key":"deviceSales","label":"主机销量","value":214,"format":"integer","delta":-0.06140350877192982,"higherIsBetter":true},{"key":"refund","label":"退款金额","value":99973,"format":"currency","delta":-0.048791162786272255,"higherIsBetter":false},{"key":"refundRate","label":"退款率","value":0.27713311526307033,"format":"percent","delta":0.024059083248381043,"higherIsBetter":false},{"key":"adCost","label":"投放费","value":26250,"format":"currency","delta":0.043696075702755355,"higherIsBetter":false},{"key":"adCostRate","label":"投放费率","value":0.07276708987082109,"format":"percent","delta":0.1236296433124348,"higherIsBetter":false},{"key":"uv","label":"UV","value":10207,"format":"integer","delta":-0.14068024920020206,"higherIsBetter":true},{"key":"searchUv","label":"搜索 UV","value":3776,"format":"integer","delta":-0.17734204793028321,"higherIsBetter":true}],"extra":[{"key":"gmvAfterRefund","label":"退后 GMV","value":260767,"format":"currency","delta":-0.07943036075504736,"higherIsBetter":true},{"key":"buyers","label":"支付人数","value":268,"format":"integer","delta":-0.07586206896551724,"higherIsBetter":true},{"key":"orders","label":"支付订单数","value":295,"format":"integer","delta":-0.06050955414012739,"higherIsBetter":true},{"key":"aov","label":"客单价","value":1346.044776119403,"format":"currency","delta":0.005111093279124046,"higherIsBetter":true},{"key":"conversionRate","label":"支付转化率","value":0.026256490643675908,"format":"percent","delta":0.07542964091580157,"higherIsBetter":true},{"key":"uvValue","label":"UV 价值","value":35.34241207014794,"format":"decimal","delta":0.08092626212565698,"higherIsBetter":true},{"key":"addToCart","label":"加购人数","value":1101,"format":"integer","delta":-0.1357927786499215,"higherIsBetter":true},{"key":"newCustomerRate","label":"新客率","value":0.8784886621943783,"format":"percent","delta":-0.00029921337349707983,"higherIsBetter":true}],"ads":[{"key":"adCost","label":"合计投放费","value":26250,"format":"currency","delta":0.043696075702755355,"higherIsBetter":false},{"key":"roi","label":"合计 ROI","value":8.908342857142857,"format":"multiple","delta":-0.0033063999964413073,"higherIsBetter":true},{"key":"adCostInsite","label":"站内投放费","value":10170,"format":"currency","delta":0.07346421785940468,"higherIsBetter":false},{"key":"roiInsite","label":"站内 ROI","value":16.261455260570305,"format":"multiple","delta":-0.05075215259187989,"higherIsBetter":true},{"key":"adCostOffsite","label":"站外投放费","value":16080,"format":"currency","delta":0.025706448937934553,"higherIsBetter":false},{"key":"roiOffsite","label":"站外 ROI","value":4.257773631840796,"format":"multiple","delta":0.06800296366930926,"higherIsBetter":true}],"aggregate":{"days":6,"gmv":360740,"deviceSales":214,"gmvAfterRefund":260767,"refund":99973,"uv":10207,"searchUv":3776,"buyers":268,"orders":295,"addToCart":1101,"newCustomerGmv":316906,"adCost":26250,"adCostInsite":10170,"adCostOffsite":16080,"adGmv":233844,"adGmvInsite":165379,"adGmvOffsite":68465,"refundRate":0.27713311526307033,"adCostRate":0.07276708987082109,"adCostRateInsite":0.028192049675666686,"adCostRateOffsite":0.0445750401951544,"conversionRate":0.026256490643675908,"aov":1346.044776119403,"uvValue":35.34241207014794,"newCustomerRate":0.8784886621943783,"searchUvShare":0.3699421965317919,"roi":8.908342857142857,"roiInsite":16.261455260570305,"roiOffsite":4.257773631840796}},{"key":"ytd","label":"全年累计","compareLabel":"环比前年","range":{"from":"2026-01-01","to":"2026-08-06"},"compareRange":{"from":"2025-01-01","to":"2025-08-06"},"core":[{"key":"gmv","label":"GMV","value":15728377,"format":"currency","delta":0.34654571104051124,"higherIsBetter":true},{"key":"deviceSales","label":"主机销量","value":9244,"format":"integer","delta":0.34870148818208346,"higherIsBetter":true},{"key":"refund","label":"退款金额","value":4322406,"format":"currency","delta":0.3445739777515994,"higherIsBetter":false},{"key":"refundRate","label":"退款率","value":0.2748157677044491,"format":"percent","delta":-0.0014642899032281766,"higherIsBetter":false},{"key":"adCost","label":"投放费","value":1107562,"format":"currency","delta":0.3492801399518063,"higherIsBetter":false},{"key":"adCostRate","label":"投放费率","value":0.07041807301541665,"format":"percent","delta":0.00203069891268813,"higherIsBetter":false},{"key":"uv","label":"UV","value":510427,"format":"integer","delta":0.3858549273442082,"higherIsBetter":true},{"key":"searchUv","label":"搜索 UV","value":187286,"format":"integer","delta":0.3777208895166214,"higherIsBetter":true}],"extra":[{"key":"gmvAfterRefund","label":"退后 GMV","value":11405971,"format":"currency","delta":0.3472944307672463,"higherIsBetter":true},{"key":"buyers","label":"支付人数","value":11779,"format":"integer","delta":0.3503381864037602,"higherIsBetter":true},{"key":"orders","label":"支付订单数","value":12824,"format":"integer","delta":0.34621037161452867,"higherIsBetter":true},{"key":"aov","label":"客单价","value":1335.2896680533152,"format":"currency","delta":-0.0028085374474590627,"higherIsBetter":true},{"key":"conversionRate","label":"支付转化率","value":0.023076757303199087,"format":"percent","delta":-0.025628036701150658,"higherIsBetter":true},{"key":"uvValue","label":"UV 价值","value":30.814155599135624,"format":"decimal","delta":-0.028364596847829836,"higherIsBetter":true},{"key":"addToCart","label":"加购人数","value":55807,"format":"integer","delta":0.40958803768533253,"higherIsBetter":true},{"key":"newCustomerRate","label":"新客率","value":0.8860313432212363,"format":"percent","delta":0.0020882454759383615,"higherIsBetter":true}],"ads":[{"key":"adCost","label":"合计投放费","value":1107562,"format":"currency","delta":0.3492801399518063,"higherIsBetter":false},{"key":"roi","label":"合计 ROI","value":9.198648021510309,"format":"multiple","delta":0.00681312011036549,"higherIsBetter":true},{"key":"adCostInsite","label":"站内投放费","value":416387,"format":"currency","delta":0.35179173186679047,"higherIsBetter":false},{"key":"roiInsite","label":"站内 ROI","value":17.462065338255037,"format":"multiple","delta":0.011205161762393211,"higherIsBetter":true},{"key":"adCostOffsite","label":"站外投放费","value":691175,"format":"currency","delta":0.347771572535041,"higherIsBetter":false},{"key":"roiOffsite","label":"站外 ROI","value":4.220488298911274,"format":"multiple","delta":-0.00738296361215806,"higherIsBetter":true}],"aggregate":{"days":218,"gmv":15728377,"deviceSales":9244,"gmvAfterRefund":11405971,"refund":4322406,"uv":510427,"searchUv":187286,"buyers":11779,"orders":12824,"addToCart":55807,"newCustomerGmv":13935835,"adCost":1107562,"adCostInsite":416387,"adCostOffsite":691175,"adGmv":10188073,"adGmvInsite":7270977,"adGmvOffsite":2917096,"refundRate":0.2748157677044491,"adCostRate":0.07041807301541665,"adCostRateInsite":0.02647361517339011,"adCostRateOffsite":0.04394445784202655,"conversionRate":0.023076757303199087,"aov":1335.2896680533152,"uvValue":30.814155599135624,"newCustomerRate":0.8860313432212363,"searchUvShare":0.3669202452064644,"roi":9.198648021510309,"roiInsite":17.462065338255037,"roiOffsite":4.220488298911274}}],"goals":[{"key":"2026-08","label":"本月","scope":"8 月","gmvActual":360740,"gmvTarget":1920000,"deviceActual":214,"deviceTarget":1150,"timeProgress":0.1935483870967742,"finished":false},{"key":"2026-Q3","label":"Q3","scope":"7–9 月","gmvActual":2375354,"gmvTarget":6420000,"deviceActual":1391,"deviceTarget":3800,"timeProgress":0.40212038991056176,"finished":false},{"key":"2026-H2","label":"H2","scope":"7–12 月","gmvActual":2375354,"gmvTarget":16280000,"deviceActual":1391,"deviceTarget":9600,"timeProgress":0.15857573115637633,"finished":false},{"key":"2026","label":"全年","scope":"2026 年","gmvActual":15728377,"gmvTarget":31700000,"deviceActual":9244,"deviceTarget":18700,"timeProgress":0.5508725542041247,"finished":false}],"trend":[{"date":"2026-05-09","gmv":70438,"deviceSales":42,"refund":20296,"refundRate":0.2881399244725858,"adCostRate":0.07112638064680996,"adCost":5010,"adCostInsite":1949,"adCostOffsite":3061,"roi":9.07744510978044,"roiInsite":17.448948178553103,"roiOffsite":3.747141457040183,"adGmv":45478,"adGmvInsite":34008,"adGmvOffsite":11470,"uv":2479,"searchUv":905,"conversionRate":0.02016942315449778},{"date":"2026-05-10","gmv":60392,"deviceSales":35,"refund":15608,"refundRate":0.25844482712942113,"adCostRate":0.07684792687773215,"adCost":4641,"adCostInsite":1884,"adCostOffsite":2757,"roi":9.239172592113768,"roiInsite":17.019639065817408,"roiOffsite":3.922379397896264,"adGmv":42879,"adGmvInsite":32065,"adGmvOffsite":10814,"uv":1782,"searchUv":716,"conversionRate":0.025252525252525252},{"date":"2026-05-11","gmv":55765,"deviceSales":32,"refund":15728,"refundRate":0.28204070653635793,"adCostRate":0.061848829911234644,"adCost":3449,"adCostInsite":1278,"adCostOffsite":2171,"roi":9.004349086691795,"roiInsite":17.01564945226917,"roiOffsite":4.288346384154767,"adGmv":31056,"adGmvInsite":21746,"adGmvOffsite":9310,"uv":1555,"searchUv":600,"conversionRate":0.02572347266881029},{"date":"2026-05-12","gmv":49354,"deviceSales":30,"refund":12578,"refundRate":0.2548526968432143,"adCostRate":0.06680309600032419,"adCost":3297,"adCostInsite":1153,"adCostOffsite":2144,"roi":8.500758265089475,"roiInsite":17.51084128360798,"roiOffsite":3.6553171641791047,"adGmv":28027,"adGmvInsite":20190,"adGmvOffsite":7837,"uv":1762,"searchUv":704,"conversionRate":0.02043132803632236},{"date":"2026-05-13","gmv":53004,"deviceSales":31,"refund":14537,"refundRate":0.2742623198249189,"adCostRate":0.055071315372424726,"adCost":2919,"adCostInsite":1192,"adCostOffsite":1727,"roi":9.640287769784173,"roiInsite":17.46224832214765,"roiOffsite":4.24145917776491,"adGmv":28140,"adGmvInsite":20815,"adGmvOffsite":7325,"uv":1810,"searchUv":648,"conversionRate":0.02154696132596685},{"date":"2026-05-14","gmv":67699,"deviceSales":39,"refund":19462,"refundRate":0.2874783970221126,"adCostRate":0.07496417967769095,"adCost":5075,"adCostInsite":2131,"adCostOffsite":2944,"roi":10.262266009852217,"roiInsite":17.694509619896763,"roiOffsite":4.882472826086956,"adGmv":52081,"adGmvInsite":37707,"adGmvOffsite":14374,"uv":2425,"searchUv":916,"conversionRate":0.021443298969072166},{"date":"2026-05-15","gmv":72041,"deviceSales":42,"refund":19215,"refundRate":0.26672311600338694,"adCostRate":0.07820546633167225,"adCost":5634,"adCostInsite":2098,"adCostOffsite":3536,"roi":8.285055023074193,"roiInsite":15.747855100095329,"roiOffsite":3.857183257918552,"adGmv":46678,"adGmvInsite":33039,"adGmvOffsite":13639,"uv":2814,"searchUv":1047,"conversionRate":0.019189765458422176},{"date":"2026-05-16","gmv":63972,"deviceSales":38,"refund":18451,"refundRate":0.2884230600887888,"adCostRate":0.07501719502282249,"adCost":4799,"adCostInsite":1756,"adCostOffsite":3043,"roi":8.646384663471556,"roiInsite":16.093963553530752,"roiOffsite":4.348669076569175,"adGmv":41494,"adGmvInsite":28261,"adGmvOffsite":13233,"uv":2173,"searchUv":782,"conversionRate":0.022549470777726646},{"date":"2026-05-17","gmv":59783,"deviceSales":35,"refund":16152,"refundRate":0.2701771406587157,"adCostRate":0.07023735844638108,"adCost":4199,"adCostInsite":1551,"adCostOffsite":2648,"roi":9.137889973803286,"roiInsite":17.558349451966475,"roiOffsite":4.205815709969788,"adGmv":38370,"adGmvInsite":27233,"adGmvOffsite":11137,"uv":1709,"searchUv":600,"conversionRate":0.024575775307197192},{"date":"2026-05-18","gmv":56800,"deviceSales":34,"refund":14971,"refundRate":0.26357394366197184,"adCostRate":0.0614612676056338,"adCost":3491,"adCostInsite":1443,"adCostOffsite":2048,"roi":9.734460040103123,"roiInsite":17.698544698544698,"roiOffsite":4.123046875,"adGmv":33983,"adGmvInsite":25539,"adGmvOffsite":8444,"uv":2148,"searchUv":754,"conversionRate":0.020484171322160148},{"date":"2026-05-19","gmv":53565,"deviceSales":31,"refund":14693,"refundRate":0.27430224960328575,"adCostRate":0.06849621954634556,"adCost":3669,"adCostInsite":1364,"adCostOffsite":2305,"roi":8.830198964295448,"roiInsite":16.951612903225808,"roiOffsite":4.024295010845987,"adGmv":32398,"adGmvInsite":23122,"adGmvOffsite":9276,"uv":2188,"searchUv":777,"conversionRate":0.019195612431444242},{"date":"2026-05-20","gmv":51458,"deviceSales":31,"refund":14404,"refundRate":0.27991760270511873,"adCostRate":0.06117610478448443,"adCost":3148,"adCostInsite":1110,"adCostOffsite":2038,"roi":8.553367217280814,"roiInsite":15.99009009009009,"roiOffsite":4.502944062806673,"adGmv":26926,"adGmvInsite":17749,"adGmvOffsite":9177,"uv":1818,"searchUv":644,"conversionRate":0.022552255225522552},{"date":"2026-05-21","gmv":67886,"deviceSales":39,"refund":18485,"refundRate":0.27229472939928706,"adCostRate":0.06313525616474679,"adCost":4286,"adCostInsite":1602,"adCostOffsite":2684,"roi":9.377974801679889,"roiInsite":17.7896379525593,"roiOffsite":4.3573025335320414,"adGmv":40194,"adGmvInsite":28499,"adGmvOffsite":11695,"uv":2000,"searchUv":732,"conversionRate":0.025},{"date":"2026-05-22","gmv":68450,"deviceSales":40,"refund":18079,"refundRate":0.26411979547114683,"adCostRate":0.07329437545653762,"adCost":5017,"adCostInsite":1967,"adCostOffsite":3050,"roi":8.787123779150887,"roiInsite":16.596339603457043,"roiOffsite":3.7508196721311475,"adGmv":44085,"adGmvInsite":32645,"adGmvOffsite":11440,"uv":2606,"searchUv":1076,"conversionRate":0.02072141212586339},{"date":"2026-05-23","gmv":70913,"deviceSales":41,"refund":20222,"refundRate":0.28516633057408375,"adCostRate":0.061187652475568656,"adCost":4339,"adCostInsite":1623,"adCostOffsite":2716,"roi":9.66789582853192,"roiInsite":18.771410967344423,"roiOffsite":4.2279086892488955,"adGmv":41949,"adGmvInsite":30466,"adGmvOffsite":11483,"uv":1943,"searchUv":780,"conversionRate":0.02676273803396809},{"date":"2026-05-24","gmv":61186,"deviceSales":35,"refund":15931,"refundRate":0.26037001928545744,"adCostRate":0.06563592978785997,"adCost":4016,"adCostInsite":1515,"adCostOffsite":2501,"roi":9.499501992031872,"roiInsite":17.337953795379537,"roiOffsite":4.7512994802079165,"adGmv":38150,"adGmvInsite":26267,"adGmvOffsite":11883,"uv":2069,"searchUv":796,"conversionRate":0.022716288061865635},{"date":"2026-05-25","gmv":53634,"deviceSales":31,"refund":15125,"refundRate":0.28200395271656037,"adCostRate":0.058209344818585224,"adCost":3122,"adCostInsite":1201,"adCostOffsite":1921,"roi":8.695707879564381,"roiInsite":16.61948376353039,"roiOffsite":3.7418011452368556,"adGmv":27148,"adGmvInsite":19960,"adGmvOffsite":7188,"uv":1572,"searchUv":557,"conversionRate":0.02544529262086514},{"date":"2026-05-26","gmv":161015,"deviceSales":95,"refund":46579,"refundRate":0.2892836071173493,"adCostRate":0.07934664472254138,"adCost":12776,"adCostInsite":5124,"adCostOffsite":7652,"roi":10.905995616781466,"roiInsite":20.227946916471506,"roiOffsite":4.663748039728175,"adGmv":139335,"adGmvInsite":103648,"adGmvOffsite":35687,"uv":5181,"searchUv":1505,"conversionRate":0.022003474232773594},{"date":"2026-05-27","gmv":140285,"deviceSales":85,"refund":40220,"refundRate":0.28670207078447446,"adCostRate":0.07836190611968492,"adCost":10993,"adCostInsite":3668,"adCostOffsite":7325,"roi":8.896206676976258,"roiInsite":18.66112322791712,"roiOffsite":4.00641638225256,"adGmv":97796,"adGmvInsite":68449,"adGmvOffsite":29347,"uv":4095,"searchUv":1269,"conversionRate":0.02735042735042735},{"date":"2026-05-28","gmv":185056,"deviceSales":111,"refund":53755,"refundRate":0.2904796385958845,"adCostRate":0.0924476915095971,"adCost":17108,"adCostInsite":6921,"adCostOffsite":10187,"roi":10.581657703998129,"roiInsite":19.547030775899437,"roiOffsite":4.490625306763522,"adGmv":181031,"adGmvInsite":135285,"adGmvOffsite":45746,"uv":7322,"searchUv":2385,"conversionRate":0.01980333242283529},{"date":"2026-05-29","gmv":166592,"deviceSales":98,"refund":46902,"refundRate":0.2815381290818287,"adCostRate":0.07398314444871303,"adCost":12325,"adCostInsite":4765,"adCostOffsite":7560,"roi":11.312860040567951,"roiInsite":21.777544596012593,"roiOffsite":4.717063492063492,"adGmv":139431,"adGmvInsite":103770,"adGmvOffsite":35661,"uv":5952,"searchUv":1940,"conversionRate":0.02049731182795699},{"date":"2026-05-30","gmv":166466,"deviceSales":100,"refund":45225,"refundRate":0.27167709922746985,"adCostRate":0.09962995446517607,"adCost":16585,"adCostInsite":6109,"adCostOffsite":10476,"roi":10.450286403376545,"roiInsite":21.315763627434933,"roiOffsite":4.114165712103857,"adGmv":173318,"adGmvInsite":130218,"adGmvOffsite":43100,"uv":6111,"searchUv":1825,"conversionRate":0.020291278023236787},{"date":"2026-05-31","gmv":158987,"deviceSales":94,"refund":43915,"refundRate":0.2762175523784964,"adCostRate":0.09126532357991533,"adCost":14510,"adCostInsite":6129,"adCostOffsite":8381,"roi":9.725775327360441,"roiInsite":17.729156469244575,"roiOffsite":3.872926858370123,"adGmv":141121,"adGmvInsite":108662,"adGmvOffsite":32459,"uv":5568,"searchUv":1654,"conversionRate":0.02065373563218391},{"date":"2026-06-01","gmv":99942,"deviceSales":59,"refund":28743,"refundRate":0.2875968061475656,"adCostRate":0.058834123791799246,"adCost":5880,"adCostInsite":2309,"adCostOffsite":3571,"roi":10.191156462585035,"roiInsite":18.806409701169336,"roiOffsite":4.620554466535984,"adGmv":59924,"adGmvInsite":43424,"adGmvOffsite":16500,"uv":3688,"searchUv":1519,"conversionRate":0.019522776572668113},{"date":"2026-06-02","gmv":99147,"deviceSales":58,"refund":26573,"refundRate":0.2680161779983257,"adCostRate":0.06147437643095605,"adCost":6095,"adCostInsite":2203,"adCostOffsite":3892,"roi":8.108285479901559,"roiInsite":14.864729913753973,"roiOffsite":4.283915724563206,"adGmv":49420,"adGmvInsite":32747,"adGmvOffsite":16673,"uv":3207,"searchUv":1107,"conversionRate":0.024009978172747116},{"date":"2026-06-03","gmv":117848,"deviceSales":69,"refund":33417,"refundRate":0.28356017921390264,"adCostRate":0.07939040119475935,"adCost":9356,"adCostInsite":3313,"adCostOffsite":6043,"roi":9.726378794356563,"roiInsite":19.197102324177482,"roiOffsite":4.534171768988913,"adGmv":91000,"adGmvInsite":63600,"adGmvOffsite":27400,"uv":4102,"searchUv":1573,"conversionRate":0.022671867381764993},{"date":"2026-06-04","gmv":102951,"deviceSales":60,"refund":29435,"refundRate":0.28591271575798194,"adCostRate":0.07865877941933541,"adCost":8098,"adCostInsite":3049,"adCostOffsite":5049,"roi":9.625957026426278,"roiInsite":18.54148901279108,"roiOffsite":4.242028124381066,"adGmv":77951,"adGmvInsite":56533,"adGmvOffsite":21418,"uv":3189,"searchUv":1318,"conversionRate":0.02414550015678896},{"date":"2026-06-05","gmv":130263,"deviceSales":77,"refund":36416,"refundRate":0.2795575105747603,"adCostRate":0.06635038345501025,"adCost":8643,"adCostInsite":3469,"adCostOffsite":5174,"roi":9.44359597362027,"roiInsite":17.55405015854713,"roiOffsite":4.005798221878624,"adGmv":81621,"adGmvInsite":60895,"adGmvOffsite":20726,"uv":4183,"searchUv":1714,"conversionRate":0.02199378436528807},{"date":"2026-06-06","gmv":123737,"deviceSales":72,"refund":32551,"refundRate":0.26306601905654736,"adCostRate":0.07273491356667772,"adCost":9000,"adCostInsite":3544,"adCostOffsite":5456,"roi":8.564777777777778,"roiInsite":15.600451467268623,"roiOffsite":3.994684750733138,"adGmv":77083,"adGmvInsite":55288,"adGmvOffsite":21795,"uv":3985,"searchUv":1419,"conversionRate":0.023086574654956084},{"date":"2026-06-07","gmv":115829,"deviceSales":69,"refund":31795,"refundRate":0.27449947767830163,"adCostRate":0.07072494798366558,"adCost":8192,"adCostInsite":2748,"adCostOffsite":5444,"roi":8.578369140625,"roiInsite":16.34206695778748,"roiOffsite":4.659441587068332,"adGmv":70274,"adGmvInsite":44908,"adGmvOffsite":25366,"uv":3677,"searchUv":1411,"conversionRate":0.022300788686429155},{"date":"2026-06-08","gmv":95550,"deviceSales":56,"refund":25554,"refundRate":0.26744113029827316,"adCostRate":0.06638409209837781,"adCost":6343,"adCostInsite":2520,"adCostOffsite":3823,"roi":9.145830048872773,"roiInsite":16.677380952380954,"roiOffsite":4.181271252942715,"adGmv":58012,"adGmvInsite":42027,"adGmvOffsite":15985,"uv":2605,"searchUv":917,"conversionRate":0.02763915547024952},{"date":"2026-06-09","gmv":101062,"deviceSales":59,"refund":29124,"refundRate":0.2881795333557618,"adCostRate":0.07317290376204706,"adCost":7395,"adCostInsite":2723,"adCostOffsite":4672,"roi":8.989587559161595,"roiInsite":17.190598604480353,"roiOffsite":4.209760273972603,"adGmv":66478,"adGmvInsite":46810,"adGmvOffsite":19668,"uv":3368,"searchUv":1180,"conversionRate":0.022862232779097387},{"date":"2026-06-10","gmv":101261,"deviceSales":60,"refund":26651,"refundRate":0.2631911594789702,"adCostRate":0.06209695736759463,"adCost":6288,"adCostInsite":2417,"adCostOffsite":3871,"roi":8.895356234096692,"roiInsite":15.607778237484485,"roiOffsite":4.704210798243348,"adGmv":55934,"adGmvInsite":37724,"adGmvOffsite":18210,"uv":3728,"searchUv":1345,"conversionRate":0.019313304721030045},{"date":"2026-06-11","gmv":99526,"deviceSales":58,"refund":26561,"refundRate":0.26687498744046784,"adCostRate":0.07631171754114503,"adCost":7595,"adCostInsite":3013,"adCostOffsite":4582,"roi":9.59855167873601,"roiInsite":18.570859608363758,"roiOffsite":3.6986032300305545,"adGmv":72901,"adGmvInsite":55954,"adGmvOffsite":16947,"uv":3298,"searchUv":1356,"conversionRate":0.021831412977562158},{"date":"2026-06-12","gmv":136334,"deviceSales":80,"refund":35774,"refundRate":0.26239969486701775,"adCostRate":0.054879927237519624,"adCost":7482,"adCostInsite":2964,"adCostOffsite":4518,"roi":9.678294573643411,"roiInsite":17.33940620782726,"roiOffsite":4.65227976980965,"adGmv":72413,"adGmvInsite":51394,"adGmvOffsite":21019,"uv":4126,"searchUv":1467,"conversionRate":0.025206010664081433},{"date":"2026-06-13","gmv":113459,"deviceSales":68,"refund":31407,"refundRate":0.2768136507460845,"adCostRate":0.06427872623590901,"adCost":7293,"adCostInsite":2734,"adCostOffsite":4559,"roi":7.793226381461675,"roiInsite":14.496342355523042,"roiOffsite":3.773415222636543,"adGmv":56836,"adGmvInsite":39633,"adGmvOffsite":17203,"uv":3916,"searchUv":1352,"conversionRate":0.02093973442288049},{"date":"2026-06-14","gmv":88764,"deviceSales":52,"refund":24227,"refundRate":0.2729372268036591,"adCostRate":0.06276193051236988,"adCost":5571,"adCostInsite":2231,"adCostOffsite":3340,"roi":8.999820499012744,"roiInsite":16.643209323173465,"roiOffsite":3.894311377245509,"adGmv":50138,"adGmvInsite":37131,"adGmvOffsite":13007,"uv":2955,"searchUv":1019,"conversionRate":0.023688663282571912},{"date":"2026-06-15","gmv":82718,"deviceSales":48,"refund":20188,"refundRate":0.2440581251964506,"adCostRate":0.07537658067167968,"adCost":6235,"adCostInsite":2415,"adCostOffsite":3820,"roi":8.977706495589414,"roiInsite":16.656728778467908,"roiOffsite":4.12303664921466,"adGmv":55976,"adGmvInsite":40226,"adGmvOffsite":15750,"uv":2530,"searchUv":901,"conversionRate":0.023715415019762844},{"date":"2026-06-16","gmv":237819,"deviceSales":141,"refund":61659,"refundRate":0.2592686034337038,"adCostRate":0.072353344350115,"adCost":17207,"adCostInsite":6724,"adCostOffsite":10483,"roi":10.42046841401755,"roiInsite":20.846371207614514,"roiOffsite":3.7330916722312315,"adGmv":179305,"adGmvInsite":140171,"adGmvOffsite":39134,"uv":8901,"searchUv":2747,"conversionRate":0.01932367149758454},{"date":"2026-06-17","gmv":309319,"deviceSales":184,"refund":87454,"refundRate":0.2827307730853908,"adCostRate":0.08035070590555381,"adCost":24854,"adCostInsite":9655,"adCostOffsite":15199,"roi":10.420777339663635,"roiInsite":19.96975660279648,"roiOffsite":4.3548917691953415,"adGmv":258998,"adGmvInsite":192808,"adGmvOffsite":66190,"uv":9029,"searchUv":2758,"conversionRate":0.027134787905637392},{"date":"2026-06-18","gmv":268935,"deviceSales":160,"refund":69785,"refundRate":0.2594864930187592,"adCostRate":0.07833119527023258,"adCost":21066,"adCostInsite":7597,"adCostOffsite":13469,"roi":9.395851134529574,"roiInsite":19.4745294195077,"roiOffsite":3.7111144108694036,"adGmv":197933,"adGmvInsite":147948,"adGmvOffsite":49985,"uv":7852,"searchUv":2523,"conversionRate":0.02445236882322975},{"date":"2026-06-19","gmv":287579,"deviceSales":170,"refund":77381,"refundRate":0.2690773665670998,"adCostRate":0.08507575309740975,"adCost":24466,"adCostInsite":8788,"adCostOffsite":15678,"roi":10.101242540668682,"roiInsite":21.409649522075558,"roiOffsite":3.7625334864140836,"adGmv":247137,"adGmvInsite":188148,"adGmvOffsite":58989,"uv":9748,"searchUv":2723,"conversionRate":0.021953221173574067},{"date":"2026-06-20","gmv":319492,"deviceSales":189,"refund":90825,"refundRate":0.28427941857699096,"adCostRate":0.10052520876892067,"adCost":32117,"adCostInsite":11232,"adCostOffsite":20885,"roi":9.451598841734906,"roiInsite":18.93945868945869,"roiOffsite":4.349006463969356,"adGmv":303557,"adGmvInsite":212728,"adGmvOffsite":90829,"uv":9850,"searchUv":2945,"conversionRate":0.024365482233502538},{"date":"2026-06-21","gmv":54698,"deviceSales":32,"refund":15272,"refundRate":0.2792058210537862,"adCostRate":0.07616366229112582,"adCost":4166,"adCostInsite":1540,"adCostOffsite":2626,"roi":9.582573211713875,"roiInsite":18.464285714285715,"roiOffsite":4.373952779893374,"adGmv":39921,"adGmvInsite":28435,"adGmvOffsite":11486,"uv":1558,"searchUv":625,"conversionRate":0.027599486521181},{"date":"2026-06-22","gmv":54262,"deviceSales":33,"refund":14665,"refundRate":0.2702627990122001,"adCostRate":0.07836054697578416,"adCost":4252,"adCostInsite":1601,"adCostOffsite":2651,"roi":8.19543744120414,"roiInsite":15.342910680824485,"roiOffsite":3.878913617502829,"adGmv":34847,"adGmvInsite":24564,"adGmvOffsite":10283,"uv":2108,"searchUv":832,"conversionRate":0.019449715370018977},{"date":"2026-06-23","gmv":59865,"deviceSales":34,"refund":16790,"refundRate":0.2804643781842479,"adCostRate":0.06467886077006599,"adCost":3872,"adCostInsite":1401,"adCostOffsite":2471,"roi":8.448347107438016,"roiInsite":15.83226266952177,"roiOffsite":4.261837312828814,"adGmv":32712,"adGmvInsite":22181,"adGmvOffsite":10531,"uv":2314,"searchUv":937,"conversionRate":0.01901469317199654},{"date":"2026-06-24","gmv":62366,"deviceSales":37,"refund":16639,"refundRate":0.2667960106468268,"adCostRate":0.07868069140236668,"adCost":4907,"adCostInsite":1821,"adCostOffsite":3086,"roi":9.40778479722845,"roiInsite":17.440417353102692,"roiOffsite":4.667854828256643,"adGmv":46164,"adGmvInsite":31759,"adGmvOffsite":14405,"uv":1650,"searchUv":689,"conversionRate":0.02727272727272727},{"date":"2026-06-25","gmv":57855,"deviceSales":34,"refund":16295,"refundRate":0.2816524068792671,"adCostRate":0.06409126263935701,"adCost":3708,"adCostInsite":1395,"adCostOffsite":2313,"roi":9.391316073354908,"roiInsite":17.7505376344086,"roiOffsite":4.349762213575443,"adGmv":34823,"adGmvInsite":24762,"adGmvOffsite":10061,"uv":1625,"searchUv":565,"conversionRate":0.02523076923076923},{"date":"2026-06-26","gmv":76657,"deviceSales":45,"refund":22274,"refundRate":0.29056707150031963,"adCostRate":0.05657669880115319,"adCost":4337,"adCostInsite":1726,"adCostOffsite":2611,"roi":9.544385519944662,"roiInsite":18.038818076477405,"roiOffsite":3.9291459211030255,"adGmv":41394,"adGmvInsite":31135,"adGmvOffsite":10259,"uv":2633,"searchUv":1015,"conversionRate":0.021268515001898976},{"date":"2026-06-27","gmv":73447,"deviceSales":43,"refund":18815,"refundRate":0.2561711165874712,"adCostRate":0.06327011314281046,"adCost":4647,"adCostInsite":1656,"adCostOffsite":2991,"roi":8.933290294813858,"roiInsite":17.356280193236714,"roiOffsite":4.269809428284854,"adGmv":41513,"adGmvInsite":28742,"adGmvOffsite":12771,"uv":2076,"searchUv":771,"conversionRate":0.02697495183044316},{"date":"2026-06-28","gmv":51981,"deviceSales":32,"refund":13991,"refundRate":0.2691560377830361,"adCostRate":0.06871741597891537,"adCost":3572,"adCostInsite":1404,"adCostOffsite":2168,"roi":8.896976483762598,"roiInsite":16.29700854700855,"roiOffsite":4.104704797047971,"adGmv":31780,"adGmvInsite":22881,"adGmvOffsite":8899,"uv":1483,"searchUv":594,"conversionRate":0.024275118004045852},{"date":"2026-06-29","gmv":50371,"deviceSales":30,"refund":13834,"refundRate":0.274642155208354,"adCostRate":0.07200571757558913,"adCost":3627,"adCostInsite":1406,"adCostOffsite":2221,"roi":8.894678797904604,"roiInsite":15.574679943100996,"roiOffsite":4.665916253939667,"adGmv":32261,"adGmvInsite":21898,"adGmvOffsite":10363,"uv":1575,"searchUv":612,"conversionRate":0.022857142857142857},{"date":"2026-06-30","gmv":57226,"deviceSales":35,"refund":14964,"refundRate":0.261489532729878,"adCostRate":0.0790899241603467,"adCost":4526,"adCostInsite":1746,"adCostOffsite":2780,"roi":9.877817057003977,"roiInsite":18.620274914089347,"roiOffsite":4.38705035971223,"adGmv":44707,"adGmvInsite":32511,"adGmvOffsite":12196,"uv":2234,"searchUv":868,"conversionRate":0.020143240823634737},{"date":"2026-07-01","gmv":57977,"deviceSales":34,"refund":15557,"refundRate":0.268330544871242,"adCostRate":0.06856167100746847,"adCost":3975,"adCostInsite":1501,"adCostOffsite":2474,"roi":7.941383647798742,"roiInsite":15.069287141905397,"roiOffsite":3.616814874696847,"adGmv":31567,"adGmvInsite":22619,"adGmvOffsite":8948,"uv":1847,"searchUv":655,"conversionRate":0.024363833243096916},{"date":"2026-07-02","gmv":56049,"deviceSales":33,"refund":14742,"refundRate":0.26301985762457847,"adCostRate":0.05889489553783297,"adCost":3301,"adCostInsite":1300,"adCostOffsite":2001,"roi":9.325355952741594,"roiInsite":16.735384615384614,"roiOffsite":4.511244377811095,"adGmv":30783,"adGmvInsite":21756,"adGmvOffsite":9027,"uv":2056,"searchUv":822,"conversionRate":0.020428015564202335},{"date":"2026-07-03","gmv":80544,"deviceSales":47,"refund":23350,"refundRate":0.2899036551450139,"adCostRate":0.057943484306714345,"adCost":4667,"adCostInsite":1731,"adCostOffsite":2936,"roi":8.519605742446968,"roiInsite":16.458116695551706,"roiOffsite":3.8392370572207084,"adGmv":39761,"adGmvInsite":28489,"adGmvOffsite":11272,"uv":2261,"searchUv":912,"conversionRate":0.026536930561698365},{"date":"2026-07-04","gmv":78190,"deviceSales":46,"refund":20643,"refundRate":0.2640107430617726,"adCostRate":0.07988233789487147,"adCost":6246,"adCostInsite":2349,"adCostOffsite":3897,"roi":9.530259365994237,"roiInsite":19.20093656875266,"roiOffsite":3.7010520913523224,"adGmv":59526,"adGmvInsite":45103,"adGmvOffsite":14423,"uv":2246,"searchUv":863,"conversionRate":0.024933214603739984},{"date":"2026-07-05","gmv":65143,"deviceSales":39,"refund":17464,"refundRate":0.26808713138786977,"adCostRate":0.05712048877085796,"adCost":3721,"adCostInsite":1283,"adCostOffsite":2438,"roi":8.536146197258802,"roiInsite":16.77630553390491,"roiOffsite":4.1997538966365875,"adGmv":31763,"adGmvInsite":21524,"adGmvOffsite":10239,"uv":1966,"searchUv":779,"conversionRate":0.024415055951169887},{"date":"2026-07-06","gmv":50465,"deviceSales":29,"refund":13345,"refundRate":0.2644407014762707,"adCostRate":0.06422272862379867,"adCost":3241,"adCostInsite":1310,"adCostOffsite":1931,"roi":9.687442147485344,"roiInsite":17.409923664122136,"roiOffsite":4.44847229414811,"adGmv":31397,"adGmvInsite":22807,"adGmvOffsite":8590,"uv":1502,"searchUv":559,"conversionRate":0.02596537949400799},{"date":"2026-07-07","gmv":65205,"deviceSales":39,"refund":18527,"refundRate":0.28413465225059426,"adCostRate":0.06797024768039261,"adCost":4432,"adCostInsite":1614,"adCostOffsite":2818,"roi":8.719765342960288,"roiInsite":15.845724907063197,"roiOffsite":4.638396025550035,"adGmv":38646,"adGmvInsite":25575,"adGmvOffsite":13071,"uv":2350,"searchUv":922,"conversionRate":0.02},{"date":"2026-07-08","gmv":51674,"deviceSales":31,"refund":13538,"refundRate":0.26198862096992687,"adCostRate":0.07733095947671943,"adCost":3996,"adCostInsite":1517,"adCostOffsite":2479,"roi":8.66991991991992,"roiInsite":16.135794330916283,"roiOffsite":4.101250504235579,"adGmv":34645,"adGmvInsite":24478,"adGmvOffsite":10167,"uv":1741,"searchUv":614,"conversionRate":0.02125215393452039},{"date":"2026-07-09","gmv":57105,"deviceSales":33,"refund":16647,"refundRate":0.2915156291042816,"adCostRate":0.06281411435075737,"adCost":3587,"adCostInsite":1199,"adCostOffsite":2388,"roi":8.787008642319487,"roiInsite":16.655546288573813,"roiOffsite":4.836264656616415,"adGmv":31519,"adGmvInsite":19970,"adGmvOffsite":11549,"uv":1825,"searchUv":721,"conversionRate":0.021917808219178082},{"date":"2026-07-10","gmv":83085,"deviceSales":48,"refund":23658,"refundRate":0.2847445387254017,"adCostRate":0.07103568634530902,"adCost":5902,"adCostInsite":2140,"adCostOffsite":3762,"roi":9.278210776008132,"roiInsite":17.73551401869159,"roiOffsite":4.467304625199362,"adGmv":54760,"adGmvInsite":37954,"adGmvOffsite":16806,"uv":2782,"searchUv":959,"conversionRate":0.02372393961179008},{"date":"2026-07-11","gmv":81764,"deviceSales":48,"refund":23713,"refundRate":0.2900176116628345,"adCostRate":0.06831857541216182,"adCost":5586,"adCostInsite":2004,"adCostOffsite":3582,"roi":9.455245255997136,"roiInsite":17.9251497005988,"roiOffsite":4.716638749302066,"adGmv":52817,"adGmvInsite":35922,"adGmvOffsite":16895,"uv":2924,"searchUv":1213,"conversionRate":0.02051983584131327},{"date":"2026-07-12","gmv":61685,"deviceSales":36,"refund":16937,"refundRate":0.2745724244143633,"adCostRate":0.08112182864553781,"adCost":5004,"adCostInsite":1877,"adCostOffsite":3127,"roi":9.083733013589129,"roiInsite":15.592967501331913,"roiOffsite":5.176527022705469,"adGmv":45455,"adGmvInsite":29268,"adGmvOffsite":16187,"uv":2096,"searchUv":815,"conversionRate":0.023377862595419848},{"date":"2026-07-13","gmv":55345,"deviceSales":32,"refund":15701,"refundRate":0.2836931972174542,"adCostRate":0.07039479627789322,"adCost":3896,"adCostInsite":1465,"adCostOffsite":2431,"roi":8.50564681724846,"roiInsite":16.419112627986348,"roiOffsite":3.736733854380913,"adGmv":33138,"adGmvInsite":24054,"adGmvOffsite":9084,"uv":1644,"searchUv":643,"conversionRate":0.025547445255474453},{"date":"2026-07-14","gmv":64472,"deviceSales":37,"refund":16634,"refundRate":0.25800347437647353,"adCostRate":0.05645861769450304,"adCost":3640,"adCostInsite":1431,"adCostOffsite":2209,"roi":9.232967032967032,"roiInsite":16.48148148148148,"roiOffsite":4.537347215934812,"adGmv":33608,"adGmvInsite":23585,"adGmvOffsite":10023,"uv":1938,"searchUv":749,"conversionRate":0.02631578947368421},{"date":"2026-07-15","gmv":54574,"deviceSales":32,"refund":14309,"refundRate":0.2621944515703449,"adCostRate":0.06308865027302378,"adCost":3443,"adCostInsite":1427,"adCostOffsite":2016,"roi":9.045018878884694,"roiInsite":16.424667133847233,"roiOffsite":3.8214285714285716,"adGmv":31142,"adGmvInsite":23438,"adGmvOffsite":7704,"uv":1698,"searchUv":694,"conversionRate":0.023557126030624265},{"date":"2026-07-16","gmv":59644,"deviceSales":36,"refund":15508,"refundRate":0.2600093890416471,"adCostRate":0.06718194621420429,"adCost":4007,"adCostInsite":1509,"adCostOffsite":2498,"roi":9.816820564012977,"roiInsite":18.444002650762094,"roiOffsite":4.6052842273819055,"adGmv":39336,"adGmvInsite":27832,"adGmvOffsite":11504,"uv":2248,"searchUv":916,"conversionRate":0.02001779359430605},{"date":"2026-07-17","gmv":76033,"deviceSales":44,"refund":20302,"refundRate":0.26701563794668104,"adCostRate":0.05992134994015756,"adCost":4556,"adCostInsite":1634,"adCostOffsite":2922,"roi":9.550043898156277,"roiInsite":18.241738066095472,"roiOffsite":4.689596167008898,"adGmv":43510,"adGmvInsite":29807,"adGmvOffsite":13703,"uv":1993,"searchUv":792,"conversionRate":0.027596588058203714},{"date":"2026-07-18","gmv":65792,"deviceSales":38,"refund":17362,"refundRate":0.26389226653696496,"adCostRate":0.08168166342412451,"adCost":5374,"adCostInsite":1849,"adCostOffsite":3525,"roi":7.7755861555638255,"roiInsite":15.07247160627366,"roiOffsite":3.9480851063829787,"adGmv":41786,"adGmvInsite":27869,"adGmvOffsite":13917,"uv":2174,"searchUv":745,"conversionRate":0.023459061637534497},{"date":"2026-07-19","gmv":62979,"deviceSales":36,"refund":16316,"refundRate":0.2590704838120643,"adCostRate":0.06225884818749107,"adCost":3921,"adCostInsite":1447,"adCostOffsite":2474,"roi":8.229278245345576,"roiInsite":15.946786454733932,"roiOffsite":3.715440582053355,"adGmv":32267,"adGmvInsite":23075,"adGmvOffsite":9192,"uv":1694,"searchUv":643,"conversionRate":0.02715466351829988},{"date":"2026-07-20","gmv":59094,"deviceSales":35,"refund":16170,"refundRate":0.2736318407960199,"adCostRate":0.06733340102210038,"adCost":3979,"adCostInsite":1575,"adCostOffsite":2404,"roi":9.28876602161347,"roiInsite":16.664761904761903,"roiOffsite":4.456322795341098,"adGmv":36960,"adGmvInsite":26247,"adGmvOffsite":10713,"uv":1808,"searchUv":718,"conversionRate":0.025442477876106196},{"date":"2026-07-21","gmv":63442,"deviceSales":36,"refund":17508,"refundRate":0.2759686012420794,"adCostRate":0.07439866334604836,"adCost":4720,"adCostInsite":1647,"adCostOffsite":3073,"roi":8.729661016949153,"roiInsite":16.72313296903461,"roiOffsite":4.445493003579564,"adGmv":41204,"adGmvInsite":27543,"adGmvOffsite":13661,"uv":2041,"searchUv":770,"conversionRate":0.02449779519843214},{"date":"2026-07-22","gmv":64187,"deviceSales":38,"refund":17527,"refundRate":0.2730615233614283,"adCostRate":0.05515135463567389,"adCost":3540,"adCostInsite":1289,"adCostOffsite":2251,"roi":9.188983050847458,"roiInsite":18.25601241272304,"roiOffsite":3.996890270990671,"adGmv":32529,"adGmvInsite":23532,"adGmvOffsite":8997,"uv":2216,"searchUv":893,"conversionRate":0.02256317689530686},{"date":"2026-07-23","gmv":66572,"deviceSales":39,"refund":18797,"refundRate":0.2823559454425284,"adCostRate":0.058688337439163615,"adCost":3907,"adCostInsite":1451,"adCostOffsite":2456,"roi":9.042743793191708,"roiInsite":17.91523087525844,"roiOffsite":3.800895765472313,"adGmv":35330,"adGmvInsite":25995,"adGmvOffsite":9335,"uv":2471,"searchUv":932,"conversionRate":0.02104411169566977},{"date":"2026-07-24","gmv":76253,"deviceSales":44,"refund":21643,"refundRate":0.28383145581157465,"adCostRate":0.0643777949720011,"adCost":4909,"adCostInsite":1837,"adCostOffsite":3072,"roi":9.448563862293746,"roiInsite":18.82961350027218,"roiOffsite":3.8388671875,"adGmv":46383,"adGmvInsite":34590,"adGmvOffsite":11793,"uv":2176,"searchUv":745,"conversionRate":0.025735294117647058},{"date":"2026-07-25","gmv":79365,"deviceSales":46,"refund":22171,"refundRate":0.27935487935487935,"adCostRate":0.06898506898506898,"adCost":5475,"adCostInsite":1983,"adCostOffsite":3492,"roi":8.310684931506849,"roiInsite":15.748865355521936,"roiOffsite":4.0867697594501715,"adGmv":45501,"adGmvInsite":31230,"adGmvOffsite":14271,"uv":2637,"searchUv":953,"conversionRate":0.023511566173682216},{"date":"2026-07-26","gmv":56622,"deviceSales":33,"refund":15605,"refundRate":0.2755995902652679,"adCostRate":0.0686658895835541,"adCost":3888,"adCostInsite":1313,"adCostOffsite":2575,"roi":8.261316872427983,"roiInsite":16.892612338156894,"roiOffsite":3.8601941747572814,"adGmv":32120,"adGmvInsite":22180,"adGmvOffsite":9940,"uv":2263,"searchUv":917,"conversionRate":0.019001325673884226},{"date":"2026-07-27","gmv":63037,"deviceSales":36,"refund":18121,"refundRate":0.2874660913431794,"adCostRate":0.07495597823500484,"adCost":4725,"adCostInsite":1894,"adCostOffsite":2831,"roi":8.884656084656084,"roiInsite":15.97571277719113,"roiOffsite":4.140586365241964,"adGmv":41980,"adGmvInsite":30258,"adGmvOffsite":11722,"uv":2290,"searchUv":925,"conversionRate":0.02096069868995633},{"date":"2026-07-28","gmv":61573,"deviceSales":36,"refund":16446,"refundRate":0.26709759147678364,"adCostRate":0.06038360969905641,"adCost":3718,"adCostInsite":1404,"adCostOffsite":2314,"roi":9.190155997848306,"roiInsite":17.153846153846153,"roiOffsite":4.358254105445116,"adGmv":34169,"adGmvInsite":24084,"adGmvOffsite":10085,"uv":1922,"searchUv":689,"conversionRate":0.025494276795005204},{"date":"2026-07-29","gmv":63508,"deviceSales":38,"refund":17411,"refundRate":0.2741544372362537,"adCostRate":0.06214965043774013,"adCost":3947,"adCostInsite":1361,"adCostOffsite":2586,"roi":7.613377248543197,"roiInsite":15.833210874357091,"roiOffsite":3.2873163186388243,"adGmv":30050,"adGmvInsite":21549,"adGmvOffsite":8501,"uv":2393,"searchUv":859,"conversionRate":0.020058503969912243},{"date":"2026-07-30","gmv":59350,"deviceSales":35,"refund":16440,"refundRate":0.27700084245998313,"adCostRate":0.05966301600673968,"adCost":3541,"adCostInsite":1397,"adCostOffsite":2144,"roi":10.092629200790737,"roiInsite":18.85325697924123,"roiOffsite":4.384328358208955,"adGmv":35738,"adGmvInsite":26338,"adGmvOffsite":9400,"uv":1679,"searchUv":612,"conversionRate":0.02501488981536629},{"date":"2026-07-31","gmv":73886,"deviceSales":43,"refund":19685,"refundRate":0.2664239504100912,"adCostRate":0.07659096445876079,"adCost":5659,"adCostInsite":2102,"adCostOffsite":3557,"roi":8.998056193673794,"roiInsite":17.7407231208373,"roiOffsite":3.831599662637054,"adGmv":50920,"adGmvInsite":37291,"adGmvOffsite":13629,"uv":2238,"searchUv":837,"conversionRate":0.025022341376228777},{"date":"2026-08-01","gmv":64335,"deviceSales":38,"refund":17374,"refundRate":0.27005517991761874,"adCostRate":0.06758374135385094,"adCost":4348,"adCostInsite":1740,"adCostOffsite":2608,"roi":9.601885924563017,"roiInsite":17.736781609195404,"roiOffsite":4.174463190184049,"adGmv":41749,"adGmvInsite":30862,"adGmvOffsite":10887,"uv":1737,"searchUv":666,"conversionRate":0.02648244099021301},{"date":"2026-08-02","gmv":57131,"deviceSales":34,"refund":15501,"refundRate":0.27132379968843534,"adCostRate":0.07561569025572806,"adCost":4320,"adCostInsite":1742,"adCostOffsite":2578,"roi":8.75925925925926,"roiInsite":15.607347876004592,"roiOffsite":4.13188518231187,"adGmv":37840,"adGmvInsite":27188,"adGmvOffsite":10652,"uv":1470,"searchUv":583,"conversionRate":0.027891156462585033},{"date":"2026-08-03","gmv":57903,"deviceSales":34,"refund":15840,"refundRate":0.2735609553909124,"adCostRate":0.07951228779165155,"adCost":4604,"adCostInsite":1774,"adCostOffsite":2830,"roi":9.413553431798436,"roiInsite":17.08455467869222,"roiOffsite":4.604946996466431,"adGmv":43340,"adGmvInsite":30308,"adGmvOffsite":13032,"uv":1492,"searchUv":540,"conversionRate":0.027479892761394103},{"date":"2026-08-04","gmv":62227,"deviceSales":37,"refund":18714,"refundRate":0.3007376219326016,"adCostRate":0.05558680315618622,"adCost":3459,"adCostInsite":1337,"adCostOffsite":2122,"roi":8.589765828274068,"roiInsite":15.089005235602095,"roiOffsite":4.4948162111215835,"adGmv":29712,"adGmvInsite":20174,"adGmvOffsite":9538,"uv":1865,"searchUv":677,"conversionRate":0.025737265415549597},{"date":"2026-08-05","gmv":60182,"deviceSales":36,"refund":16730,"refundRate":0.2779900967066565,"adCostRate":0.0762354192283407,"adCost":4588,"adCostInsite":1710,"adCostOffsite":2878,"roi":8.843504795117699,"roiInsite":17.11578947368421,"roiOffsite":3.9284225156358583,"adGmv":40574,"adGmvInsite":29268,"adGmvOffsite":11306,"uv":1879,"searchUv":659,"conversionRate":0.023948908994145823},{"date":"2026-08-06","gmv":58962,"deviceSales":35,"refund":15814,"refundRate":0.2682066415657542,"adCostRate":0.08363013466300329,"adCost":4931,"adCostInsite":1867,"adCostOffsite":3064,"roi":8.239505171364835,"roiInsite":14.771826459560792,"roiOffsite":4.259138381201044,"adGmv":40629,"adGmvInsite":27579,"adGmvOffsite":13050,"uv":1764,"searchUv":651,"conversionRate":0.026643990929705215}],"trendRange":{"from":"2026-05-09","to":"2026-08-06"},"insite":[{"channel":"关键词推广","cost":3430,"gmv":71704,"roi":20.904956268221575,"impressions":447843,"clicks":11618,"ctr":0.02594212704005645,"costShare":0.33726647000983284,"costDelta":0.06986899563318777},{"channel":"引力魔方","cost":2646,"gmv":39748,"roi":15.021919879062736,"impressions":344736,"clicks":8769,"ctr":0.025436856028961292,"costShare":0.26017699115044246,"costDelta":0.08844097079391197},{"channel":"万相台无界","cost":2285,"gmv":34648,"roi":15.163238512035011,"impressions":340830,"clicks":9134,"ctr":0.026799284100578,"costShare":0.22468043264503443,"costDelta":0.09961501443695861},{"channel":"超级短视频","cost":1093,"gmv":12589,"roi":11.517840805123512,"impressions":141329,"clicks":4107,"ctr":0.029059853250217576,"costShare":0.10747295968534906,"costDelta":0.005519779208831647},{"channel":"品销宝","cost":716,"gmv":6690,"roi":9.343575418994414,"impressions":109968,"clicks":3048,"ctr":0.027717154081187256,"costShare":0.0704031465093412,"costDelta":0.06547619047619048}],"offsite":[{"channel":"抖音种草","cost":5964,"gmv":30261,"roi":5.073943661971831,"impressions":1970126,"clicks":29016,"ctr":0.014727992016754258,"costShare":0.37089552238805973,"costDelta":0.07711757269279393},{"channel":"小红书","cost":4388,"gmv":20553,"roi":4.683910665451231,"impressions":1372152,"clicks":22250,"ctr":0.016215404707350205,"costShare":0.2728855721393035,"costDelta":0.06067198452985255},{"channel":"微信朋友圈","cost":2805,"gmv":9772,"roi":3.4837789661319074,"impressions":950366,"clicks":14101,"ctr":0.014837441575140525,"costShare":0.17444029850746268,"costDelta":-0.03008298755186722},{"channel":"B 站","cost":1661,"gmv":4864,"roi":2.9283564118001206,"impressions":610716,"clicks":9779,"ctr":0.016012352713863726,"costShare":0.10329601990049751,"costDelta":-0.0736196319018405},{"channel":"知乎","cost":1262,"gmv":3015,"roi":2.3890649762282092,"impressions":419537,"clicks":6614,"ctr":0.015764998081218104,"costShare":0.07848258706467662,"costDelta":-0.042488619119878605}],"products":{"lines":[{"line":"pro","label":"NOTE Pro","gmv":142816,"quantity":72,"uv":4396,"refund":45063,"refundRate":0.3155318731794757,"gmvShare":0.39589732217109275,"gmvDelta":-0.07781515752226104},{"line":"pins","label":"NotePin","gmv":53994,"quantity":41,"uv":1605,"refund":17514,"refundRate":0.3243693743749306,"gmvShare":0.1496756666851472,"gmvDelta":-0.07801854413196045},{"line":"note","label":"NOTE","gmv":105958,"quantity":101,"uv":3377,"refund":32402,"refundRate":0.30580041148379544,"gmvShare":0.29372401175361756,"gmvDelta":-0.0656508205250302},{"line":"member","label":"会员","gmv":32289,"quantity":97,"uv":948,"refund":1956,"refundRate":0.06057790578834897,"gmvShare":0.08950767866053114,"gmvDelta":-0.05755815650448031},{"line":"accessory","label":"配件","gmv":25683,"quantity":161,"uv":759,"refund":3038,"refundRate":0.11828836195148541,"gmvShare":0.07119532072961135,"gmvDelta":-0.05833394441592726}],"items":[{"itemId":"78210031","title":"PLAUD NOTE Pro 旗舰版","line":"pro","gmv":88997,"quantity":48,"uv":2701,"refund":27405,"refundRate":0.3079317280357765,"price":1854.1041666666667,"gmvShare":0.2467067694184177,"gmvDelta":-0.07561515211317345},{"itemId":"78210011","title":"PLAUD NOTE 卡片录音笔","line":"note","gmv":57497,"quantity":53,"uv":1820,"refund":17826,"refundRate":0.3100335669687114,"price":1084.8490566037735,"gmvShare":0.1593862615734324,"gmvDelta":-0.08068049182162672},{"itemId":"78210032","title":"PLAUD NOTE Pro 套装版","line":"pro","gmv":53819,"quantity":24,"uv":1695,"refund":17658,"refundRate":0.32809974172689943,"price":2242.4583333333335,"gmvShare":0.14919055275267507,"gmvDelta":-0.08143027820447175},{"itemId":"78210012","title":"PLAUD NOTE 标准版","line":"note","gmv":48461,"quantity":48,"uv":1557,"refund":14576,"refundRate":0.30077794515177153,"price":1009.6041666666666,"gmvShare":0.13433775018018518,"gmvDelta":-0.04716869838773103},{"itemId":"78210041","title":"PLAUD NotePin 智能挂坠","line":"pins","gmv":37536,"quantity":29,"uv":1148,"refund":12366,"refundRate":0.32944373401534527,"price":1294.344827586207,"gmvShare":0.10405278039585297,"gmvDelta":-0.09562703288760391},{"itemId":"78210051","title":"AI 会员年卡","line":"member","gmv":19326,"quantity":32,"uv":563,"refund":1149,"refundRate":0.05945358584290593,"price":603.9375,"gmvShare":0.05357321062260908,"gmvDelta":-0.06691772885283893},{"itemId":"78210042","title":"PLAUD NotePin 礼盒装","line":"pins","gmv":16458,"quantity":12,"uv":457,"refund":5148,"refundRate":0.3127962085308057,"price":1371.5,"gmvShare":0.04562288628929423,"gmvDelta":-0.035174111853675694},{"itemId":"78210052","title":"AI 会员季卡","line":"member","gmv":12963,"quantity":65,"uv":385,"refund":807,"refundRate":0.06225410784540616,"price":199.43076923076924,"gmvShare":0.03593446803792205,"gmvDelta":-0.04325042438556351},{"itemId":"78210062","title":"保护套 / 挂绳套装","line":"accessory","gmv":9047,"quantity":91,"uv":262,"refund":1077,"refundRate":0.11904498728860395,"price":99.41758241758242,"gmvShare":0.025079004269002607,"gmvDelta":-0.07965412004069176},{"itemId":"78210061","title":"磁吸充电底座","line":"accessory","gmv":8848,"quantity":45,"uv":291,"refund":1008,"refundRate":0.11392405063291139,"price":196.62222222222223,"gmvShare":0.024527360425791428,"gmvDelta":-0.04128291255824033},{"itemId":"78210063","title":"延保服务卡","line":"accessory","gmv":7788,"quantity":25,"uv":206,"refund":953,"refundRate":0.12236774524910118,"price":311.52,"gmvShare":0.02158895603481732,"gmvDelta":-0.0519780888618381}]},"keywords":[{"keyword":"录音笔","uv":995,"gmv":20074,"orders":15,"conversionRate":0.01507537688442211,"uvShare":0.2635063559322034,"uvDelta":-0.17700578990901572},{"keyword":"录音笔 转写","uv":556,"gmv":8191,"orders":6,"conversionRate":0.01079136690647482,"uvShare":0.1472457627118644,"uvDelta":-0.16766467065868262},{"keyword":"plaud","uv":552,"gmv":33860,"orders":26,"conversionRate":0.04710144927536232,"uvShare":0.1461864406779661,"uvDelta":-0.17857142857142858},{"keyword":"ai录音笔","uv":376,"gmv":7793,"orders":6,"conversionRate":0.015957446808510637,"uvShare":0.09957627118644068,"uvDelta":-0.1772428884026258},{"keyword":"会议录音笔","uv":280,"gmv":8045,"orders":6,"conversionRate":0.02142857142857143,"uvShare":0.07415254237288135,"uvDelta":-0.18128654970760233},{"keyword":"录音转文字","uv":222,"gmv":5094,"orders":4,"conversionRate":0.018018018018018018,"uvShare":0.058792372881355935,"uvDelta":-0.18382352941176472},{"keyword":"智能录音笔","uv":183,"gmv":2726,"orders":2,"conversionRate":0.01092896174863388,"uvShare":0.04846398305084746,"uvDelta":-0.18303571428571427},{"keyword":"plaud note","uv":156,"gmv":8349,"orders":6,"conversionRate":0.038461538461538464,"uvShare":0.0413135593220339,"uvDelta":-0.17894736842105263},{"keyword":"便携录音笔","uv":135,"gmv":0,"orders":0,"conversionRate":0,"uvShare":0.0357521186440678,"uvDelta":-0.17682926829268292},{"keyword":"录音笔 专业","uv":119,"gmv":0,"orders":0,"conversionRate":0,"uvShare":0.031514830508474576,"uvDelta":-0.18493150684931506},{"keyword":"采访录音笔","uv":106,"gmv":0,"orders":0,"conversionRate":0,"uvShare":0.028072033898305086,"uvDelta":-0.17829457364341086},{"keyword":"notepin","uv":96,"gmv":7932,"orders":6,"conversionRate":0.0625,"uvShare":0.025423728813559324,"uvDelta":-0.1794871794871795}],"breakdownLabel":"本月 MTD","breakdownRange":{"from":"2026-08-01","to":"2026-08-06"}};
+
+// --- 格式化 ---------------------------------------------------------------
+const trim = (v, d) => v.toFixed(d).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+
+/** 万 / 亿 压缩。位数按压缩后的大小定：1.05 万只留一位就成了「1万」，吃掉 5% 的差异 */
+function compact(v) {
+  const a = Math.abs(v);
+  if (a >= 1e8) return [trim(v / 1e8, a < 1e9 ? 2 : 1), '亿'];
+  if (a >= 1e4) return [trim(v / 1e4, a < 1e5 ? 2 : 1), '万'];
+  if (a >= 1000) return [Math.round(v).toLocaleString('zh-CN'), ''];
+  return [trim(v, a >= 100 ? 0 : 1), ''];
+}
+const fmtCompact = (v) => compact(v).join('');
+const fmtCurrency = (v) => '¥' + fmtCompact(v);
+/** 计数类十万以下不压缩：10,009 压成「1万」等于把一万零九和一万整说成同一个数 */
+const fmtInt = (v) => Math.abs(v) >= 1e5 ? fmtCompact(v) : Math.round(v).toLocaleString('zh-CN');
+const fmtPct = (v, d = 2) => (v * 100).toFixed(d) + '%';
+const fmtMult = (v) => v.toFixed(Math.abs(v) >= 100 ? 0 : 2);
+const fmtExact = (v, f) => f === 'currency' ? '¥' + Math.round(v).toLocaleString('zh-CN')
+  : f === 'percent' ? fmtPct(v) : f === 'multiple' ? fmtMult(v)
+  : f === 'decimal' ? v.toFixed(2) : Math.round(v).toLocaleString('zh-CN');
+
+function fmtBy(v, f) {
+  if (f === 'currency') return ['¥' + compact(v)[0], compact(v)[1]];
+  if (f === 'percent') return [fmtPct(v), ''];
+  if (f === 'multiple') return [fmtMult(v), ''];
+  if (f === 'decimal') return [v.toFixed(2), ''];
+  const c = compact(v);
+  return Math.abs(v) >= 1e5 ? c : [Math.round(v).toLocaleString('zh-CN'), ''];
+}
+
+const mdShort = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
+const cnDate = (d) => `${d.slice(0, 4)} 年 ${+d.slice(5, 7)} 月 ${+d.slice(8, 10)} 日`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/**
+ * 涨跌胶囊。按中文财经惯例：红涨绿跌 —— 和参考看板一致。
+ * 注意这是按**方向**着色，不是按好坏：退款率上涨也是红的，语义靠标签文字承担。
+ */
+function pill(label, rate) {
+  if (rate === null || rate === undefined || !isFinite(rate)) {
+    return `<span class="pill pill-flat">${esc(label)} <b>无数据</b></span>`;
+  }
+  const flat = Math.abs(rate) < 0.0005;
+  const cls = flat ? 'pill-flat' : rate > 0 ? 'pill-up' : 'pill-down';
+  const arrow = flat ? '' : rate > 0 ? '▲' : '▼';
+  return `<span class="pill ${cls}">${esc(label)} ${arrow} <b>${(Math.abs(rate) * 100).toFixed(1)}%</b></span>`;
+}
+
+const $ = (id) => document.getElementById(id);
+const CH = { brand: 'var(--brand)', sky: 'var(--sky)', violet: 'var(--violet)', slate: 'var(--slate)', amber: 'var(--amber)' };
+const LINE_COLORS = [CH.brand, CH.sky, CH.violet, CH.amber, CH.slate];
+
+// --- 顶栏 -----------------------------------------------------------------
+const SECTIONS = [
+  ['sec-goal', '目标达成'], ['sec-store', '店铺整体'], ['sec-insite', '站内投放'],
+  ['sec-offsite', '站外投放'], ['sec-product', '产品'], ['sec-traffic', '流量'],
+];
+$('navtabs').innerHTML = SECTIONS.map(([id, name]) =>
+  `<button class="navtab" data-target="${id}">${name}</button>`).join('');
+$('navtabs').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-target]');
+  if (b) document.getElementById(b.dataset.target).scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+// 滚动到哪个板块，顶栏就高亮哪个
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach((en) => {
+    if (!en.isIntersecting) return;
+    document.querySelectorAll('#navtabs .navtab').forEach((b) =>
+      b.setAttribute('aria-current', String(b.dataset.target === en.target.id)));
+  });
+}, { rootMargin: '-70px 0px -65% 0px' });
+SECTIONS.forEach(([id]) => obs.observe(document.getElementById(id)));
+
+const wk = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(DATA.latestDate + 'T00:00:00Z').getUTCDay()];
+$('asof').textContent = `数据截至 ${DATA.latestDate}（${wk}）`;
+
+$('srcbanner').innerHTML = DATA.source === 'mock'
+  ? `<span aria-hidden="true">▲</span><div>当前展示的是<b>演示数据</b>，不是真实经营数据 —— 量级照着真实店铺生成（客单价 ~1,300、客退率 ~29%、投放费率 ~6.7%、站内 ROI ~18），接上飞书后布局不会变。<b>拿演示数据开经营会是要出事的，所以这条提示不做成可关闭的。</b></div>`
+  : `<span aria-hidden="true">●</span><div>数据源：<b>${esc(DATA.source)}</b>，最近同步 ${esc(DATA.syncedAt.slice(0, 16).replace('T', ' '))}。</div>`;
+
+// --- 速览 -----------------------------------------------------------------
+(function () {
+  const y = DATA.stats[0], m = DATA.stats[1];
+  const g = y.core.find((k) => k.key === 'gmv'), gm = m.core.find((k) => k.key === 'gmv');
+  const top = [...DATA.products.lines].sort((a, b) => b.gmv - a.gmv)[0];
+  const roi = y.aggregate.roi;
+  const d = (r) => r === null ? '无数据' : `${r > 0 ? '↑' : '↓'}${(Math.abs(r) * 100).toFixed(1)}%`;
+  const c = (r) => r === null ? 'var(--flat)' : r > 0 ? 'var(--up)' : 'var(--down)';
+  $('glance').innerHTML =
+    `昨日 GMV <b class="tnum">${fmtCurrency(g.value)}</b>，环比前日 <b class="tnum" style="color:${c(g.delta)}">${d(g.delta)}</b>，` +
+    `主机销量 <b class="tnum">${fmtInt(y.aggregate.deviceSales)}</b> 台，综合 ROI <b class="tnum">${fmtMult(roi)}</b>。` +
+    `本月累计 <b class="tnum">${fmtCurrency(gm.value)}</b>，较上月同期 <b class="tnum" style="color:${c(gm.delta)}">${d(gm.delta)}</b>，` +
+    `<b>${esc(top.label)}</b> 领跑（占 ${fmtPct(top.gmvShare, 1)}）。`;
+})();
+
+// --- 概览四卡 --------------------------------------------------------------
+(function () {
+  const [y, m, yr] = DATA.stats;
+  const num = (v, f) => { const [n, u] = fmtBy(v, f); return `<div class="hero-figure"><span class="hero-num tnum">${n}</span><span class="hero-unit">${u}${f === 'currency' && !u ? '元' : u ? '元' : ''}</span></div>`; };
+  const days = yr.aggregate.days || 1;
+
+  $('hero').innerHTML = `
+    <div class="card hero-card">
+      <div class="hero-top"><span class="hero-label">昨日销售</span><span class="hero-scope">${mdShort(y.range.to)} ${wk}</span></div>
+      ${num(y.aggregate.gmv, 'currency')}
+      <div class="hero-sub tnum">销量 ${fmtInt(y.aggregate.deviceSales)} 台</div>
+      <div class="hero-pills">
+        ${pill('环比前日', y.core.find((k) => k.key === 'gmv').delta)}
+        ${pill('退款率', y.core.find((k) => k.key === 'refundRate').delta)}
+      </div>
+      <div class="hero-note">退款率 ${fmtPct(y.aggregate.refundRate, 1)}｜投放费率 ${fmtPct(y.aggregate.adCostRate, 1)}</div>
+    </div>
+
+    <div class="card hero-card">
+      <div class="hero-top"><span class="hero-label">本月累计 MTD</span><span class="hero-scope">${mdShort(m.range.from)}–${mdShort(m.range.to)}</span></div>
+      ${num(m.aggregate.gmv, 'currency')}
+      <div class="hero-sub tnum">销量 ${fmtInt(m.aggregate.deviceSales)} 台</div>
+      <div class="hero-pills">${pill('环比上月同期', m.core.find((k) => k.key === 'gmv').delta)}</div>
+      <div class="hero-note">对比 ${m.compareRange ? m.compareRange.from.slice(5) + '–' + m.compareRange.to.slice(5) + '（同期对齐）' : '无可比数据'}</div>
+    </div>
+
+    <div class="card hero-card">
+      <div class="hero-top"><span class="hero-label">年累计</span><span class="hero-scope">${yr.range.from.slice(0, 4)} 年</span></div>
+      ${num(yr.aggregate.gmv, 'currency')}
+      <div class="hero-sub tnum">销量 ${fmtInt(yr.aggregate.deviceSales)} 台</div>
+      <div class="hero-pills">${pill('环比去年同期', yr.core.find((k) => k.key === 'gmv').delta)}</div>
+      <div class="hero-note tnum">日均 ${fmtCurrency(yr.aggregate.gmv / days)}/天</div>
+    </div>
+
+    <div class="card hero-card">
+      <div class="hero-top"><span class="hero-label">本月结构</span><span class="hero-scope">${mdShort(m.range.from)}–${mdShort(m.range.to)}</span></div>
+      <div class="grid2" style="gap:8px;margin-top:10px">
+        <div class="chart" id="donut-line"></div>
+        <div class="chart" id="donut-ads"></div>
+      </div>
+      <div class="hero-note">左：分产品线 GMV　右：站内 / 站外投放费</div>
+    </div>`;
+
+  const lines = DATA.products.lines.map((l, i) => ({ name: l.label, value: l.gmv, color: LINE_COLORS[i % 5] }));
+  donut($('donut-line'), lines, fmtCurrency);
+  donut($('donut-ads'), [
+    { name: '站内', value: m.aggregate.adCostInsite, color: CH.sky },
+    { name: '站外', value: m.aggregate.adCostOffsite, color: CH.violet },
+  ], fmtCurrency);
+})();
+
+/** 环形图。中心标出占比最高的一项 —— 圆环本身不标数值，具体值交给 tooltip 和图例 */
+function donut(el, segs, fmt) {
+  const total = segs.reduce((s, x) => s + x.value, 0) || 1;
+  const R = 46, r = 31, C = 56, GAP = 0.018;
+  let a = -Math.PI / 2;
+  const paths = segs.filter((s) => s.value > 0).map((s) => {
+    const frac = s.value / total;
+    const sweep = frac * Math.PI * 2 - (segs.length > 1 ? GAP : 0);
+    const a0 = a, a1 = a + Math.max(sweep, 0.008);
+    a += frac * Math.PI * 2;
+    const p = (rad, ang) => [C + rad * Math.cos(ang), C + rad * Math.sin(ang)];
+    const [x0, y0] = p(R, a0), [x1, y1] = p(R, a1), [x2, y2] = p(r, a1), [x3, y3] = p(r, a0);
+    const big = a1 - a0 > Math.PI ? 1 : 0;
+    return `<path d="M${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${big} 1 ${x1.toFixed(2)},${y1.toFixed(2)} L${x2.toFixed(2)},${y2.toFixed(2)} A${r},${r} 0 ${big} 0 ${x3.toFixed(2)},${y3.toFixed(2)} Z" fill="${s.color}"><title>${esc(s.name)} ${fmt(s.value)}（${fmtPct(s.value / total, 1)}）</title></path>`;
+  }).join('');
+  const top = [...segs].sort((x, z) => z.value - x.value)[0];
+  el.innerHTML = `<svg viewBox="0 0 112 112" role="img" aria-label="占比环形图">
+    ${paths}
+    <text x="56" y="53" text-anchor="middle" font-size="17" font-weight="600" fill="var(--ink)" style="font-variant-numeric:tabular-nums">${fmtPct(top.value / total, 1)}</text>
+    <text x="56" y="68" text-anchor="middle" font-size="10" fill="var(--ink-3)">${esc(top.name)}</text>
+  </svg>`;
+}
+
+// --- 目标达成 --------------------------------------------------------------
+let goalMetric = 'gmv';
+$('goal-seg').innerHTML = `<button data-m="gmv" aria-pressed="true">GMV</button><button data-m="device" aria-pressed="false">主机销量</button>`;
+$('goal-seg').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-m]'); if (!b) return;
+  goalMetric = b.dataset.m;
+  [...$('goal-seg').children].forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.m === goalMetric)));
+  renderGoals();
+});
+
+function renderGoals() {
+  const cur = goalMetric === 'gmv';
+  const fmt = cur ? fmtCurrency : fmtInt;
+  $('goals').innerHTML = DATA.goals.map((g) => {
+    const actual = cur ? g.gmvActual : g.deviceActual;
+    const target = cur ? g.gmvTarget : g.deviceTarget;
+    const p = target > 0 ? actual / target : 0;
+    const lead = p - g.timeProgress;
+    // 差距 2 个点以内算持平 —— 写「落后 0.6%」却标成绿色是自相矛盾的
+    const flat = !g.finished && Math.abs(lead) < 0.02;
+    const ok = g.finished ? p >= 1 : lead >= 0;
+    const color = flat ? 'var(--flat)' : ok ? 'var(--down)' : 'var(--up)';
+    const fill = flat || ok ? 'var(--brand)' : 'var(--up)';
+    const status = g.finished ? (p >= 1 ? '已达成' : `未达成，差 ${fmt(Math.max(0, target - actual))}`)
+      : flat ? '基本持平' : lead > 0 ? `超前 ${fmtPct(lead, 1)}` : `落后 ${fmtPct(-lead, 1)}`;
+    return `<div class="card goal">
+      <div class="goal-top">
+        <span class="goal-name">${esc(g.label)}<span class="goal-scope">${esc(g.scope)}</span></span>
+        <span class="goal-rate" style="color:${color}">${fmtPct(p, 1)}</span>
+      </div>
+      <div class="goal-nums">${fmt(actual)} <span>/ ${fmt(target)}</span></div>
+      <div class="track" role="img" aria-label="达成 ${fmtPct(p, 1)}，计划进度 ${fmtPct(g.timeProgress, 1)}">
+        <div class="track-fill" style="width:${Math.min(100, p * 100).toFixed(1)}%;background:${fill}"></div>
+        ${!g.finished && g.timeProgress > 0 && g.timeProgress < 1 ? `<div class="track-mark" style="left:${(g.timeProgress * 100).toFixed(1)}%"></div>` : ''}
+      </div>
+      <div class="goal-foot"><span>计划进度 ${fmtPct(g.timeProgress, 0)}</span><span style="color:${color}">${status}</span></div>
+    </div>`;
+  }).join('');
+}
+renderGoals();
+
+// --- 周期切换 --------------------------------------------------------------
+/** 每个板块一个周期选择器；三档同时也在概览四卡里给了，这里是下钻用的 */
+function periodSeg(segId, onPick) {
+  const el = $(segId);
+  el.innerHTML = DATA.stats.map((s, i) =>
+    `<button data-i="${i}" aria-pressed="${i === 0}">${esc(s.label)}</button>`).join('');
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-i]'); if (!b) return;
+    [...el.children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+    onPick(+b.dataset.i);
+  });
+}
+
+function kpiCard(k, cmpLabel, spark) {
+  const [n, u] = fmtBy(k.value, k.format);
+  return `<div class="card kpi">
+    <div class="kpi-label">${esc(k.label)}</div>
+    <div class="kpi-val"><span class="kpi-num tnum">${n}</span><span class="kpi-unit">${u}${k.format === 'currency' ? '元' : ''}</span></div>
+    ${spark ? `<div class="kpi-spark">${spark}</div>` : ''}
+    <div class="kpi-foot">${pill(cmpLabel, k.delta)}</div>
+  </div>`;
+}
+
+/** 迷你走势：整条走弱化色，最后一段用强调色 —— 眼睛先落在「现在」上 */
+function spark(vals) {
+  if (!vals || vals.length < 2) return '';
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  const W = 100, H = 26, step = W / (vals.length - 1);
+  const y = (v) => H - 3 - ((v - min) / span) * (H - 6);
+  const pts = vals.map((v, i) => [i * step, y(v)]);
+  const path = (a) => a.map(([x, yy], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${yy.toFixed(1)}`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="width:100%;height:26px;display:block">
+    <path d="${path(pts)}" fill="none" stroke="var(--ink-3)" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+    <path d="${path(pts.slice(-2))}" fill="none" stroke="var(--brand)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linecap="round"/>
+  </svg>`;
+}
+
+const SPARKS = { gmv: 'gmv', deviceSales: 'deviceSales', refund: 'refund', refundRate: 'refundRate', adCost: 'adCost', adCostRate: 'adCostRate', uv: 'uv', searchUv: 'searchUv' };
+const last14 = DATA.trend.slice(-14);
+
+function renderStore(i) {
+  const s = DATA.stats[i];
+  $('store-kpis').innerHTML = s.core.map((k) =>
+    kpiCard(k, s.compareLabel, i === 0 && SPARKS[k.key] ? spark(last14.map((p) => p[SPARKS[k.key]])) : '')).join('');
+  $('store-extra').innerHTML = s.extra.map((k) => kpiCard(k, s.compareLabel, '')).join('');
+}
+periodSeg('store-seg', renderStore);
+renderStore(0);
+
+$('store-more').addEventListener('click', () => {
+  const box = $('store-extra'), open = box.hidden;
+  box.hidden = !open;
+  $('store-more').setAttribute('aria-expanded', String(open));
+  $('store-more').textContent = open ? '收起其他指标' : '展开其他 8 项指标';
+});
+
+function renderAds(scope, i) {
+  const s = DATA.stats[i];
+  $(scope + '-kpis').innerHTML = s.ads.map((k) => kpiCard(k, s.compareLabel, '')).join('');
+}
+periodSeg('insite-seg', (i) => renderAds('insite', i));
+periodSeg('offsite-seg', (i) => renderAds('offsite', i));
+renderAds('insite', 0); renderAds('offsite', 0);
+
+function renderTraffic(i) {
+  const a = DATA.stats[i].aggregate, s = DATA.stats[i];
+  const dOf = (key) => (s.core.find((k) => k.key === key) || {}).delta ?? null;
+  const items = [
+    { key: 'uv', label: 'UV', value: a.uv, format: 'integer', delta: dOf('uv') },
+    { key: 'searchUv', label: '搜索 UV', value: a.searchUv, format: 'integer', delta: dOf('searchUv') },
+    { key: 'share', label: '搜索 UV 占比', value: a.searchUvShare, format: 'percent', delta: null },
+    { key: 'cvr', label: '支付转化率', value: a.conversionRate, format: 'percent', delta: null },
+    { key: 'uvValue', label: 'UV 价值', value: a.uvValue, format: 'decimal', delta: null },
+    { key: 'cart', label: '加购人数', value: a.addToCart, format: 'integer', delta: null },
+  ];
+  $('traffic-kpis').innerHTML = items.map((k) => kpiCard(k, s.compareLabel, '')).join('');
+}
+periodSeg('traffic-seg', renderTraffic);
+renderTraffic(0);
+
+// --- 柱状 + 移动平均 -------------------------------------------------------
+function barChart(el, pts, pick, opts) {
+  const o = Object.assign({ format: 'currency', ma: 7, height: 260 }, opts || {});
+  const W = 1000, H = o.height, M = { t: 16, r: 16, b: 26, l: 54 };
+  const vals = pts.map(pick);
+  const max = Math.max(...vals, 1) * 1.08;
+  const pw = W - M.l - M.r, ph = H - M.t - M.b;
+  const bw = Math.max(2, (pw / pts.length) * 0.62);
+  const cx = (i) => M.l + (i + 0.5) * (pw / pts.length);
+  const yy = (v) => M.t + ph - (v / max) * ph;
+
+  // 7 日移动平均：日数据噪声太大，趋势要靠平滑线读
+  const ma = vals.map((_, i) => {
+    if (i < o.ma - 1) return null;
+    let s = 0; for (let k = i - o.ma + 1; k <= i; k++) s += vals[k];
+    return s / o.ma;
+  });
+  const maPath = ma.map((v, i) => v === null ? null : `${cx(i).toFixed(1)},${yy(v).toFixed(1)}`)
+    .filter(Boolean).map((p, i) => (i ? 'L' : 'M') + p).join('');
+
+  const ticks = 4, gridY = [];
+  for (let i = 0; i <= ticks; i++) {
+    const v = (max / ticks) * i;
+    gridY.push(`<line x1="${M.l}" x2="${W - M.r}" y1="${yy(v).toFixed(1)}" y2="${yy(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
+      <text x="${M.l - 8}" y="${(yy(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--ink-3)" style="font-variant-numeric:tabular-nums">${o.format === 'percent' ? fmtPct(v, 0) : fmtCompact(v)}</text>`);
+  }
+  const step = Math.max(1, Math.ceil(pts.length / 9));
+  const xlab = pts.map((p, i) => i % step === 0
+    ? `<text x="${cx(i).toFixed(1)}" y="${H - 7}" text-anchor="middle" font-size="11" fill="var(--ink-3)">${mdShort(p.date)}</text>` : '').join('');
+
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px" role="img" aria-label="${esc(o.label || '趋势')}">
+      ${gridY.join('')}
+      ${pts.map((p, i) => `<rect x="${(cx(i) - bw / 2).toFixed(1)}" y="${yy(vals[i]).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, M.t + ph - yy(vals[i])).toFixed(1)}" rx="2" fill="${o.color || CH.sky}" opacity=".92"/>`).join('')}
+      ${maPath ? `<path d="${maPath}" fill="none" stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity=".8"/>` : ''}
+      <line class="cursor" x1="0" x2="0" y1="${M.t}" y2="${M.t + ph}" stroke="var(--ink)" stroke-width="1" opacity="0"/>
+      ${xlab}
+    </svg><div class="tip"></div>`;
+
+  hookTip(el, pts, (i) => {
+    const rows = [`<div class="tip-row"><span class="tip-dot" style="background:${o.color || CH.sky}"></span><span class="tip-name">${esc(o.label || '值')}</span><span class="tip-val">${fmtExact(vals[i], o.format)}</span></div>`];
+    if (ma[i] !== null) rows.push(`<div class="tip-row"><span class="tip-dot" style="background:var(--ink)"></span><span class="tip-name">7 日均值</span><span class="tip-val">${fmtExact(ma[i], o.format)}</span></div>`);
+    return rows.join('');
+  }, W, M, pw);
+}
+
+// --- 多系列折线 ------------------------------------------------------------
+function lineChart(el, pts, series, opts) {
+  const o = Object.assign({ format: 'currency', height: 250 }, opts || {});
+  const W = 1000, H = o.height, M = { t: 16, r: 16, b: 26, l: 54 };
+  const all = series.flatMap((s) => pts.map(s.pick));
+  const max = Math.max(...all, 0.0001) * 1.08;
+  const pw = W - M.l - M.r, ph = H - M.t - M.b;
+  const cx = (i) => M.l + (pts.length === 1 ? pw / 2 : (i * pw) / (pts.length - 1));
+  const yy = (v) => M.t + ph - (v / max) * ph;
+
+  const ticks = 4, grid = [];
+  for (let i = 0; i <= ticks; i++) {
+    const v = (max / ticks) * i;
+    grid.push(`<line x1="${M.l}" x2="${W - M.r}" y1="${yy(v).toFixed(1)}" y2="${yy(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
+      <text x="${M.l - 8}" y="${(yy(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--ink-3)" style="font-variant-numeric:tabular-nums">${o.format === 'percent' ? fmtPct(v, 0) : o.format === 'multiple' ? v.toFixed(1) : fmtCompact(v)}</text>`);
+  }
+  const paths = series.map((s) =>
+    `<path d="${pts.map((p, i) => `${i ? 'L' : 'M'}${cx(i).toFixed(1)},${yy(s.pick(p)).toFixed(1)}`).join('')}" fill="none" stroke="${s.color}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>`).join('');
+  const step = Math.max(1, Math.ceil(pts.length / 9));
+  const xlab = pts.map((p, i) => i % step === 0
+    ? `<text x="${cx(i).toFixed(1)}" y="${H - 7}" text-anchor="middle" font-size="11" fill="var(--ink-3)">${mdShort(p.date)}</text>` : '').join('');
+
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px" role="img" aria-label="${esc(o.label || '趋势')}">
+      ${grid.join('')}${paths}
+      <line class="cursor" x1="0" x2="0" y1="${M.t}" y2="${M.t + ph}" stroke="var(--ink)" stroke-width="1" opacity="0"/>
+      ${xlab}
+    </svg><div class="tip"></div>`;
+
+  hookTip(el, pts, (i) => series.map((s) =>
+    `<div class="tip-row"><span class="tip-dot" style="background:${s.color}"></span><span class="tip-name">${esc(s.name)}</span><span class="tip-val">${fmtExact(s.pick(pts[i]), o.format)}</span></div>`).join(''), W, M, pw);
+}
+
+/** 竖直准星找 X，一个 tooltip 列出该 X 上所有系列 —— 读者瞄的是日期，不是那条 2px 的线 */
+function hookTip(el, pts, rows, W, M, pw) {
+  const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), cur = el.querySelector('.cursor');
+  const move = (ev) => {
+    const r = svg.getBoundingClientRect();
+    const x = ((ev.clientX ?? ev.touches?.[0]?.clientX) - r.left) / r.width * W;
+    let i = Math.round(((x - M.l) / pw) * (pts.length - 1));
+    i = Math.max(0, Math.min(pts.length - 1, i));
+    const px = M.l + (pts.length === 1 ? pw / 2 : (i * pw) / (pts.length - 1));
+    cur.setAttribute('x1', px); cur.setAttribute('x2', px); cur.setAttribute('opacity', '.28');
+    tip.innerHTML = `<div class="tip-date">${cnDate(pts[i].date)}</div>${rows(i)}`;
+    tip.style.opacity = '1';
+    const left = (px / W) * r.width;
+    tip.style.left = Math.max(4, Math.min(r.width - tip.offsetWidth - 4, left - tip.offsetWidth / 2)) + 'px';
+    tip.style.top = '4px';
+  };
+  svg.addEventListener('mousemove', move);
+  svg.addEventListener('touchmove', (e) => { move(e); }, { passive: true });
+  svg.addEventListener('mouseleave', () => { tip.style.opacity = '0'; cur.setAttribute('opacity', '0'); });
+}
+
+// --- 店铺趋势 --------------------------------------------------------------
+const STORE_METRICS = [
+  { k: 'gmv', label: 'GMV', format: 'currency', color: CH.sky },
+  { k: 'deviceSales', label: '主机销量', format: 'integer', color: CH.brand },
+  { k: 'refundRate', label: '退款率', format: 'percent', color: CH.violet },
+  { k: 'uv', label: 'UV', format: 'integer', color: CH.amber },
+];
+const RANGES = [[7, '近 7 天'], [30, '近 30 天'], [90, '近 90 天']];
+let storeMetric = 0, storeRange = 30;
+
+$('store-metric').innerHTML = STORE_METRICS.map((m, i) => `<button data-i="${i}" aria-pressed="${i === 0}">${m.label}</button>`).join('');
+$('store-range').innerHTML = RANGES.map(([d, l]) => `<button data-d="${d}" aria-pressed="${d === 30}">${l}</button>`).join('');
+$('store-metric').addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (!b) return; storeMetric = +b.dataset.i; [...$('store-metric').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b))); drawStore(); });
+$('store-range').addEventListener('click', (e) => { const b = e.target.closest('[data-d]'); if (!b) return; storeRange = +b.dataset.d; [...$('store-range').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b))); drawStore(); });
+
+function drawStore() {
+  const m = STORE_METRICS[storeMetric];
+  const pts = DATA.trend.slice(-storeRange);
+  $('store-trend-sub').textContent = `${pts[0].date} 至 ${pts[pts.length - 1].date}｜柱为单日值，黑线为 7 日移动平均`;
+  barChart($('store-chart'), pts, (p) => p[m.k], { format: m.format, color: m.color, label: m.label, ma: 7 });
+}
+drawStore();
+
+// --- 投放趋势 --------------------------------------------------------------
+const ADS_METRICS = [
+  { k: 'cost', label: '投放费', format: 'currency', series: [['adCostInsite', '站内投放费', CH.sky], ['adCostOffsite', '站外投放费', CH.violet]] },
+  { k: 'roi', label: 'ROI', format: 'multiple', series: [['roiInsite', '站内 ROI', CH.sky], ['roiOffsite', '站外 ROI', CH.violet]] },
+  { k: 'gmv', label: '成交', format: 'currency', series: [['adGmvInsite', '站内成交', CH.sky], ['adGmvOffsite', '站外成交', CH.violet]] },
+];
+let adsMetric = 0;
+$('ads-metric').innerHTML = ADS_METRICS.map((m, i) => `<button data-i="${i}" aria-pressed="${i === 0}">${m.label}</button>`).join('');
+$('ads-metric').addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (!b) return; adsMetric = +b.dataset.i; [...$('ads-metric').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b))); drawAds(); });
+
+function drawAds() {
+  const m = ADS_METRICS[adsMetric];
+  const pts = DATA.trend.slice(-30);
+  lineChart($('ads-chart'), pts, m.series.map(([k, name, color]) => ({ name, color, pick: (p) => p[k] })), { format: m.format, label: m.label });
+  $('ads-legend').innerHTML = m.series.map(([, name, color]) =>
+    `<span class="legend-item"><span class="legend-swatch" style="background:${color}"></span>${name}</span>`).join('');
+}
+drawAds();
+
+// --- 流量趋势 --------------------------------------------------------------
+lineChart($('traffic-chart'), DATA.trend.slice(-30), [
+  { name: '总 UV', color: CH.sky, pick: (p) => p.uv },
+  { name: '搜索 UV', color: CH.brand, pick: (p) => p.searchUv },
+], { format: 'integer', label: 'UV' });
+$('traffic-legend').innerHTML = [['总 UV', CH.sky], ['搜索 UV', CH.brand]].map(([n, c]) =>
+  `<span class="legend-item"><span class="legend-swatch" style="background:${c}"></span>${n}</span>`).join('');
+
+// --- 排行 -----------------------------------------------------------------
+/** 名义类目统一用一个颜色 —— 按大小上色阶等于把长度这个已经在图上的信息又编码一遍 */
+function ranking(el, rows, fmt, color) {
+  const max = Math.max(...rows.map((r) => r.value), 1);
+  el.innerHTML = rows.map((r) => `<div class="rank-row">
+    <div class="rank-name" title="${esc(r.label)}">${esc(r.label)}</div>
+    <div class="rank-bar"><div class="rank-fill" style="width:${(r.value / max * 100).toFixed(1)}%;background:${color || CH.sky}"></div></div>
+    <div class="rank-val">${fmt(r.value)}</div>
+  </div>`).join('');
+}
+
+function table(el, cols, rows) {
+  el.innerHTML = `<thead><tr>${cols.map((c) => `<th class="${c.num ? 'num' : ''}">${esc(c.h)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r) => `<tr>${cols.map((c) => `<td class="${c.num ? 'num' : ''}">${esc(c.get(r))}</td>`).join('')}</tr>`).join('')}</tbody>`;
+}
+
+const bd = `${DATA.breakdownLabel}口径 · ${DATA.breakdownRange.from} 至 ${DATA.breakdownRange.to}`;
+
+[['insite', DATA.insite, '触点'], ['offsite', DATA.offsite, '渠道']].forEach(([key, rows, dim]) => {
+  $(key + '-sub').textContent = `${bd}｜按投放费排序`;
+  ranking($(key + '-rank'), rows.map((r) => ({ label: r.channel, value: r.cost })), fmtCurrency, key === 'insite' ? CH.sky : CH.violet);
+  // ROI 单独直标：它和投放费量纲不同，不能画进同一根轴
+  $(key + '-chips').innerHTML = rows.map((r) =>
+    `<div class="chip"><span class="chip-name">${esc(r.channel)}</span><span class="chip-val">ROI ${fmtMult(r.roi)}</span></div>`).join('');
+  table($(key + '-table'), [
+    { h: dim, get: (r) => r.channel },
+    { h: '投放费', num: true, get: (r) => fmtCurrency(r.cost) },
+    { h: '费用占比', num: true, get: (r) => fmtPct(r.costShare, 1) },
+    { h: '成交', num: true, get: (r) => fmtCurrency(r.gmv) },
+    { h: 'ROI', num: true, get: (r) => fmtMult(r.roi) },
+    { h: '曝光', num: true, get: (r) => fmtInt(r.impressions) },
+    { h: '点击', num: true, get: (r) => fmtInt(r.clicks) },
+    { h: '点击率', num: true, get: (r) => fmtPct(r.ctr) },
+  ], rows);
+});
+
+// --- 产品 -----------------------------------------------------------------
+(function () {
+  const L = DATA.products.lines, I = DATA.products.items;
+  const total = L.reduce((s, x) => s + x.gmv, 0);
+  $('product-desc').textContent = `${bd}。先看产品线结构，再下钻到单链接。产品线顺序固定，不按大小排 —— 位置换来换去会让人误以为结构变了。`;
+  $('product-sub').textContent = `合计 GMV ${fmtCurrency(total)}｜销量 ${fmtInt(L.reduce((s, x) => s + x.quantity, 0))} 件｜退款 ${fmtCurrency(L.reduce((s, x) => s + x.refund, 0))}`;
+
+  donut($('product-donut'), L.map((l, i) => ({ name: l.label, value: l.gmv, color: LINE_COLORS[i % 5] })), fmtCurrency);
+  $('product-legend').innerHTML = `<div style="display:flex;flex-direction:column;gap:7px;justify-content:center;height:100%">` +
+    L.map((l, i) => `<div style="display:flex;align-items:center;gap:8px;font-size:12.5px">
+      <span class="legend-swatch" style="background:${LINE_COLORS[i % 5]}"></span>
+      <span style="color:var(--ink-2);min-width:64px">${esc(l.label)}</span>
+      <span class="tnum" style="font-weight:600">${fmtCurrency(l.gmv)}</span>
+      <span class="tnum" style="color:var(--ink-3);margin-left:auto">${fmtPct(l.gmvShare, 1)}</span>
+    </div>`).join('') + `</div>`;
+
+  $('product-lines').innerHTML = L.map((l, i) => `<div class="line-card">
+    <div class="line-name"><span class="legend-swatch" style="background:${LINE_COLORS[i % 5]}"></span>${esc(l.label)}</div>
+    <div class="line-num tnum">${fmtCurrency(l.gmv)}</div>
+    <div class="line-meta tnum">销量 ${fmtInt(l.quantity)}｜退款率 ${fmtPct(l.refundRate, 1)}</div>
+    <div style="margin-top:8px">${pill('环比', l.gmvDelta)}</div>
+  </div>`).join('');
+
+  ranking($('product-rank'), I.map((r) => ({ label: r.title, value: r.gmv })), fmtCurrency, CH.brand);
+  table($('product-table'), [
+    { h: '商品', get: (r) => r.title },
+    { h: '商品 ID', get: (r) => r.itemId },
+    { h: 'GMV', num: true, get: (r) => fmtCurrency(r.gmv) },
+    { h: '占比', num: true, get: (r) => fmtPct(r.gmvShare, 1) },
+    { h: '销量', num: true, get: (r) => fmtInt(r.quantity) },
+    { h: '客单价', num: true, get: (r) => fmtCurrency(r.price) },
+    { h: 'UV', num: true, get: (r) => fmtInt(r.uv) },
+    { h: '退款率', num: true, get: (r) => fmtPct(r.refundRate, 1) },
+  ], I);
+})();
+
+// --- 关键词 ---------------------------------------------------------------
+(function () {
+  const K = DATA.keywords;
+  $('kw-sub').textContent = `${bd}｜Top ${K.length} 词，合计成交 ${fmtCurrency(K.reduce((s, x) => s + x.gmv, 0))}`;
+  ranking($('kw-rank'), K.map((r) => ({ label: r.keyword, value: r.uv })), fmtInt, CH.brand);
+  table($('kw-table'), [
+    { h: '关键词', get: (r) => r.keyword },
+    { h: '搜索 UV', num: true, get: (r) => fmtInt(r.uv) },
+    { h: '占比', num: true, get: (r) => fmtPct(r.uvShare, 1) },
+    { h: '订单数', num: true, get: (r) => fmtInt(r.orders) },
+    { h: '转化率', num: true, get: (r) => fmtPct(r.conversionRate) },
+    { h: '成交', num: true, get: (r) => fmtCurrency(r.gmv) },
+  ], K);
+})();
+</script>

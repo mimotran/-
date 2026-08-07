@@ -243,3 +243,15 @@ Next.js 16（App Router）· React 19 · TypeScript · Tailwind CSS v4。
 
 图表是自绘 SVG，没引图表库——需要精确控制堆叠段之间的 2px 缝隙、
 数据端 4px 圆角、准星吸附这些细节，套库反而更费劲。
+
+## 静态预览页
+
+```bash
+npm run export preview/view.json   # 导出当前数据
+```
+
+`preview/dashboard.html` 是一份**自包含的单文件预览**（内联数据 + 内联 JS，不依赖任何外部资源），
+双击就能在浏览器里打开，用于给不方便跑 Node 的人看版式。
+
+它和 Next 应用共用 `lib/metrics.ts` 的指标逻辑（数据由 `npm run export` 导出），
+所以两边数字不会对不上。但它是**某一时刻的快照**，不会自动更新 —— 真实使用请跑 Next 应用。
