@@ -21,8 +21,12 @@ export async function readSnapshot(): Promise<DashboardSnapshot | null> {
   try {
     const raw = await readFile(snapshotPath(), 'utf8');
     const parsed = JSON.parse(raw) as DashboardSnapshot;
-    // 简单校验，防止半截写入的文件把页面搞崩
+    // 简单校验，防止半截写入的文件把页面搞崩。
+    // 也顺带挡掉旧版本结构的快照 —— 数据模型改过之后，老快照缺 ads/targets，
+    // 直接拿去渲染会在页面深处报「undefined is not iterable」，很难查。
     if (!Array.isArray(parsed.daily) || parsed.daily.length === 0) return null;
+    if (!Array.isArray(parsed.ads) || !Array.isArray(parsed.targets)) return null;
+    if (!Array.isArray(parsed.products) || !Array.isArray(parsed.keywords)) return null;
     return parsed;
   } catch {
     return null;

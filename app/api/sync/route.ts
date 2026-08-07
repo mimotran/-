@@ -61,9 +61,10 @@ async function handle(request: Request): Promise<NextResponse> {
       coverage: snapshot.coverage,
       counts: {
         daily: snapshot.daily.length,
-        channels: snapshot.channels.length,
+        ads: snapshot.ads.length,
         products: snapshot.products.length,
-        campaigns: snapshot.campaigns.length,
+        keywords: snapshot.keywords.length,
+        targets: snapshot.targets.length,
       },
       persisted,
       warnings: snapshot.warnings,

@@ -8,32 +8,39 @@
  * 同步不会报错，看板上只是多了一列 0 —— 这种错最难发现，必须显式列出来。
  */
 
-import { readBitableTable } from '../lib/feishu/bitable';
-import { isFeishuConfigured, loadFeishuConfig } from '../lib/feishu/config';
-import {
-  CAMPAIGN_ALIASES,
-  CHANNEL_ALIASES,
-  DAILY_ALIASES,
-  PRODUCT_ALIASES,
-  matchHeaders,
-  type FieldAliases,
-} from '../lib/feishu/mapping';
-import { listSheets, readSheetRange } from '../lib/feishu/sheets';
-import { resolveSource } from '../lib/feishu/sync';
 import { listBitableTables } from '../lib/feishu/bitable';
+import {
+  TABLE_ENV_SUFFIX,
+  TABLE_KEYS,
+  TABLE_LABELS,
+  isFeishuConfigured,
+  loadFeishuConfig,
+  type TableKey,
+} from '../lib/feishu/config';
+import {
+  AD_ALIASES,
+  DAILY_ALIASES,
+  KEYWORD_ALIASES,
+  PRODUCT_ALIASES,
+  TARGET_ALIASES,
+  matchHeaders,
+  type AliasMap,
+} from '../lib/feishu/mapping';
+import { listSheets } from '../lib/feishu/sheets';
+import { readTable, resolveSource } from '../lib/feishu/sync';
 import { resolveWikiNode } from '../lib/feishu/wiki';
 import { loadLocalEnv } from './env';
 
 loadLocalEnv();
 
-type TableKey = 'daily' | 'channels' | 'products' | 'campaigns';
-
-const TABLES: Array<{ key: TableKey; label: string; aliases: FieldAliases<never> }> = [
-  { key: 'daily', label: '日报表', aliases: DAILY_ALIASES as FieldAliases<never> },
-  { key: 'channels', label: '流量渠道表', aliases: CHANNEL_ALIASES as FieldAliases<never> },
-  { key: 'products', label: '商品明细表', aliases: PRODUCT_ALIASES as FieldAliases<never> },
-  { key: 'campaigns', label: '活动表', aliases: CAMPAIGN_ALIASES as FieldAliases<never> },
-];
+const ALIASES: Record<TableKey, AliasMap> = {
+  daily: DAILY_ALIASES,
+  adsInsite: AD_ALIASES,
+  adsOffsite: AD_ALIASES,
+  products: PRODUCT_ALIASES,
+  keywords: KEYWORD_ALIASES,
+  targets: TARGET_ALIASES,
+};
 
 async function main() {
   const cfg = loadFeishuConfig();
@@ -66,22 +73,21 @@ async function main() {
 
   let missingTotal = 0;
 
-  for (const { key, label, aliases } of TABLES) {
+  for (const key of TABLE_KEYS) {
+    const label = TABLE_LABELS[key];
     const target = source.targets[key];
     console.log('');
     console.log(`── ${label} ${'─'.repeat(Math.max(0, 40 - label.length * 2))}`);
 
     if (!target) {
-      console.log(`   未配置，跳过（要接就填 ${envVarFor(source.docType, key)}）`);
+      const prefix = source.docType === 'sheets' ? 'FEISHU_SHEET_' : 'FEISHU_TABLE_';
+      console.log(`   未配置，跳过（要接就填 ${prefix}${TABLE_ENV_SUFFIX[key]}）`);
       continue;
     }
 
     let rows: Array<Record<string, unknown>>;
     try {
-      rows =
-        source.docType === 'bitable'
-          ? await readBitableTable(cfg, source.token, target)
-          : await readSheetRange(cfg, source.token, target);
+      rows = await readTable(cfg, source, target);
     } catch (err) {
       console.log(`   读取失败：${err instanceof Error ? err.message : String(err)}`);
       continue;
@@ -108,15 +114,15 @@ async function main() {
     console.log(`     ${headers.join(' | ')}`);
     console.log('   字段映射：');
 
-    const matches = matchHeaders(headers, aliases);
+    const matches = matchHeaders(headers, ALIASES[key]);
     const used = new Set<string>();
     for (const { field, column } of matches) {
       if (column) {
         used.add(column);
-        console.log(`     ✓ ${String(field).padEnd(14)} ← 「${column}」`);
+        console.log(`     ✓ ${field.padEnd(18)} ← 「${column}」`);
       } else {
         missingTotal += 1;
-        console.log(`     ✗ ${String(field).padEnd(14)} ← 没有列命中`);
+        console.log(`     ✗ ${field.padEnd(18)} ← 没有列命中`);
       }
     }
 
@@ -131,14 +137,9 @@ async function main() {
     console.log('✓ 所有字段都命中了真实列名，mapping.ts 无需改动');
   } else {
     console.log(`⚠ ${missingTotal} 个字段没有命中任何列。`);
+    console.log('  部分是正常的 —— 辅助列（客退率 / 站内ROI 等）只在表里没有绝对值列时才需要。');
     console.log('  对照上面「没被用到的列」，把真实列名补进 lib/feishu/mapping.ts 的别名数组即可。');
-    console.log('  这些字段现在会静默取 0，看板上会显示成 0 而不是报错。');
   }
-}
-
-function envVarFor(docType: 'sheets' | 'bitable', key: TableKey): string {
-  const suffix = key.toUpperCase();
-  return docType === 'sheets' ? `FEISHU_SHEET_${suffix}` : `FEISHU_TABLE_${suffix}`;
 }
 
 main().catch((err) => {
@@ -148,6 +149,6 @@ main().catch((err) => {
   console.error('如果报的是 99991672 / Access denied，说明应用没开对应只读权限：');
   console.error('  wiki:wiki:readonly、sheets:spreadsheet:readonly、drive:drive:readonly');
   console.error('  （多维表格再加 bitable:app:readonly）');
-  console.error('开放平台「权限管理」勾选后，必须「创建版本并发布」才生效。');
+  console.error('如果报的是 131006 / permission denied，权限开了但应用没被加进知识库成员。');
   process.exit(1);
 });

@@ -57,8 +57,9 @@ async function main() {
   console.log(`✓ 同步完成，来源 ${snapshot.source}`);
   console.log(`  覆盖 ${snapshot.coverage.from} ~ ${snapshot.coverage.to}`);
   console.log(
-    `  日报 ${snapshot.daily.length} 行 · 渠道 ${snapshot.channels.length} 行 · ` +
-      `商品 ${snapshot.products.length} 行 · 活动 ${snapshot.campaigns.length} 行`,
+    `  日报 ${snapshot.daily.length} 行 · 投放 ${snapshot.ads.length} 行 · ` +
+      `商品 ${snapshot.products.length} 行 · 关键词 ${snapshot.keywords.length} 行 · ` +
+      `目标 ${snapshot.targets.length} 行`,
   );
   console.log(`  落盘 ${persisted ? '成功' : '失败（只读文件系统？看板仍可运行，但每次都要重新拉取）'}`);
 

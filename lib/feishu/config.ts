@@ -5,6 +5,39 @@
 
 export type FeishuDocType = 'bitable' | 'sheets';
 
+/** 看板需要的六张表。只有日报是必需的，其余缺了对应板块降级为空态 */
+export type TableKey = 'daily' | 'adsInsite' | 'adsOffsite' | 'products' | 'keywords' | 'targets';
+
+export const TABLE_KEYS: TableKey[] = [
+  'daily',
+  'adsInsite',
+  'adsOffsite',
+  'products',
+  'keywords',
+  'targets',
+];
+
+export const TABLE_LABELS: Record<TableKey, string> = {
+  daily: '日报表',
+  adsInsite: '站内投放表',
+  adsOffsite: '站外投放表',
+  products: '商品明细表',
+  keywords: '搜索关键词表',
+  targets: '目标表',
+};
+
+/** 环境变量后缀，如 FEISHU_SHEET_ADS_INSITE */
+export const TABLE_ENV_SUFFIX: Record<TableKey, string> = {
+  daily: 'DAILY',
+  adsInsite: 'ADS_INSITE',
+  adsOffsite: 'ADS_OFFSITE',
+  products: 'PRODUCTS',
+  keywords: 'KEYWORDS',
+  targets: 'TARGETS',
+};
+
+export type TableTargets = Record<TableKey, string>;
+
 export interface FeishuConfig {
   baseUrl: string;
   appId: string;
@@ -19,60 +52,50 @@ export interface FeishuConfig {
    * 配了它就不用再单独填 app_token / spreadsheet_token，同步时自动换算。
    */
   wikiToken: string;
-  /** 多维表格：app_token（形如 bascnXXXX）+ 各数据表的 table_id */
-  bitable: {
-    appToken: string;
-    tables: {
-      daily: string;
-      channels: string;
-      products: string;
-      campaigns: string;
-    };
-  };
+  /**
+   * 关键词表在另一个文档里时单独填它的 wiki token。
+   * 留空就当它和主表在同一个文档。
+   */
+  keywordsWikiToken: string;
+  /** 投放明细在另一个文档里时单独填（Insite-Ads Daily Report） */
+  adsWikiToken: string;
+  /** 多维表格：app_token + 各数据表的 table_id */
+  bitable: { appToken: string; tables: TableTargets };
   /**
    * 电子表格：spreadsheet_token + 各子表。
-   * 子表既可以写工作表名（「日报」），也可以写链接里的 sheet id（「7ngPBd」）。
+   * 子表既可以写工作表名（「2.整体」），也可以写链接里的 sheet id（「awpfUO」）。
    */
-  sheets: {
-    spreadsheetToken: string;
-    ranges: {
-      daily: string;
-      channels: string;
-      products: string;
-      campaigns: string;
-    };
-  };
+  sheets: { spreadsheetToken: string; ranges: TableTargets };
 }
 
 function env(name: string, fallback = ''): string {
   return (process.env[name] ?? fallback).trim();
 }
 
+function readTargets(prefix: string): TableTargets {
+  return TABLE_KEYS.reduce((acc, key) => {
+    acc[key] = env(`${prefix}${TABLE_ENV_SUFFIX[key]}`);
+    return acc;
+  }, {} as TableTargets);
+}
+
 export function loadFeishuConfig(): FeishuConfig {
-  const docType = env('FEISHU_DOC_TYPE', 'bitable') === 'sheets' ? 'sheets' : 'bitable';
+  const docType = env('FEISHU_DOC_TYPE', 'sheets') === 'bitable' ? 'bitable' : 'sheets';
   return {
     baseUrl: env('FEISHU_BASE_URL', 'https://open.feishu.cn/open-apis').replace(/\/+$/, ''),
     appId: env('FEISHU_APP_ID'),
     appSecret: env('FEISHU_APP_SECRET'),
     docType,
     wikiToken: env('FEISHU_WIKI_TOKEN'),
+    keywordsWikiToken: env('FEISHU_WIKI_TOKEN_KEYWORDS'),
+    adsWikiToken: env('FEISHU_WIKI_TOKEN_ADS'),
     bitable: {
       appToken: env('FEISHU_BITABLE_APP_TOKEN'),
-      tables: {
-        daily: env('FEISHU_TABLE_DAILY'),
-        channels: env('FEISHU_TABLE_CHANNELS'),
-        products: env('FEISHU_TABLE_PRODUCTS'),
-        campaigns: env('FEISHU_TABLE_CAMPAIGNS'),
-      },
+      tables: readTargets('FEISHU_TABLE_'),
     },
     sheets: {
       spreadsheetToken: env('FEISHU_SPREADSHEET_TOKEN'),
-      ranges: {
-        daily: env('FEISHU_SHEET_DAILY'),
-        channels: env('FEISHU_SHEET_CHANNELS'),
-        products: env('FEISHU_SHEET_PRODUCTS'),
-        campaigns: env('FEISHU_SHEET_CAMPAIGNS'),
-      },
+      ranges: readTargets('FEISHU_SHEET_'),
     },
   };
 }

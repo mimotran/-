@@ -29,15 +29,11 @@ export async function getSnapshot(options: { forceSync?: boolean } = {}): Promis
           warnings: [`飞书同步失败，当前展示 ${cached.coverage.to} 的存量数据：${message}`, ...cached.warnings],
         };
       }
-      const mock = buildMockSnapshot(today());
+      const mock = buildMockSnapshot();
       return { ...mock, warnings: [`飞书同步失败，已回落到演示数据：${message}`] };
     }
   }
 
   if (cached) return cached;
-  return buildMockSnapshot(today());
-}
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return buildMockSnapshot();
 }

@@ -1,4 +1,4 @@
-import type { KpiValue } from './types';
+import type { ValueFormat } from './types';
 
 /** 数字格式化：中文电商场景习惯用「万 / 亿」，而不是 K/M */
 
@@ -41,7 +41,12 @@ export function formatDecimal(value: number, digits = 2): string {
   return value.toFixed(digits);
 }
 
-export function formatByKind(value: number, format: KpiValue['format']): string {
+/** ROI 这类倍数：写成「18.2」，单位由标签承担，不在数字后面拼「倍」 */
+export function formatMultiple(value: number, digits = 2): string {
+  return value.toFixed(Math.abs(value) >= 100 ? 0 : digits);
+}
+
+export function formatByKind(value: number, format: ValueFormat): string {
   switch (format) {
     case 'currency':
       return formatCurrency(value);
@@ -51,11 +56,13 @@ export function formatByKind(value: number, format: KpiValue['format']): string 
       return formatPercent(value);
     case 'decimal':
       return formatDecimal(value);
+    case 'multiple':
+      return formatMultiple(value);
   }
 }
 
 /** 精确值，给表格视图和 tooltip 用（不做万/亿压缩） */
-export function formatExact(value: number, format: KpiValue['format']): string {
+export function formatExact(value: number, format: ValueFormat): string {
   switch (format) {
     case 'currency':
       return `¥${Math.round(value).toLocaleString('zh-CN')}`;
@@ -65,6 +72,8 @@ export function formatExact(value: number, format: KpiValue['format']): string {
       return formatPercent(value);
     case 'decimal':
       return formatDecimal(value);
+    case 'multiple':
+      return formatMultiple(value);
   }
 }
 
