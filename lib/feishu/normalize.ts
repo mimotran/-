@@ -14,6 +14,7 @@ import {
   LINE_PATTERNS,
   PRODUCT_ALIASES,
   TARGET_ALIASES,
+  TARGET_METRIC_ALIASES,
   pick,
   toDate,
   toMonthKey,
@@ -107,6 +108,21 @@ export function parseDaily(raw: Array<Record<string, unknown>>, defaultYear?: nu
       adCostOffsite,
       adGmvInsite,
       adGmvOffsite,
+      // 搜索订单：表里没有就用整体转化率乘搜索 UV 兜底，是个近似
+      searchOrders: (() => {
+        const direct = pick(row, DAILY_ALIASES.searchOrders);
+        if (direct !== undefined) return toNumber(direct);
+        const rate = toNumber(pick(row, DAILY_ALIASES.searchConversionRate));
+        return rate > 0 ? Math.round(toNumber(pick(row, DAILY_ALIASES.searchUv)) * rate) : 0;
+      })(),
+      // 利润：表里没有就用「退后 GMV × 毛利率 − 投放费」估
+      grossProfit: (() => {
+        const direct = pick(row, DAILY_ALIASES.grossProfit);
+        if (direct !== undefined) return toNumber(direct);
+        const rate = pick(row, DAILY_ALIASES.profitRate);
+        if (rate !== undefined) return toNumber(rate) * gmv;
+        return 0;
+      })(),
     };
 
     // 同一天出现多行时后写的覆盖前面的，方便运营直接在表尾追加修正行
@@ -259,9 +275,21 @@ export function parseTargets(
 
   raw.forEach((row) => {
     const keyText = toText(pick(row, TARGET_ALIASES.key));
-    const gmv = toNumber(pick(row, TARGET_ALIASES.gmv));
-    const deviceSales = toNumber(pick(row, TARGET_ALIASES.deviceSales));
-    if (!keyText || (gmv === 0 && deviceSales === 0)) {
+    if (!keyText) {
+      skipped += 1;
+      return;
+    }
+
+    // 目标表一行一个周期，一列一个指标；只收表里真有的列，缺的留空由上层降级
+    const values: Record<string, number> = {};
+    for (const [metric, aliases] of Object.entries(TARGET_METRIC_ALIASES)) {
+      const raw = pick(row, aliases);
+      if (raw === undefined) continue;
+      const value = toNumber(raw, NaN);
+      if (Number.isFinite(value)) values[metric] = value;
+    }
+
+    if (Object.keys(values).length === 0) {
       skipped += 1;
       return;
     }
@@ -269,7 +297,7 @@ export function parseTargets(
     // 纯四位数字当年度目标，其余按月份解析
     const yearOnly = keyText.match(/^(\d{4})\s*年?$/);
     if (yearOnly) {
-      rows.push({ period: 'year', key: yearOnly[1], gmv, deviceSales });
+      rows.push({ period: 'year', key: yearOnly[1], values });
       return;
     }
 
@@ -278,10 +306,10 @@ export function parseTargets(
       skipped += 1;
       return;
     }
-    rows.push({ period: 'month', key, gmv, deviceSales });
+    rows.push({ period: 'month', key, values });
   });
 
-  if (skipped > 0) warnings.push(`目标表有 ${skipped} 行无法识别周期或目标值，已跳过`);
+  if (skipped > 0) warnings.push(`目标表有 ${skipped} 行无法识别周期或没有任何目标值，已跳过`);
   return { rows, warnings };
 }
 

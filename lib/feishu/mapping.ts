@@ -50,6 +50,36 @@ export const DAILY_ALIASES: AliasMap = {
   /** 站内费比：没有「站内消耗」列时用它乘 GMV 反推 */
   adCostRateInsite: ['站内费比', '站内投放费率', 'adCostRateInsite'],
   adCostRateOffsite: ['站外费比', '站外投放费率', 'adCostRateOffsite'],
+  /** 搜索订单数 / 搜索转化率：算搜索转化率用，两者有其一即可 */
+  searchOrders: ['搜索订单数', '搜索成交订单数', 'searchOrders'],
+  searchConversionRate: ['搜索转化率', '搜索支付转化率', 'searchConversionRate'],
+  /** 利润：有绝对值用绝对值，没有就用利润率乘 GMV */
+  grossProfit: ['利润', '预估利润', '毛利', '销售利润', 'grossProfit'],
+  profitRate: ['利润率', '销售利润率', '毛利率', 'profitRate'],
+};
+
+/**
+ * 目标表的列名。
+ *
+ * 键必须和 lib/metrics.ts 里 GOAL_METRICS 的 key 一一对应 —— 目标表一行一个周期、
+ * 一列一个指标，缺哪列就哪个指标没有目标，页面上显示「—」而不是当成 0。
+ */
+export const TARGET_METRIC_ALIASES: AliasMap = {
+  gmv: ['GMV目标', 'GMV', '目标GMV', '销售目标', 'gmv'],
+  deviceSales: ['销量目标', '主机销量目标', '主机目标', '销量', 'deviceSales'],
+  refundRate: ['退款率目标', '客退率目标', '退款率', 'refundRate'],
+  adCostInsite: ['站内投放费目标', '站内消耗目标', '站内投放费', 'adCostInsite'],
+  roiInsite: ['站内ROI目标', '站内ROI', 'roiInsite'],
+  adCostRateInsite: ['站内费比目标', '站内费比', 'adCostRateInsite'],
+  adCostOffsite: ['站外投放费目标', '站外消耗目标', '站外投放费', 'adCostOffsite'],
+  roiOffsite: ['站外ROI目标', '站外ROI', 'roiOffsite'],
+  adCostRateOffsite: ['站外费比目标', '站外费比', 'adCostRateOffsite'],
+  adCost: ['总投放费目标', '投放费目标', '总投放费', 'adCost'],
+  adCostRate: ['总费比目标', '总费比', '投放费率目标', 'adCostRate'],
+  grossProfit: ['利润目标', '预估利润目标', '利润', 'grossProfit'],
+  profitRate: ['利润率目标', '利润率', 'profitRate'],
+  searchUv: ['搜索UV目标', '搜索UV', 'searchUv'],
+  searchConversionRate: ['搜索转化率目标', '搜索转化率', 'searchConversionRate'],
 };
 
 /** 投放明细：站内按触点、站外按渠道，两张表结构一致 */
@@ -85,10 +115,9 @@ export const KEYWORD_ALIASES: AliasMap = {
   orders: ['订单数', '支付订单数', '成交订单数', 'orders'],
 };
 
+/** 目标表里定位「哪个周期」的那一列 */
 export const TARGET_ALIASES: AliasMap = {
   key: ['月份', '周期', '时间', '日期', 'key'],
-  gmv: ['GMV目标', 'GMV', '目标GMV', '销售目标', 'gmv'],
-  deviceSales: ['销量目标', '主机销量目标', '主机目标', '目标销量', 'deviceSales'],
 };
 
 /**

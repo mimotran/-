@@ -1,6 +1,8 @@
 import { addDays, dayOfMonth, daysInMonth, diffDays, month, monthKey, parseDate } from '@/lib/dates';
+import { aggregateRange } from '@/lib/metrics';
 import type {
   AdMetric,
+  Aggregate,
   DailyMetric,
   DashboardSnapshot,
   DateStr,
@@ -248,6 +250,7 @@ export function buildMockSnapshot(): DashboardSnapshot {
 
     // --- 搜索关键词：占满当天的搜索 UV ---
     let remaining = searchUv;
+    let searchOrders = 0;
     KEYWORDS.forEach((keyword, index) => {
       // 齐夫分布：头部词吃掉大部分搜索量
       const share = 1 / Math.pow(index + 1.5, 1.15);
@@ -259,6 +262,7 @@ export function buildMockSnapshot(): DashboardSnapshot {
       const isBrand = keyword.includes('plaud') || keyword.includes('notepin');
       const kwConversion = (isBrand ? 0.048 : 0.014) * (0.8 + rand() * 0.4);
       const kwOrders = Math.round(finalUv * kwConversion);
+      searchOrders += kwOrders;
       keywords.push({
         date,
         keyword,
@@ -267,6 +271,10 @@ export function buildMockSnapshot(): DashboardSnapshot {
         gmv: Math.round(kwOrders * aov * (0.9 + rand() * 0.2)),
       });
     });
+
+    // 预估利润：退后 GMV × 毛利率 − 投放费。毛利率 52–56%，硬件品牌的常见区间
+    const grossMargin = 0.52 + rand() * 0.04;
+    const grossProfit = Math.round((gmv - refund) * grossMargin - adCostInsite - adCostOffsite);
 
     daily.push({
       date,
@@ -284,6 +292,8 @@ export function buildMockSnapshot(): DashboardSnapshot {
       adCostOffsite,
       adGmvInsite,
       adGmvOffsite,
+      searchOrders,
+      grossProfit,
     });
   }
 
@@ -309,28 +319,39 @@ export function buildMockSnapshot(): DashboardSnapshot {
  * 看板上就是两张一模一样的进度条。
  *
  * 尚未发生的月份用去年同月 × 增速推，没有去年数据就用今年已有月份的均值。
+ * 每个指标各自定目标：绝对量按整月实际 × stretch，率型直接给一个目标率。
  */
 function buildTargets(daily: DailyMetric[], rand: () => number): Target[] {
-  const actualByMonth = new Map<string, { gmv: number; devices: number; days: number }>();
+  const byMonth = new Map<string, DailyMetric[]>();
   for (const row of daily) {
     const key = monthKey(row.date);
-    const acc = actualByMonth.get(key) ?? { gmv: 0, devices: 0, days: 0 };
-    acc.gmv += row.gmv;
-    acc.devices += row.deviceSales;
-    acc.days += 1;
-    actualByMonth.set(key, acc);
+    const list = byMonth.get(key) ?? [];
+    list.push(row);
+    byMonth.set(key, list);
   }
 
-  const years = [...new Set([...actualByMonth.keys()].map((key) => Number(key.slice(0, 4))))].sort();
+  const years = [...new Set([...byMonth.keys()].map((key) => Number(key.slice(0, 4))))].sort();
   const targets: Target[] = [];
 
-  /** 整月口径的实际值：月份没过完时按已过天数外推，否则目标会显得虚低 */
-  function fullMonthActual(key: string): { gmv: number; devices: number } | null {
-    const acc = actualByMonth.get(key);
-    if (!acc || acc.days === 0) return null;
+  /** 整月口径的聚合：月份没过完时按已过天数外推，否则目标会显得虚低 */
+  function fullMonth(key: string): Aggregate | null {
+    const rows = byMonth.get(key);
+    if (!rows || rows.length === 0) return null;
+    const agg = aggregateRange(rows, { from: `${key}-01`, to: `${key}-31` });
     const days = daysInMonth(`${key}-01`);
-    if (acc.days >= days) return { gmv: acc.gmv, devices: acc.devices };
-    return { gmv: (acc.gmv / acc.days) * days, devices: (acc.devices / acc.days) * days };
+    if (rows.length >= days) return agg;
+    // 绝对量按比例外推，比率保持不变
+    const scale = days / rows.length;
+    return {
+      ...agg,
+      gmv: agg.gmv * scale,
+      deviceSales: agg.deviceSales * scale,
+      adCostInsite: agg.adCostInsite * scale,
+      adCostOffsite: agg.adCostOffsite * scale,
+      adCost: agg.adCost * scale,
+      grossProfit: agg.grossProfit * scale,
+      searchUv: agg.searchUv * scale,
+    };
   }
 
   for (const y of years) {
@@ -338,45 +359,64 @@ function buildTargets(daily: DailyMetric[], rand: () => number): Target[] {
 
     for (let m = 1; m <= 12; m++) {
       const key = `${y}-${String(m).padStart(2, '0')}`;
-      let base = fullMonthActual(key);
+      let base = fullMonth(key);
+      let growth = 1;
 
-      // 还没发生的月份：先用去年同月 × 1.35 推
+      // 还没发生的月份：用去年同月 × 增速推
       if (!base) {
-        const lastYear = fullMonthActual(`${y - 1}-${String(m).padStart(2, '0')}`);
-        if (lastYear) base = { gmv: lastYear.gmv * 1.35, devices: lastYear.devices * 1.35 };
+        base = fullMonth(`${y - 1}-${String(m).padStart(2, '0')}`);
+        growth = 1.35;
       }
-
-      // 去年也没有：用今年已有月份的均值兜底
-      if (!base) {
-        const known = monthly.filter((t) => t.gmv > 0);
-        if (known.length === 0) continue;
-        base = {
-          gmv: known.reduce((s, t) => s + t.gmv, 0) / known.length,
-          devices: known.reduce((s, t) => s + t.deviceSales, 0) / known.length,
-        };
-      }
+      if (!base) continue;
 
       // 每个月的进取程度不一样（0.96–1.16）：真实目标从来不是统一乘一个系数，
       // 也让演示数据里同时出现「超前」和「落后」两种状态
-      const stretch = 0.96 + rand() * 0.2;
-      monthly.push({
-        period: 'month',
-        key,
-        gmv: Math.round((base.gmv * stretch) / 10000) * 10000,
-        deviceSales: Math.round((base.devices * stretch) / 50) * 50,
-      });
+      const stretch = (0.96 + rand() * 0.2) * growth;
+      const b = base;
+
+      const values: Record<string, number> = {
+        // 绝对量：往上提
+        gmv: Math.round((b.gmv * stretch) / 10000) * 10000,
+        deviceSales: Math.round((b.deviceSales * stretch) / 50) * 50,
+        grossProfit: Math.round((b.grossProfit * stretch) / 10000) * 10000,
+        searchUv: Math.round((b.searchUv * stretch) / 100) * 100,
+        // 费用类：目标是「别超」，所以按实际略微收紧
+        adCostInsite: Math.round((b.adCostInsite * growth * (1.02 + rand() * 0.12)) / 1000) * 1000,
+        adCostOffsite: Math.round((b.adCostOffsite * growth * (1.02 + rand() * 0.12)) / 1000) * 1000,
+        // 率型：直接给目标率，不参与上面的 stretch
+        refundRate: round4(b.refundRate * (0.86 + rand() * 0.12)),
+        roiInsite: round4(b.roiInsite * (1.05 + rand() * 0.35)),
+        roiOffsite: round4(b.roiOffsite * (0.8 + rand() * 0.3)),
+        adCostRateInsite: round4(b.adCostRateInsite * (0.95 + rand() * 0.25)),
+        adCostRateOffsite: round4(b.adCostRateOffsite * (0.95 + rand() * 0.3)),
+        profitRate: round4(b.profitRate * (0.94 + rand() * 0.16)),
+        searchConversionRate: round4(b.searchConversionRate * (0.88 + rand() * 0.2)),
+      };
+      values.adCost = values.adCostInsite + values.adCostOffsite;
+      values.adCostRate = round4(values.adCost / Math.max(1, values.gmv));
+
+      monthly.push({ period: 'month', key, values });
     }
 
     targets.push(...monthly);
 
-    // 全年目标比月度之和高 6%：年初定的时候总是乐观一点，这个缺口本身就是信息
+    // 全年目标比月度之和高 4%：年初定的时候总是乐观一点，这个缺口本身就是信息
+    const sum = (k: string) => monthly.reduce((acc, t) => acc + (t.values[k] ?? 0), 0);
     targets.push({
       period: 'year',
       key: String(y),
-      gmv: Math.round((monthly.reduce((s, t) => s + t.gmv, 0) * 1.04) / 100000) * 100000,
-      deviceSales: Math.round((monthly.reduce((s, t) => s + t.deviceSales, 0) * 1.04) / 100) * 100,
+      values: {
+        gmv: Math.round((sum('gmv') * 1.04) / 100000) * 100000,
+        deviceSales: Math.round((sum('deviceSales') * 1.04) / 100) * 100,
+        grossProfit: Math.round((sum('grossProfit') * 1.04) / 100000) * 100000,
+        searchUv: Math.round((sum('searchUv') * 1.04) / 1000) * 1000,
+      },
     });
   }
 
   return targets;
+}
+
+function round4(value: number): number {
+  return Number.isFinite(value) ? Math.round(value * 10000) / 10000 : 0;
 }

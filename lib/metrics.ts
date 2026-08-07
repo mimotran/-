@@ -22,7 +22,9 @@ import type {
   DashboardSnapshot,
   DateRange,
   DateStr,
-  GoalProgress,
+  GoalGroup,
+  GoalPeriod,
+  GoalRow,
   KeywordMetric,
   KpiValue,
   Period,
@@ -125,6 +127,8 @@ const ZERO: Aggregate = {
   adGmv: 0,
   adGmvInsite: 0,
   adGmvOffsite: 0,
+  searchOrders: 0,
+  grossProfit: 0,
   refundRate: 0,
   adCostRate: 0,
   adCostRateInsite: 0,
@@ -137,6 +141,8 @@ const ZERO: Aggregate = {
   roi: 0,
   roiInsite: 0,
   roiOffsite: 0,
+  profitRate: 0,
+  searchConversionRate: 0,
 };
 
 function safeDiv(numerator: number, denominator: number): number {
@@ -170,6 +176,8 @@ export function aggregateRange(daily: DailyMetric[], range: DateRange | null): A
     acc.adCostOffsite += row.adCostOffsite;
     acc.adGmvInsite += row.adGmvInsite;
     acc.adGmvOffsite += row.adGmvOffsite;
+    acc.searchOrders += row.searchOrders;
+    acc.grossProfit += row.grossProfit;
   }
 
   acc.adCost = acc.adCostInsite + acc.adCostOffsite;
@@ -187,6 +195,8 @@ export function aggregateRange(daily: DailyMetric[], range: DateRange | null): A
   acc.roi = safeDiv(acc.adGmv, acc.adCost);
   acc.roiInsite = safeDiv(acc.adGmvInsite, acc.adCostInsite);
   acc.roiOffsite = safeDiv(acc.adGmvOffsite, acc.adCostOffsite);
+  acc.profitRate = safeDiv(acc.grossProfit, acc.gmv);
+  acc.searchConversionRate = safeDiv(acc.searchOrders, acc.searchUv);
 
   return acc;
 }
@@ -280,33 +290,115 @@ export function buildPeriodStats(daily: DailyMetric[], period: Period): PeriodSt
 // 目标达成
 // ---------------------------------------------------------------------------
 
+/**
+ * 目标达成的指标登记表。
+ *
+ * 分组顺序即页面上大区块的顺序，组内顺序即卡片顺序 —— 和飞书目标表的排版对齐。
+ *
+ * `rate: true` 的指标看的是**百分点差**（实际 − 目标），不是达成率。
+ * 退款率目标 26%、实际 29.35%，写成「达成率 112.9%」毫无意义，
+ * 运营要的是「超了 3.4 个点」。
+ */
+export interface GoalMetricDef {
+  key: string;
+  label: string;
+  group: GoalGroup;
+  format: ValueFormat;
+  pick: (a: Aggregate) => number;
+  higherIsBetter: boolean;
+  /** 率型：用 pp 差而不是达成率 */
+  rate?: boolean;
+  /**
+   * 跨月合并目标的方式。
+   * 绝对量直接按天摊后相加；率和 ROI 不能相加，要按各自的分母加权 ——
+   * 把 11 月和 2 月的 ROI 目标简单平均，等于假设两个月投一样多钱。
+   */
+  weightBy?: string;
+}
+
+export const GOAL_METRICS: GoalMetricDef[] = [
+  // --- 销售 ---
+  { key: 'gmv', label: 'GMV', group: '销售', format: 'currency', pick: (a) => a.gmv, higherIsBetter: true },
+  { key: 'deviceSales', label: '销量', group: '销售', format: 'integer', pick: (a) => a.deviceSales, higherIsBetter: true },
+  { key: 'refundRate', label: '退款率', group: '销售', format: 'percent', pick: (a) => a.refundRate, higherIsBetter: false, rate: true, weightBy: 'gmv' },
+
+  // --- 费用 ---
+  { key: 'adCostInsite', label: '站内投放费', group: '费用', format: 'currency', pick: (a) => a.adCostInsite, higherIsBetter: false },
+  { key: 'roiInsite', label: '站内 ROI', group: '费用', format: 'multiple', pick: (a) => a.roiInsite, higherIsBetter: true, weightBy: 'adCostInsite' },
+  { key: 'adCostRateInsite', label: '站内费比', group: '费用', format: 'percent', pick: (a) => a.adCostRateInsite, higherIsBetter: false, rate: true, weightBy: 'gmv' },
+  { key: 'adCostOffsite', label: '站外投放费', group: '费用', format: 'currency', pick: (a) => a.adCostOffsite, higherIsBetter: false },
+  { key: 'roiOffsite', label: '站外 ROI', group: '费用', format: 'multiple', pick: (a) => a.roiOffsite, higherIsBetter: true, weightBy: 'adCostOffsite' },
+  { key: 'adCostRateOffsite', label: '站外费比', group: '费用', format: 'percent', pick: (a) => a.adCostRateOffsite, higherIsBetter: false, rate: true, weightBy: 'gmv' },
+  { key: 'adCost', label: '总投放费', group: '费用', format: 'currency', pick: (a) => a.adCost, higherIsBetter: false },
+  { key: 'adCostRate', label: '总费比', group: '费用', format: 'percent', pick: (a) => a.adCostRate, higherIsBetter: false, rate: true, weightBy: 'gmv' },
+
+  // --- 利润 ---
+  { key: 'grossProfit', label: '利润（预估）', group: '利润', format: 'currency', pick: (a) => a.grossProfit, higherIsBetter: true },
+  { key: 'profitRate', label: '利润率（GMV）', group: '利润', format: 'percent', pick: (a) => a.profitRate, higherIsBetter: true, rate: true, weightBy: 'gmv' },
+
+  // --- 流量 ---
+  { key: 'searchUv', label: '搜索 UV', group: '流量', format: 'integer', pick: (a) => a.searchUv, higherIsBetter: true },
+  { key: 'searchConversionRate', label: '搜索转化率', group: '流量', format: 'percent', pick: (a) => a.searchConversionRate, higherIsBetter: true, rate: true, weightBy: 'searchUv' },
+];
+
+const GOAL_GROUP_ORDER: GoalGroup[] = ['销售', '费用', '利润', '流量'];
+
 function monthTarget(targets: Target[], key: string): Target | undefined {
   return targets.find((t) => t.period === 'month' && t.key === key);
 }
 
-/** 把若干个月的目标按天摊到任意区间上，用于季度 / 半年 / 自定义 */
-function proratedTarget(targets: Target[], range: DateRange): { gmv: number; deviceSales: number } {
-  let gmv = 0;
-  let deviceSales = 0;
+/** 区间与某个月的重叠天数占该月的比例 */
+function monthOverlap(range: DateRange, cursor: DateStr): number {
+  const monthEnd = endOfMonth(cursor);
+  const from = cursor > range.from ? cursor : range.from;
+  const to = monthEnd < range.to ? monthEnd : range.to;
+  if (from > to) return 0;
+  return (diffDays(from, to) + 1) / daysInMonth(cursor);
+}
 
-  let cursor = startOfMonth(range.from);
-  while (cursor <= range.to) {
-    const key = monthKey(cursor);
-    const target = monthTarget(targets, key);
-    if (target) {
-      const monthEnd = endOfMonth(cursor);
-      const from = cursor > range.from ? cursor : range.from;
-      const to = monthEnd < range.to ? monthEnd : range.to;
-      const covered = diffDays(from, to) + 1;
-      const total = daysInMonth(cursor);
-      const ratio = covered / total;
-      gmv += target.gmv * ratio;
-      deviceSales += target.deviceSales * ratio;
+/**
+ * 把月度目标合并到任意区间上。
+ *
+ * 绝对量按天摊后相加。率和 ROI 不能相加 —— 按 weightBy 指定的分母目标加权，
+ * 得到的才是「这段时间整体应该达到的率」。
+ */
+export function targetsForRange(targets: Target[], range: DateRange): Record<string, number | null> {
+  const sums: Record<string, number> = {};
+  const weighted: Record<string, { num: number; den: number }> = {};
+
+  for (let cursor = startOfMonth(range.from); cursor <= range.to; cursor = addMonths(cursor, 1)) {
+    const target = monthTarget(targets, monthKey(cursor));
+    if (!target) continue;
+    const ratio = monthOverlap(range, cursor);
+    if (ratio <= 0) continue;
+
+    for (const metric of GOAL_METRICS) {
+      const value = target.values[metric.key];
+      if (value === undefined) continue;
+
+      if (metric.weightBy) {
+        const weight = (target.values[metric.weightBy] ?? 0) * ratio;
+        if (weight <= 0) continue;
+        const acc = weighted[metric.key] ?? { num: 0, den: 0 };
+        acc.num += value * weight;
+        acc.den += weight;
+        weighted[metric.key] = acc;
+      } else {
+        sums[metric.key] = (sums[metric.key] ?? 0) + value * ratio;
+      }
     }
-    cursor = addMonths(cursor, 1);
   }
 
-  return { gmv, deviceSales };
+  const out: Record<string, number | null> = {};
+  for (const metric of GOAL_METRICS) {
+    if (metric.weightBy) {
+      const acc = weighted[metric.key];
+      out[metric.key] = acc && acc.den > 0 ? acc.num / acc.den : null;
+    } else {
+      out[metric.key] = sums[metric.key] ?? null;
+    }
+  }
+  return out;
 }
 
 /**
@@ -315,57 +407,109 @@ function proratedTarget(targets: Target[], range: DateRange): { gmv: number; dev
  * 不用「已过天数 ÷ 总天数」——那对电商是错的。下半年的目标有很大一块压在
  * 11 月的双 11 上，8 月初按日历算已经走了 20%，但按计划只该完成 16%，
  * 拿 20% 当基准会把一个正常的 8 月判成「落后」。
- *
- * 用月度目标的分布做权重，落在月内时再按天线性摊 —— 月内的粒度我们只有这么多。
- * 没有月度目标时退回按天算，并如实反映在文案里。
  */
 function expectedProgress(targets: Target[], range: DateRange, latest: DateStr): number {
   const total = rangeLength(range);
-  const elapsedDays = latest < range.from ? 0 : Math.min(total, diffDays(range.from, latest) + 1);
+  const elapsed = latest < range.from ? 0 : Math.min(total, diffDays(range.from, latest) + 1);
   if (total <= 0) return 0;
-  if (elapsedDays >= total) return 1;
-  if (elapsedDays <= 0) return 0;
+  if (elapsed >= total) return 1;
+  if (elapsed <= 0) return 0;
 
-  const whole = proratedTarget(targets, range).gmv;
-  if (whole <= 0) return elapsedDays / total; // 没有月度目标，只能按天
+  const whole = targetsForRange(targets, range).gmv;
+  if (!whole || whole <= 0) return elapsed / total; // 没有月度目标，只能按天
 
-  const done = proratedTarget(targets, {
+  const done = targetsForRange(targets, {
     from: range.from,
-    to: addDays(range.from, elapsedDays - 1),
+    to: addDays(range.from, elapsed - 1),
   }).gmv;
 
-  return Math.min(1, done / whole);
+  return done && done > 0 ? Math.min(1, done / whole) : elapsed / total;
 }
 
-function progressOf(
+function buildGoalRows(
   daily: DailyMetric[],
   targets: Target[],
-  label: string,
-  scope: string,
-  key: string,
   range: DateRange,
-  target: { gmv: number; deviceSales: number },
-  latest: DateStr,
-): GoalProgress {
-  const actual = aggregateRange(daily, range);
+  compareRange: DateRange | null,
+  /** 实际值只结算到今天：未来的日子还没有数据 */
+  actualRange: DateRange,
+  /** 计划进度，用作「现在算不算达标」的基准 */
+  pace: number,
+  finished: boolean,
+): Array<{ name: GoalGroup; rows: GoalRow[] }> {
+  const actual = aggregateRange(daily, actualRange);
+  const previous = aggregateRange(daily, compareRange);
+  const hasCompare = compareRange !== null && previous.days > 0;
 
-  return {
-    key,
-    label,
-    scope,
-    gmvActual: actual.gmv,
-    gmvTarget: target.gmv,
-    deviceActual: actual.deviceSales,
-    deviceTarget: target.deviceSales,
-    timeProgress: expectedProgress(targets, range, latest),
-    finished: latest >= range.to,
-  };
+  /**
+   * 目标取**完整周期**，不按已过天数折算。
+   *
+   * 折算过的目标会让达成率永远贴着 100%（8 月 6 号完成了 6 天目标的 97%），
+   * 计划进度那根参考线就失去意义了 —— 两个数必须落在同一把尺子上才能比：
+   * 达成 19% vs 计划 19% = 持平，达成 46% vs 计划 55% = 落后。
+   *
+   * 率型指标本来就不累加，全周期目标率直接可比。
+   */
+  const target = targetsForRange(targets, range);
+
+  const rows: GoalRow[] = GOAL_METRICS.map((metric) => {
+    const actualValue = metric.pick(actual);
+    const targetValue = target[metric.key];
+
+    let attainment: number | null = null;
+    let ppDiff: number | null = null;
+    let good: boolean | null = null;
+
+    if (targetValue !== null && targetValue !== undefined) {
+      if (metric.rate) {
+        // 率型：看百分点差。退款率超了 3.4 个点，比「达成率 112.9%」有用得多
+        ppDiff = actualValue - targetValue;
+        good = metric.higherIsBetter ? ppDiff >= 0 : ppDiff <= 0;
+      } else if (targetValue !== 0) {
+        attainment = actualValue / targetValue;
+        /**
+         * 基准分两种，取决于这个指标会不会随时间累加：
+         *
+         * 累加型（GMV、投放费、利润、搜索 UV）→ 基准是**计划进度**。
+         *   8 月 6 号完成全月目标的 19% 是正常的，拿 100% 当基准会把每个月初都判成灾难。
+         *
+         * 水平型（ROI）→ 基准是 **100%**。
+         *   ROI 是个比值，不随时间累积；「ROI 达成 85%」就是没做到，
+         *   和月初月末没关系。用 weightBy 区分：需要加权合并的就是水平型。
+         */
+        const bar = metric.weightBy ? 1 : finished ? 1 : pace;
+        good = metric.higherIsBetter ? attainment >= bar - 0.02 : attainment <= bar + 0.02;
+      }
+    }
+
+    return {
+      key: metric.key,
+      label: metric.label,
+      group: metric.group,
+      format: metric.format,
+      // 会随时间累加的指标才适合画「计划进度」刻度；ROI 是水平值，画了会误导
+      accumulates: !metric.rate && !metric.weightBy,
+      target: targetValue ?? null,
+      actual: actualValue,
+      attainment,
+      ppDiff,
+      good,
+      prevActual: hasCompare ? metric.pick(previous) : null,
+      prevDelta: delta(actualValue, metric.pick(previous), hasCompare),
+      higherIsBetter: metric.higherIsBetter,
+    };
+  });
+
+  return GOAL_GROUP_ORDER.map((name) => ({
+    name,
+    rows: rows.filter((row) => row.group === name),
+  })).filter((group) => group.rows.length > 0);
 }
 
 /**
- * 五档达成进度：本月 / 本季 / 半年 / 全年 /（可选）自定义。
+ * 五档达成口径：本月 / 本季 / 半年 / 全年 /（可选）自定义。
  *
- * 每一档都同时给「达成进度」和「时间进度」—— 只看达成率没法判断好坏，
+ * 每一档都给「达成」和「计划进度」两个数 —— 只看达成率没法判断好坏，
  * 8 月 7 号完成 25% 是超前，12 月 20 号完成 90% 是落后。
  */
 export function buildGoals(
@@ -373,69 +517,107 @@ export function buildGoals(
   targets: Target[],
   latest: DateStr,
   custom: DateRange | null,
-): GoalProgress[] {
+): GoalPeriod[] {
   const y = latest.slice(0, 4);
   const quarter = quarterOf(latest);
   const half = halfOf(latest);
-  const goals: GoalProgress[] = [];
 
-  // 本月
-  const mKey = monthKey(latest);
-  const mTarget = monthTarget(targets, mKey);
-  if (mTarget) {
-    goals.push(
-      progressOf(
-        daily,
-        targets,
-        '本月',
-        `${Number(mKey.slice(5))} 月`,
-        mKey,
-        { from: startOfMonth(latest), to: endOfMonth(latest) },
-        mTarget,
-        latest,
-      ),
-    );
-  }
+  const make = (
+    key: string,
+    label: string,
+    scope: string,
+    range: DateRange,
+    compareRange: DateRange | null,
+    compareLabel: string,
+  ): GoalPeriod => {
+    // 周期还没过完时，实际值只结算到最新一天
+    const actualRange = { from: range.from, to: latest < range.to ? latest : range.to };
+    const pace = expectedProgress(targets, range, latest);
+    const finished = latest >= range.to;
+    return {
+      key,
+      label,
+      scope,
+      range,
+      compareRange,
+      compareLabel,
+      timeProgress: pace,
+      finished,
+      groups: buildGoalRows(daily, targets, range, compareRange, actualRange, pace, finished),
+    };
+  };
 
-  // 本季
+  const periods: GoalPeriod[] = [];
+
+  // 本月：对比上月同期，和看板其它地方的 MTD 口径一致
+  const prevMonthSameDay = addMonths(latest, -1);
+  periods.push(
+    make(
+      monthKey(latest),
+      '本月',
+      `${y} 年 ${Number(latest.slice(5, 7))} 月`,
+      { from: startOfMonth(latest), to: endOfMonth(latest) },
+      { from: startOfMonth(prevMonthSameDay), to: prevMonthSameDay },
+      '上月同期',
+    ),
+  );
+
+  // 本季：对比上季度同期（往前推 3 个月的同一天）
   const qFrom = `${y}-${String((quarter - 1) * 3 + 1).padStart(2, '0')}-01`;
-  const qRange = { from: qFrom, to: endOfMonth(`${y}-${String(quarter * 3).padStart(2, '0')}-01`) };
-  goals.push(
-    progressOf(daily, targets, `Q${quarter}`, `${quarter * 3 - 2}–${quarter * 3} 月`, `${y}-Q${quarter}`, qRange, proratedTarget(targets, qRange), latest),
+  const qTo = endOfMonth(`${y}-${String(quarter * 3).padStart(2, '0')}-01`);
+  const prevQuarterSameDay = addMonths(latest, -3);
+  periods.push(
+    make(
+      `${y}-Q${quarter}`,
+      `Q${quarter}`,
+      `${quarter * 3 - 2}–${quarter * 3} 月`,
+      { from: qFrom, to: qTo },
+      { from: addMonths(qFrom, -3), to: prevQuarterSameDay },
+      '上季同期',
+    ),
   );
 
   // 半年
-  const hRange =
-    half === 1
-      ? { from: `${y}-01-01`, to: `${y}-06-30` }
-      : { from: `${y}-07-01`, to: `${y}-12-31` };
-  goals.push(
-    progressOf(daily, targets, `H${half}`, half === 1 ? '1–6 月' : '7–12 月', `${y}-H${half}`, hRange, proratedTarget(targets, hRange), latest),
+  const hFrom = half === 1 ? `${y}-01-01` : `${y}-07-01`;
+  const hTo = half === 1 ? `${y}-06-30` : `${y}-12-31`;
+  periods.push(
+    make(
+      `${y}-H${half}`,
+      `H${half}`,
+      half === 1 ? '1–6 月' : '7–12 月',
+      { from: hFrom, to: hTo },
+      { from: addMonths(hFrom, -6), to: addMonths(latest, -6) },
+      '上半年同期',
+    ),
   );
 
-  // 全年：用显式的年度目标，不是月度之和 —— 年初定的年目标通常比月度加总更高
-  const yearRange = { from: `${y}-01-01`, to: `${y}-12-31` };
-  const yTarget = targets.find((t) => t.period === 'year' && t.key === y);
-  goals.push(
-    progressOf(daily, targets, '全年', `${y} 年`, y, yearRange, yTarget ?? proratedTarget(targets, yearRange), latest),
+  // 全年：对比去年同期
+  periods.push(
+    make(
+      y,
+      '全年',
+      `${y} 年`,
+      { from: `${y}-01-01`, to: `${y}-12-31` },
+      { from: `${Number(y) - 1}-01-01`, to: addYears(latest, -1) },
+      '去年同期',
+    ),
   );
 
   if (custom) {
-    goals.push(
-      progressOf(
-        daily,
-        targets,
+    const length = rangeLength(custom);
+    periods.push(
+      make(
+        'custom',
         '自定义',
         `${custom.from} 至 ${custom.to}`,
-        'custom',
         custom,
-        proratedTarget(targets, custom),
-        latest,
+        { from: addDays(custom.from, -length), to: addDays(custom.from, -1) },
+        '上一周期',
       ),
     );
   }
 
-  return goals;
+  return periods;
 }
 
 // ---------------------------------------------------------------------------
@@ -741,7 +923,7 @@ export interface DashboardView {
   earliestDate: DateStr;
   periods: Period[];
   stats: PeriodStats[];
-  goals: GoalProgress[];
+  goals: GoalPeriod[];
   trend: TrendPoint[];
   trendRange: DateRange;
   insite: AdChannelRow[];

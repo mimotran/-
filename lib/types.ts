@@ -49,6 +49,10 @@ export interface DailyMetric {
   adGmvInsite: number;
   /** 站外投放带来的成交（元） */
   adGmvOffsite: number;
+  /** 搜索带来的支付订单数。搜索转化率 = 它 ÷ searchUv */
+  searchOrders: number;
+  /** 预估利润（元）= 退后 GMV × 毛利率 − 投放费 */
+  grossProfit: number;
 }
 
 /** 投放的两个大盘口径 */
@@ -102,14 +106,17 @@ export interface KeywordMetric {
 /** 目标周期。季度和半年由月度目标累加得出，不单独填 */
 export type TargetPeriod = 'month' | 'year';
 
+/**
+ * 一个周期的目标。
+ *
+ * 用 key → 值的映射而不是固定字段：目标表里的指标会一直加（这轮就从 2 项变成 15 项），
+ * 每加一项都改一次接口不现实。键对应 lib/metrics.ts 里 GOAL_METRICS 的 key。
+ */
 export interface Target {
   period: TargetPeriod;
   /** 月度填 `2026-08`，年度填 `2026` */
   key: string;
-  /** GMV 目标（元） */
-  gmv: number;
-  /** 主机销量目标（台） */
-  deviceSales: number;
+  values: Record<string, number>;
 }
 
 /** 一次同步落下来的完整数据快照 */
@@ -187,6 +194,8 @@ export interface Aggregate {
   adGmv: number;
   adGmvInsite: number;
   adGmvOffsite: number;
+  searchOrders: number;
+  grossProfit: number;
   // --- 派生比率 ---
   /** 退款率 = 退款金额 ÷ GMV */
   refundRate: number;
@@ -210,21 +219,58 @@ export interface Aggregate {
   roi: number;
   roiInsite: number;
   roiOffsite: number;
+  /** 利润率 = 预估利润 ÷ GMV */
+  profitRate: number;
+  /** 搜索转化率 = 搜索订单 ÷ 搜索 UV */
+  searchConversionRate: number;
 }
 
-/** 目标达成进度 */
-export interface GoalProgress {
+/** 目标达成的大区块：一个区块一行 */
+export type GoalGroup = '销售' | '费用' | '利润' | '流量';
+
+/** 目标达成表里的一行指标 */
+export interface GoalRow {
   key: string;
-  /** 「本月」「Q3」「H2」「全年」 */
+  label: string;
+  group: GoalGroup;
+  format: ValueFormat;
+  /**
+   * 是否随时间累加。
+   * 累加型（GMV、投放费）的达成率要和计划进度比；水平型（ROI）的基准永远是 100%。
+   */
+  accumulates: boolean;
+  target: number | null;
+  actual: number;
+  /**
+   * 达成率。**只有比值型指标有**（实际 ÷ 目标）。
+   * 率型指标（退款率、费比、利润率）看的是 ppDiff，不是这个。
+   */
+  attainment: number | null;
+  /** 率型指标的百分点差：实际 − 目标。比值型为 null */
+  ppDiff: number | null;
+  /** 这次表现是好是坏；没有目标时为 null */
+  good: boolean | null;
+  /** 上一个可比周期的实际值 */
+  prevActual: number | null;
+  /** 相对上一个可比周期的变化率 */
+  prevDelta: number | null;
+  /** 指标本身是越高越好还是越低越好 */
+  higherIsBetter: boolean;
+}
+
+/** 一个周期的完整达成情况 */
+export interface GoalPeriod {
+  key: string;
+  /** 「本月」「Q3」「H2」「全年」「自定义」 */
   label: string;
   /** 口径说明，如「2026 年 8 月」 */
   scope: string;
-  gmvActual: number;
-  gmvTarget: number;
-  deviceActual: number;
-  deviceTarget: number;
-  /** 时间进度：已过天数 ÷ 总天数。用来判断是超前还是落后 */
+  range: DateRange;
+  /** 上一个可比周期，用于「上期 / 环比」两列 */
+  compareRange: DateRange | null;
+  compareLabel: string;
+  /** 计划进度：按月度 GMV 目标分布加权，不是日历天数 */
   timeProgress: number;
-  /** 该周期是否已经结束 */
   finished: boolean;
+  groups: Array<{ name: GoalGroup; rows: GoalRow[] }>;
 }
