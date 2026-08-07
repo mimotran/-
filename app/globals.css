@@ -1,0 +1,158 @@
+@import 'tailwindcss';
+
+/* 深色模式：跟随系统，同时允许右上角开关用 data-theme 覆盖 */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * 设计令牌。图表颜色全部走这里的角色变量，组件里不出现裸 hex —— 明暗两套值在
+ * 一个地方切换。分类色板的顺序是经过 CVD 校验的，不要随手调换。
+ */
+:root {
+  color-scheme: light;
+
+  --surface-page: #f9f9f7;
+  --surface-1: #fcfcfb;
+
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgb(11 11 11 / 0.1);
+  --hover-wash: rgb(11 11 11 / 0.04);
+
+  /* 分类色：身份识别，按固定顺序分配，永不循环 */
+  --series-1: #2a78d6; /* 蓝 */
+  --series-2: #eb6834; /* 橙 */
+  --series-3: #1baf7a; /* 青 */
+  --series-4: #eda100; /* 黄 */
+  --series-5: #e87ba4; /* 品红 */
+  --series-6: #008300; /* 绿 */
+
+  /* 对比用的弱化色：去年同期、基线等 */
+  --series-muted: #b3b1a8;
+
+  /* 有序蓝色阶：漏斗、热力等有内在顺序的编码 */
+  --ordinal-1: #86b6ef;
+  --ordinal-2: #5598e7;
+  --ordinal-3: #2a78d6;
+  --ordinal-4: #1c5cab;
+
+  /* 状态色：只表达好坏，绝不当第 N 个系列色用 */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  --delta-up-good: #006300;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme='light'])) {
+    color-scheme: dark;
+
+    --surface-page: #0d0d0d;
+    --surface-1: #1a1a19;
+
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgb(255 255 255 / 0.1);
+    --hover-wash: rgb(255 255 255 / 0.06);
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+
+    --series-muted: #6b6a64;
+
+    --ordinal-1: #cde2fb;
+    --ordinal-2: #9ec5f4;
+    --ordinal-3: #6da7ec;
+    --ordinal-4: #3987e5;
+
+    --delta-up-good: #0ca30c;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --surface-page: #0d0d0d;
+  --surface-1: #1a1a19;
+
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgb(255 255 255 / 0.1);
+  --hover-wash: rgb(255 255 255 / 0.06);
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+
+  --series-muted: #6b6a64;
+
+  --ordinal-1: #cde2fb;
+  --ordinal-2: #9ec5f4;
+  --ordinal-3: #6da7ec;
+  --ordinal-4: #3987e5;
+
+  --delta-up-good: #0ca30c;
+}
+
+@theme inline {
+  --color-page: var(--surface-page);
+  --color-surface: var(--surface-1);
+  --color-ink: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-muted: var(--text-muted);
+  --color-grid: var(--grid);
+  --color-axis: var(--axis);
+  --color-hairline: var(--border);
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+html,
+body {
+  background: var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 图表里的坐标轴刻度、表格数字需要等宽对齐；大号数字保持比例字形 */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 切换区间时保留上一帧，只降透明度，避免骨架屏闪烁和布局跳动 */
+.dashboard-content {
+  transition: opacity 160ms ease-out;
+}
+
+body[data-pending='1'] .dashboard-content {
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
