@@ -7,34 +7,37 @@
    那套配色，换成西方惯例反而会读错。
 --------------------------------------------------------------------------- */
 :root {
-  --ground: #f2f1ec;
+  /* 底色是极淡的冷灰，不是米黄 —— 参考图的白卡片浮在灰底上，暖底会让整页发脏 */
+  --ground: #f4f4f2;
   --card: #ffffff;
-  --card-2: #fafaf8;
-  --line: #e7e6e0;
-  --line-soft: #f0efe9;
+  --card-2: #fafafa;
+  --line: #ebebe8;
+  --line-soft: #f3f3f1;
 
-  --ink: #17181a;
-  --ink-2: #6e7075;
-  --ink-3: #a0a2a7;
+  --ink: #1a1c1e;
+  --ink-2: #6b6f76;
+  --ink-3: #a6a9af;
 
-  --brand: #00c88c;
-  --sky: #56c7f2;
-  --violet: #9b6bf0;
-  --slate: #8b8d93;
-  --amber: #efb13c;
+  /* 薄荷绿主色，比之前更亮更干净；图表蓝走淡天蓝，柱子不压人 */
+  --brand: #00d69a;
+  --sky: #5bc8f5;
+  --sky-soft: #8fdaf6;
+  --violet: #a97bf2;
+  --slate: #9ea1a8;
+  --amber: #ffb45c;
 
-  --up: #e0483d;
-  --up-bg: #fdedeb;
-  --down: #00a472;
-  --down-bg: #e4f6ee;
-  --flat: #8b8d93;
-  --flat-bg: #f0efe9;
+  --up: #e5484d;
+  --up-bg: #fdeced;
+  --down: #05a97a;
+  --down-bg: #e3f8f0;
+  --flat: #9ea1a8;
+  --flat-bg: #f3f3f1;
 
-  --pill-on: #17181a;
+  --pill-on: #1a1c1e;
   --pill-on-ink: #ffffff;
 
-  --shadow: 0 1px 2px rgb(23 24 26 / .04), 0 8px 24px -12px rgb(23 24 26 / .10);
-  --radius: 14px;
+  --shadow: 0 1px 2px rgb(26 28 30 / .03), 0 6px 20px -14px rgb(26 28 30 / .16);
+  --radius: 16px;
 
   --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
           "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
@@ -42,67 +45,73 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ground: #121315;
-    --card: #1b1d20;
-    --card-2: #212328;
-    --line: #2c2f34;
-    --line-soft: #24272b;
+    --ground: #131416;
+    --card: #1c1e21;
+    --card-2: #222428;
+    --line: #2d3035;
+    --line-soft: #25282c;
 
-    --ink: #f4f4f5;
-    --ink-2: #a7a9af;
-    --ink-3: #74767c;
+    --ink: #f2f3f4;
+    --ink-2: #a4a8ae;
+    --ink-3: #71757b;
 
-    --brand: #1ed69c;
-    --sky: #63cdf5;
-    --violet: #a97cf5;
-    --slate: #9a9ca2;
-    --amber: #f0bb54;
+    --brand: #21dea6;
+    --sky: #6bcef6;
+    --sky-soft: #4fb4dd;
+    --violet: #b48bf5;
+    --slate: #9ea1a8;
+    --amber: #ffbe6e;
 
-    --up: #ff6b5e;
-    --up-bg: #3a1f1d;
-    --down: #21bd88;
-    --down-bg: #10322a;
-    --flat: #9a9ca2;
+    --up: #ff6b6f;
+    --up-bg: #3b1f21;
+    --down: #16c391;
+    --down-bg: #0e332a;
+    --flat: #9ea1a8;
     --flat-bg: #26292e;
 
-    --pill-on: #f4f4f5;
-    --pill-on-ink: #17181a;
+    --pill-on: #f2f3f4;
+    --pill-on-ink: #1a1c1e;
 
-    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px -12px rgb(0 0 0 / .6);
+    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 6px 20px -14px rgb(0 0 0 / .7);
   }
 }
 
 :root[data-theme="dark"] {
-  --ground: #121315;
-  --card: #1b1d20;
-  --card-2: #212328;
-  --line: #2c2f34;
-  --line-soft: #24272b;
+  --ground: #131416;
+  --card: #1c1e21;
+  --card-2: #222428;
+  --line: #2d3035;
+  --line-soft: #25282c;
 
-  --ink: #f4f4f5;
-  --ink-2: #a7a9af;
-  --ink-3: #74767c;
+  --ink: #f2f3f4;
+  --ink-2: #a4a8ae;
+  --ink-3: #71757b;
 
-  --brand: #1ed69c;
-  --sky: #63cdf5;
-  --violet: #a97cf5;
-  --slate: #9a9ca2;
-  --amber: #f0bb54;
+  --brand: #21dea6;
+  --sky: #6bcef6;
+  --sky-soft: #4fb4dd;
+  --violet: #b48bf5;
+  --slate: #9ea1a8;
+  --amber: #ffbe6e;
 
-  --up: #ff6b5e;
-  --up-bg: #3a1f1d;
-  --down: #21bd88;
-  --down-bg: #10322a;
-  --flat: #9a9ca2;
+  --up: #ff6b6f;
+  --up-bg: #3b1f21;
+  --down: #16c391;
+  --down-bg: #0e332a;
+  --flat: #9ea1a8;
   --flat-bg: #26292e;
 
-  --pill-on: #f4f4f5;
-  --pill-on-ink: #17181a;
+  --pill-on: #f2f3f4;
+  --pill-on-ink: #1a1c1e;
 
-  --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px -12px rgb(0 0 0 / .6);
+  --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 6px 20px -14px rgb(0 0 0 / .7);
 }
 
 * { box-sizing: border-box; }
+
+/* UA 的 [hidden]{display:none} 优先级低于 .kpis{display:grid} 这类作者规则，
+   不显式压一层的话，加了 hidden 的元素照样显示出来 */
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -179,6 +188,7 @@ body {
   background: var(--card); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow);
 }
+.kpi, .goal, .hero-card { border-radius: 14px; }
 .card-pad { padding: 18px 20px; }
 
 .card-head {
@@ -210,8 +220,8 @@ body {
 .hero-label { font-size: 13px; font-weight: 600; }
 .hero-scope { font-size: 11.5px; color: var(--ink-3); }
 .hero-figure { margin: 14px 0 0; display: flex; align-items: baseline; gap: 3px; }
-.hero-num { font-size: 40px; font-weight: 500; letter-spacing: -.025em; line-height: 1; }
-.hero-unit { font-size: 14px; color: var(--ink-2); font-weight: 500; }
+.hero-num { font-size: 29px; font-weight: 600; letter-spacing: -.02em; line-height: 1.05; }
+.hero-unit { font-size: 12.5px; color: var(--ink-3); font-weight: 500; }
 .hero-sub { margin-top: 8px; font-size: 12.5px; color: var(--ink-2); }
 .hero-pills { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
 .hero-note { margin-top: auto; padding-top: 10px; font-size: 11.5px; color: var(--ink-3); }
@@ -236,7 +246,7 @@ body {
   font-size: 11px; font-weight: 600; color: var(--ink-3);
   letter-spacing: .12em; display: block; margin-bottom: 2px;
 }
-.section-title { font-size: 21px; font-weight: 600; margin: 0; letter-spacing: -.02em; }
+.section-title { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -.015em; }
 .section-desc { font-size: 12.5px; color: var(--ink-2); margin: 6px 0 0; max-width: 66ch; }
 
 /* --- 分段控件 ------------------------------------------------------------ */
@@ -263,8 +273,8 @@ body {
 .kpi { padding: 14px 16px; }
 .kpi-label { font-size: 12px; color: var(--ink-2); }
 .kpi-val { margin-top: 5px; display: flex; align-items: baseline; gap: 3px; }
-.kpi-num { font-size: 25px; font-weight: 500; letter-spacing: -.02em; line-height: 1.1; }
-.kpi-unit { font-size: 12px; color: var(--ink-2); }
+.kpi-num { font-size: 19px; font-weight: 600; letter-spacing: -.015em; line-height: 1.15; }
+.kpi-unit { font-size: 11.5px; color: var(--ink-3); }
 .kpi-foot { margin-top: 9px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .kpi-spark { margin-top: 8px; height: 26px; }
 .kpi-cmp { font-size: 11px; color: var(--ink-3); }
@@ -278,7 +288,7 @@ body {
 .goal-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .goal-name { font-size: 13.5px; font-weight: 600; }
 .goal-scope { font-size: 11px; color: var(--ink-3); margin-left: 6px; font-weight: 400; }
-.goal-rate { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.goal-rate { font-size: 14.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .goal-nums { margin-top: 4px; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .goal-nums span { color: var(--ink-3); }
 .track {
@@ -346,7 +356,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 620px)  { .lines { grid-template-columns: repeat(2, 1fr); } }
 .line-card { border: 1px solid var(--line); border-radius: 11px; padding: 12px 13px; }
 .line-name { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
-.line-num { margin-top: 5px; font-size: 18px; font-weight: 500; letter-spacing: -.02em; }
+.line-num { margin-top: 5px; font-size: 15px; font-weight: 600; letter-spacing: -.015em; }
 .line-meta { margin-top: 3px; font-size: 11.5px; color: var(--ink-3); }
 
 /* --- 响应式 --------------------------------------------------------------
@@ -368,7 +378,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 620px) {
   .wrap { padding: 16px 14px 56px; }
   .freshness .live { display: none; }
-  .hero-num { font-size: 34px; }
+  .hero-num { font-size: 26px; }
   .section-title { font-size: 19px; }
   .glance { padding: 12px 16px; }
   .card-pad { padding: 15px 16px; }
@@ -381,13 +391,16 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .footnote b { color: var(--ink-2); font-weight: 600; }
 .banner {
-  display: flex; gap: 10px; align-items: flex-start;
-  padding: 12px 16px; border-radius: 10px; margin-bottom: 16px;
-  background: color-mix(in srgb, var(--amber) 12%, var(--card));
-  border: 1px solid color-mix(in srgb, var(--amber) 34%, transparent);
-  font-size: 12.5px; color: var(--ink-2);
+  display: flex; gap: 9px; align-items: flex-start;
+  padding: 10px 16px; border-radius: 10px; margin-bottom: 14px;
+  background: var(--card); border: 1px solid var(--line);
+  font-size: 12px; color: var(--ink-2); line-height: 1.6;
 }
-.banner b { color: var(--ink); }
+.banner b { color: var(--ink); font-weight: 600; }
+.banner-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--amber);
+  flex-shrink: 0; margin-top: 7px;
+}
 </style>
 
 <header class="topbar">
@@ -630,7 +643,21 @@ function pill(label, rate) {
 }
 
 const $ = (id) => document.getElementById(id);
-const CH = { brand: 'var(--brand)', sky: 'var(--sky)', violet: 'var(--violet)', slate: 'var(--slate)', amber: 'var(--amber)' };
+
+/**
+ * 取整的刻度上界。
+ * 直接用 max*1.08 会得到「8.97万 / 6.73万」这种刻度，读数时要在心里换算；
+ * 归到 1 / 2 / 2.5 / 5 × 10^n 上，刻度就成了「9万 / 6万 / 3万」。
+ */
+function niceScale(max, ticks) {
+  if (!(max > 0)) return { max: 1, step: 1 / ticks };
+  const raw = max / ticks;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / mag;
+  const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+  return { max: step * ticks, step };
+}
+const CH = { brand: 'var(--brand)', sky: 'var(--sky)', skySoft: 'var(--sky-soft)', violet: 'var(--violet)', slate: 'var(--slate)', amber: 'var(--amber)' };
 const LINE_COLORS = [CH.brand, CH.sky, CH.violet, CH.amber, CH.slate];
 
 // --- 顶栏 -----------------------------------------------------------------
@@ -697,8 +724,8 @@ const wk = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'
 $('asof').textContent = `数据截至 ${DATA.latestDate}（${wk}）`;
 
 $('srcbanner').innerHTML = DATA.source === 'mock'
-  ? `<span aria-hidden="true">▲</span><div>当前展示的是<b>演示数据</b>，不是真实经营数据 —— 量级照着真实店铺生成（客单价 ~1,300、客退率 ~29%、投放费率 ~6.7%、站内 ROI ~18），接上飞书后布局不会变。<b>拿演示数据开经营会是要出事的，所以这条提示不做成可关闭的。</b></div>`
-  : `<span aria-hidden="true">●</span><div>数据源：<b>${esc(DATA.source)}</b>，最近同步 ${esc(DATA.syncedAt.slice(0, 16).replace('T', ' '))}。</div>`;
+  ? `<span class="banner-dot" aria-hidden="true"></span><div>当前展示的是<b>演示数据</b>，不是真实经营数据 —— 量级照着真实店铺生成（客单价 ~1,300、客退率 ~29%、投放费率 ~6.7%、站内 ROI ~18），接上飞书后布局不会变。<b>拿演示数据开经营会是要出事的，所以这条提示不做成可关闭的。</b></div>`
+  : `<span class="banner-dot" aria-hidden="true" style="background:var(--brand)"></span><div>数据源：<b>${esc(DATA.source)}</b>，最近同步 ${esc(DATA.syncedAt.slice(0, 16).replace('T', ' '))}。</div>`;
 
 // --- 速览 -----------------------------------------------------------------
 (function () {
@@ -915,7 +942,8 @@ function barChart(el, pts, pick, opts) {
   const o = Object.assign({ format: 'currency', ma: 7, height: 260 }, opts || {});
   const W = 1000, H = o.height, M = { t: 16, r: 16, b: 26, l: 54 };
   const vals = pts.map(pick);
-  const max = Math.max(...vals, 1) * 1.08;
+  const ticks = 4;
+  const max = niceScale(Math.max(...vals, 1), ticks).max;
   const pw = W - M.l - M.r, ph = H - M.t - M.b;
   const bw = Math.max(2, (pw / pts.length) * 0.62);
   const cx = (i) => M.l + (i + 0.5) * (pw / pts.length);
@@ -930,7 +958,7 @@ function barChart(el, pts, pick, opts) {
   const maPath = ma.map((v, i) => v === null ? null : `${cx(i).toFixed(1)},${yy(v).toFixed(1)}`)
     .filter(Boolean).map((p, i) => (i ? 'L' : 'M') + p).join('');
 
-  const ticks = 4, gridY = [];
+  const gridY = [];
   for (let i = 0; i <= ticks; i++) {
     const v = (max / ticks) * i;
     gridY.push(`<line x1="${M.l}" x2="${W - M.r}" y1="${yy(v).toFixed(1)}" y2="${yy(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
@@ -942,14 +970,14 @@ function barChart(el, pts, pick, opts) {
 
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px" role="img" aria-label="${esc(o.label || '趋势')}">
       ${gridY.join('')}
-      ${pts.map((p, i) => `<rect x="${(cx(i) - bw / 2).toFixed(1)}" y="${yy(vals[i]).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, M.t + ph - yy(vals[i])).toFixed(1)}" rx="2" fill="${o.color || CH.sky}" opacity=".92"/>`).join('')}
+      ${pts.map((p, i) => `<rect x="${(cx(i) - bw / 2).toFixed(1)}" y="${yy(vals[i]).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, M.t + ph - yy(vals[i])).toFixed(1)}" rx="2" fill="${o.color || CH.skySoft}"/>`).join('')}
       ${maPath ? `<path d="${maPath}" fill="none" stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity=".8"/>` : ''}
       <line class="cursor" x1="0" x2="0" y1="${M.t}" y2="${M.t + ph}" stroke="var(--ink)" stroke-width="1" opacity="0"/>
       ${xlab}
     </svg><div class="tip"></div>`;
 
   hookTip(el, pts, (i) => {
-    const rows = [`<div class="tip-row"><span class="tip-dot" style="background:${o.color || CH.sky}"></span><span class="tip-name">${esc(o.label || '值')}</span><span class="tip-val">${fmtExact(vals[i], o.format)}</span></div>`];
+    const rows = [`<div class="tip-row"><span class="tip-dot" style="background:${o.color || CH.skySoft}"></span><span class="tip-name">${esc(o.label || '值')}</span><span class="tip-val">${fmtExact(vals[i], o.format)}</span></div>`];
     if (ma[i] !== null) rows.push(`<div class="tip-row"><span class="tip-dot" style="background:var(--ink)"></span><span class="tip-name">7 日均值</span><span class="tip-val">${fmtExact(ma[i], o.format)}</span></div>`);
     return rows.join('');
   }, W, M, pw);
@@ -960,12 +988,13 @@ function lineChart(el, pts, series, opts) {
   const o = Object.assign({ format: 'currency', height: 250 }, opts || {});
   const W = 1000, H = o.height, M = { t: 16, r: 16, b: 26, l: 54 };
   const all = series.flatMap((s) => pts.map(s.pick));
-  const max = Math.max(...all, 0.0001) * 1.08;
+  const ticks = 4;
+  const max = niceScale(Math.max(...all, 0.0001), ticks).max;
   const pw = W - M.l - M.r, ph = H - M.t - M.b;
   const cx = (i) => M.l + (pts.length === 1 ? pw / 2 : (i * pw) / (pts.length - 1));
   const yy = (v) => M.t + ph - (v / max) * ph;
 
-  const ticks = 4, grid = [];
+  const grid = [];
   for (let i = 0; i <= ticks; i++) {
     const v = (max / ticks) * i;
     grid.push(`<line x1="${M.l}" x2="${W - M.r}" y1="${yy(v).toFixed(1)}" y2="${yy(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
@@ -1010,10 +1039,10 @@ function hookTip(el, pts, rows, W, M, pw) {
 
 // --- 店铺趋势 --------------------------------------------------------------
 const STORE_METRICS = [
-  { k: 'gmv', label: 'GMV', format: 'currency', color: CH.sky },
+  { k: 'gmv', label: 'GMV', format: 'currency', color: CH.skySoft },
   { k: 'deviceSales', label: '主机销量', format: 'integer', color: CH.brand },
   { k: 'refundRate', label: '退款率', format: 'percent', color: CH.violet },
-  { k: 'uv', label: 'UV', format: 'integer', color: CH.amber },
+  { k: 'uv', label: 'UV', format: 'integer', color: CH.skySoft },
 ];
 const RANGES = [[7, '近 7 天'], [30, '近 30 天'], [90, '近 90 天']];
 let storeMetric = 0, storeRange = 30;
