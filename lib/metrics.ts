@@ -306,39 +306,59 @@ export interface GoalMetricDef {
   format: ValueFormat;
   pick: (a: Aggregate) => number;
   higherIsBetter: boolean;
-  /** 率型：用 pp 差而不是达成率 */
-  rate?: boolean;
+  /**
+   * 这一行的「率」搭档。
+   *
+   * 投放费和费比是同一件事的两种看法，拆成两行会让人来回对照 ——
+   * 合成一行，右边多给「目标% / 实际% / 费率差」三列，
+   * 和飞书 OKR 表的排版一致。
+   */
+  rateKey?: string;
   /**
    * 跨月合并目标的方式。
    * 绝对量直接按天摊后相加；率和 ROI 不能相加，要按各自的分母加权 ——
    * 把 11 月和 2 月的 ROI 目标简单平均，等于假设两个月投一样多钱。
    */
   weightBy?: string;
+  /** 重点指标，表格里左侧加一道色条 */
+  emphasis?: boolean;
 }
+
+/** 率搭档的定义：只用来取值和加权，不单独成行 */
+interface RateCompanion {
+  pick: (a: Aggregate) => number;
+  higherIsBetter: boolean;
+  weightBy: string;
+}
+
+const RATE_COMPANIONS: Record<string, RateCompanion> = {
+  refundRate: { pick: (a) => a.refundRate, higherIsBetter: false, weightBy: 'gmv' },
+  adCostRateInsite: { pick: (a) => a.adCostRateInsite, higherIsBetter: false, weightBy: 'gmv' },
+  adCostRateOffsite: { pick: (a) => a.adCostRateOffsite, higherIsBetter: false, weightBy: 'gmv' },
+  adCostRate: { pick: (a) => a.adCostRate, higherIsBetter: false, weightBy: 'gmv' },
+  profitRate: { pick: (a) => a.profitRate, higherIsBetter: true, weightBy: 'gmv' },
+  searchConversionRate: { pick: (a) => a.searchConversionRate, higherIsBetter: true, weightBy: 'searchUv' },
+};
 
 export const GOAL_METRICS: GoalMetricDef[] = [
   // --- 销售 ---
-  { key: 'gmv', label: 'GMV', group: '销售', format: 'currency', pick: (a) => a.gmv, higherIsBetter: true },
+  { key: 'gmv', label: 'GMV', group: '销售', format: 'currency', pick: (a) => a.gmv, higherIsBetter: true, emphasis: true },
   { key: 'deviceSales', label: '销量', group: '销售', format: 'integer', pick: (a) => a.deviceSales, higherIsBetter: true },
-  { key: 'refundRate', label: '退款率', group: '销售', format: 'percent', pick: (a) => a.refundRate, higherIsBetter: false, rate: true, weightBy: 'gmv' },
+  { key: 'refund', label: '退款金额', group: '销售', format: 'currency', pick: (a) => a.refund, higherIsBetter: false, rateKey: 'refundRate' },
 
   // --- 费用 ---
-  { key: 'adCostInsite', label: '站内投放费', group: '费用', format: 'currency', pick: (a) => a.adCostInsite, higherIsBetter: false },
+  { key: 'adCostInsite', label: '站内投放费', group: '费用', format: 'currency', pick: (a) => a.adCostInsite, higherIsBetter: false, rateKey: 'adCostRateInsite' },
   { key: 'roiInsite', label: '站内 ROI', group: '费用', format: 'multiple', pick: (a) => a.roiInsite, higherIsBetter: true, weightBy: 'adCostInsite' },
-  { key: 'adCostRateInsite', label: '站内费比', group: '费用', format: 'percent', pick: (a) => a.adCostRateInsite, higherIsBetter: false, rate: true, weightBy: 'gmv' },
-  { key: 'adCostOffsite', label: '站外投放费', group: '费用', format: 'currency', pick: (a) => a.adCostOffsite, higherIsBetter: false },
+  { key: 'adCostOffsite', label: '站外投放费', group: '费用', format: 'currency', pick: (a) => a.adCostOffsite, higherIsBetter: false, rateKey: 'adCostRateOffsite' },
   { key: 'roiOffsite', label: '站外 ROI', group: '费用', format: 'multiple', pick: (a) => a.roiOffsite, higherIsBetter: true, weightBy: 'adCostOffsite' },
-  { key: 'adCostRateOffsite', label: '站外费比', group: '费用', format: 'percent', pick: (a) => a.adCostRateOffsite, higherIsBetter: false, rate: true, weightBy: 'gmv' },
-  { key: 'adCost', label: '总投放费', group: '费用', format: 'currency', pick: (a) => a.adCost, higherIsBetter: false },
-  { key: 'adCostRate', label: '总费比', group: '费用', format: 'percent', pick: (a) => a.adCostRate, higherIsBetter: false, rate: true, weightBy: 'gmv' },
+  { key: 'adCost', label: '总投放费', group: '费用', format: 'currency', pick: (a) => a.adCost, higherIsBetter: false, rateKey: 'adCostRate', emphasis: true },
 
   // --- 利润 ---
-  { key: 'grossProfit', label: '利润（预估）', group: '利润', format: 'currency', pick: (a) => a.grossProfit, higherIsBetter: true },
-  { key: 'profitRate', label: '利润率（GMV）', group: '利润', format: 'percent', pick: (a) => a.profitRate, higherIsBetter: true, rate: true, weightBy: 'gmv' },
+  { key: 'grossProfit', label: '利润（预估）', group: '利润', format: 'currency', pick: (a) => a.grossProfit, higherIsBetter: true, rateKey: 'profitRate', emphasis: true },
 
   // --- 流量 ---
   { key: 'searchUv', label: '搜索 UV', group: '流量', format: 'integer', pick: (a) => a.searchUv, higherIsBetter: true },
-  { key: 'searchConversionRate', label: '搜索转化率', group: '流量', format: 'percent', pick: (a) => a.searchConversionRate, higherIsBetter: true, rate: true, weightBy: 'searchUv' },
+  { key: 'searchOrders', label: '搜索订单', group: '流量', format: 'integer', pick: (a) => a.searchOrders, higherIsBetter: true, rateKey: 'searchConversionRate' },
 ];
 
 const GOAL_GROUP_ORDER: GoalGroup[] = ['销售', '费用', '利润', '流量'];
@@ -372,31 +392,36 @@ export function targetsForRange(targets: Target[], range: DateRange): Record<str
     const ratio = monthOverlap(range, cursor);
     if (ratio <= 0) continue;
 
+    // 主指标 + 率搭档一起处理：率搭档同样不能相加，要按分母加权
+    const entries: Array<{ key: string; weightBy?: string }> = [];
     for (const metric of GOAL_METRICS) {
-      const value = target.values[metric.key];
+      entries.push({ key: metric.key, weightBy: metric.weightBy });
+      if (metric.rateKey) {
+        entries.push({ key: metric.rateKey, weightBy: RATE_COMPANIONS[metric.rateKey]?.weightBy });
+      }
+    }
+
+    for (const entry of entries) {
+      const value = target.values[entry.key];
       if (value === undefined) continue;
 
-      if (metric.weightBy) {
-        const weight = (target.values[metric.weightBy] ?? 0) * ratio;
+      if (entry.weightBy) {
+        const weight = (target.values[entry.weightBy] ?? 0) * ratio;
         if (weight <= 0) continue;
-        const acc = weighted[metric.key] ?? { num: 0, den: 0 };
+        const acc = weighted[entry.key] ?? { num: 0, den: 0 };
         acc.num += value * weight;
         acc.den += weight;
-        weighted[metric.key] = acc;
+        weighted[entry.key] = acc;
       } else {
-        sums[metric.key] = (sums[metric.key] ?? 0) + value * ratio;
+        sums[entry.key] = (sums[entry.key] ?? 0) + value * ratio;
       }
     }
   }
 
   const out: Record<string, number | null> = {};
-  for (const metric of GOAL_METRICS) {
-    if (metric.weightBy) {
-      const acc = weighted[metric.key];
-      out[metric.key] = acc && acc.den > 0 ? acc.num / acc.den : null;
-    } else {
-      out[metric.key] = sums[metric.key] ?? null;
-    }
+  for (const key of new Set([...Object.keys(sums), ...Object.keys(weighted)])) {
+    const acc = weighted[key];
+    out[key] = acc ? (acc.den > 0 ? acc.num / acc.den : null) : (sums[key] ?? null);
   }
   return out;
 }
@@ -454,46 +479,50 @@ function buildGoalRows(
 
   const rows: GoalRow[] = GOAL_METRICS.map((metric) => {
     const actualValue = metric.pick(actual);
-    const targetValue = target[metric.key];
+    const targetValue = target[metric.key] ?? null;
 
     let attainment: number | null = null;
-    let ppDiff: number | null = null;
     let good: boolean | null = null;
 
-    if (targetValue !== null && targetValue !== undefined) {
-      if (metric.rate) {
-        // 率型：看百分点差。退款率超了 3.4 个点，比「达成率 112.9%」有用得多
-        ppDiff = actualValue - targetValue;
-        good = metric.higherIsBetter ? ppDiff >= 0 : ppDiff <= 0;
-      } else if (targetValue !== 0) {
-        attainment = actualValue / targetValue;
-        /**
-         * 基准分两种，取决于这个指标会不会随时间累加：
-         *
-         * 累加型（GMV、投放费、利润、搜索 UV）→ 基准是**计划进度**。
-         *   8 月 6 号完成全月目标的 19% 是正常的，拿 100% 当基准会把每个月初都判成灾难。
-         *
-         * 水平型（ROI）→ 基准是 **100%**。
-         *   ROI 是个比值，不随时间累积；「ROI 达成 85%」就是没做到，
-         *   和月初月末没关系。用 weightBy 区分：需要加权合并的就是水平型。
-         */
-        const bar = metric.weightBy ? 1 : finished ? 1 : pace;
-        good = metric.higherIsBetter ? attainment >= bar - 0.02 : attainment <= bar + 0.02;
-      }
+    if (targetValue !== null && targetValue !== 0) {
+      attainment = actualValue / targetValue;
+      /**
+       * 基准分两种，取决于这个指标会不会随时间累加：
+       *
+       * 累加型（GMV、投放费、利润、搜索 UV）→ 基准是**计划进度**。
+       *   8 月 6 号完成全月目标的 19% 是正常的，拿 100% 当基准会把每个月初都判成灾难。
+       *
+       * 水平型（ROI）→ 基准是 **100%**。
+       *   ROI 是个比值，不随时间累积；「ROI 达成 85%」就是没做到，和月初月末无关。
+       */
+      const bar = metric.weightBy ? 1 : finished ? 1 : pace;
+      good = metric.higherIsBetter ? attainment >= bar - 0.02 : attainment <= bar + 0.02;
     }
+
+    // 率搭档：同一行右侧多给「目标% / 实际% / 费率差」三列
+    const companion = metric.rateKey ? RATE_COMPANIONS[metric.rateKey] : undefined;
+    const rateActual = companion ? companion.pick(actual) : null;
+    const rateTarget = metric.rateKey ? (target[metric.rateKey] ?? null) : null;
+    const ppDiff = rateActual !== null && rateTarget !== null ? rateActual - rateTarget : null;
+    const rateGood =
+      ppDiff === null || !companion ? null : companion.higherIsBetter ? ppDiff >= 0 : ppDiff <= 0;
 
     return {
       key: metric.key,
       label: metric.label,
       group: metric.group,
       format: metric.format,
+      emphasis: metric.emphasis === true,
       // 会随时间累加的指标才适合画「计划进度」刻度；ROI 是水平值，画了会误导
-      accumulates: !metric.rate && !metric.weightBy,
-      target: targetValue ?? null,
+      accumulates: !metric.weightBy,
+      target: targetValue,
       actual: actualValue,
       attainment,
-      ppDiff,
       good,
+      rateTarget,
+      rateActual,
+      ppDiff,
+      rateGood,
       prevActual: hasCompare ? metric.pick(previous) : null,
       prevDelta: delta(actualValue, metric.pick(previous), hasCompare),
       higherIsBetter: metric.higherIsBetter,
@@ -554,8 +583,8 @@ export function buildGoals(
   periods.push(
     make(
       monthKey(latest),
-      '本月',
-      `${y} 年 ${Number(latest.slice(5, 7))} 月`,
+      'MTD',
+      `${Number(latest.slice(5, 7))} 月 · 当月 1 日至最新`,
       { from: startOfMonth(latest), to: endOfMonth(latest) },
       { from: startOfMonth(prevMonthSameDay), to: prevMonthSameDay },
       '上月同期',
@@ -569,8 +598,8 @@ export function buildGoals(
   periods.push(
     make(
       `${y}-Q${quarter}`,
-      `Q${quarter}`,
-      `${quarter * 3 - 2}–${quarter * 3} 月`,
+      'QTD',
+      `Q${quarter}（${quarter * 3 - 2}–${quarter * 3} 月）· 当季首日至最新`,
       { from: qFrom, to: qTo },
       { from: addMonths(qFrom, -3), to: prevQuarterSameDay },
       '上季同期',
@@ -583,8 +612,8 @@ export function buildGoals(
   periods.push(
     make(
       `${y}-H${half}`,
-      `H${half}`,
-      half === 1 ? '1–6 月' : '7–12 月',
+      `H${half}TD`,
+      `H${half}（${half === 1 ? '1–6' : '7–12'} 月）· 半年首日至最新`,
       { from: hFrom, to: hTo },
       { from: addMonths(hFrom, -6), to: addMonths(latest, -6) },
       '上半年同期',
@@ -595,8 +624,8 @@ export function buildGoals(
   periods.push(
     make(
       y,
-      '全年',
-      `${y} 年`,
+      'YTD',
+      `${y} 年 · 年初至最新`,
       { from: `${y}-01-01`, to: `${y}-12-31` },
       { from: `${Number(y) - 1}-01-01`, to: addYears(latest, -1) },
       '去年同期',

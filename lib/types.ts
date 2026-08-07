@@ -228,12 +228,19 @@ export interface Aggregate {
 /** 目标达成的大区块：一个区块一行 */
 export type GoalGroup = '销售' | '费用' | '利润' | '流量';
 
-/** 目标达成表里的一行指标 */
+/**
+ * 目标达成表里的一行。
+ *
+ * 一行 = 一个指标的绝对值，外加（可选的）率搭档。投放费和费比是同一件事的
+ * 两种看法，拆成两行会让人来回对照，所以合成一行、右侧多给三列。
+ */
 export interface GoalRow {
   key: string;
   label: string;
   group: GoalGroup;
   format: ValueFormat;
+  /** 重点指标，表格里左侧加一道色条 */
+  emphasis: boolean;
   /**
    * 是否随时间累加。
    * 累加型（GMV、投放费）的达成率要和计划进度比；水平型（ROI）的基准永远是 100%。
@@ -241,15 +248,18 @@ export interface GoalRow {
   accumulates: boolean;
   target: number | null;
   actual: number;
-  /**
-   * 达成率。**只有比值型指标有**（实际 ÷ 目标）。
-   * 率型指标（退款率、费比、利润率）看的是 ppDiff，不是这个。
-   */
+  /** 达成度 = 实际 ÷ 目标 */
   attainment: number | null;
-  /** 率型指标的百分点差：实际 − 目标。比值型为 null */
-  ppDiff: number | null;
   /** 这次表现是好是坏；没有目标时为 null */
   good: boolean | null;
+  /** 率搭档的目标值，如「站内费比目标 2.61%」 */
+  rateTarget: number | null;
+  /** 率搭档的实际值 */
+  rateActual: number | null;
+  /** 费率差 = 实际% − 目标%，单位是百分点 */
+  ppDiff: number | null;
+  /** 费率差是好是坏 */
+  rateGood: boolean | null;
   /** 上一个可比周期的实际值 */
   prevActual: number | null;
   /** 相对上一个可比周期的变化率 */

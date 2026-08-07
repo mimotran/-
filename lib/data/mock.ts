@@ -394,6 +394,10 @@ function buildTargets(daily: DailyMetric[], rand: () => number): Target[] {
       };
       values.adCost = values.adCostInsite + values.adCostOffsite;
       values.adCostRate = round4(values.adCost / Math.max(1, values.gmv));
+      // 绝对值目标要和率目标自洽：退款金额 = GMV 目标 × 退款率目标，
+      // 两边各定一个会在表里出现「达成度和费率差互相矛盾」
+      values.refund = Math.round((values.gmv * values.refundRate) / 1000) * 1000;
+      values.searchOrders = Math.round(values.searchUv * values.searchConversionRate);
 
       monthly.push({ period: 'month', key, values });
     }
@@ -410,6 +414,8 @@ function buildTargets(daily: DailyMetric[], rand: () => number): Target[] {
         deviceSales: Math.round((sum('deviceSales') * 1.04) / 100) * 100,
         grossProfit: Math.round((sum('grossProfit') * 1.04) / 100000) * 100000,
         searchUv: Math.round((sum('searchUv') * 1.04) / 1000) * 1000,
+        refund: Math.round((sum('refund') * 1.04) / 10000) * 10000,
+        searchOrders: Math.round(sum('searchOrders') * 1.04),
       },
     });
   }
