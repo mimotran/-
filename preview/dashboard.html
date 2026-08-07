@@ -155,7 +155,14 @@ body {
   transition: color .15s, background .15s;
 }
 .navtab:hover { color: var(--ink); background: var(--line-soft); }
-.navtab[aria-current="true"] { color: var(--ink); font-weight: 600; }
+.navtab[aria-selected="true"] {
+  color: var(--ink); font-weight: 600; background: none;
+}
+.navtab[aria-selected="true"]::after {
+  content: ""; display: block; height: 2px; border-radius: 2px;
+  background: var(--ink); margin: 5px -2px -8px;
+}
+.navtab { position: relative; }
 
 .freshness {
   margin-left: auto; display: flex; align-items: center; gap: 12px;
@@ -219,7 +226,8 @@ body {
 .pill b { font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* --- 分区 --------------------------------------------------------------- */
-.section { scroll-margin-top: 74px; margin-top: 38px; }
+.section { margin-top: 30px; }
+.section[hidden] { display: none; }
 .section-head {
   display: flex; align-items: flex-end; justify-content: space-between;
   gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
@@ -630,21 +638,60 @@ const SECTIONS = [
   ['sec-goal', '目标达成'], ['sec-store', '店铺整体'], ['sec-insite', '站内投放'],
   ['sec-offsite', '站外投放'], ['sec-product', '产品'], ['sec-traffic', '流量'],
 ];
-$('navtabs').innerHTML = SECTIONS.map(([id, name]) =>
-  `<button class="navtab" data-target="${id}">${name}</button>`).join('');
-$('navtabs').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-target]');
-  if (b) document.getElementById(b.dataset.target).scrollIntoView({ behavior: 'smooth', block: 'start' });
+/**
+ * 板块切换：一次只显示一个，只能点标签切换，不做滚动浏览。
+ * 速览和概览四卡固定在上方不参与切换 —— 昨日 / MTD / 年累计 是所有板块的共同背景，
+ * 切到「站内投放」时如果连大盘都看不见，ROI 的高低就没有参照了。
+ */
+const nav = $('navtabs');
+nav.setAttribute('role', 'tablist');
+nav.innerHTML = SECTIONS.map(([id, name], i) =>
+  `<button class="navtab" role="tab" id="tab-${id}" aria-controls="${id}"
+     aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-target="${id}">${name}</button>`).join('');
+
+SECTIONS.forEach(([id], i) => {
+  const sec = document.getElementById(id);
+  sec.setAttribute('role', 'tabpanel');
+  sec.setAttribute('aria-labelledby', `tab-${id}`);
+  sec.tabIndex = 0;
+  sec.hidden = i !== 0;
 });
-// 滚动到哪个板块，顶栏就高亮哪个
-const obs = new IntersectionObserver((entries) => {
-  entries.forEach((en) => {
-    if (!en.isIntersecting) return;
-    document.querySelectorAll('#navtabs .navtab').forEach((b) =>
-      b.setAttribute('aria-current', String(b.dataset.target === en.target.id)));
+
+function showSection(id, { focusTab = false, scroll = true } = {}) {
+  if (!SECTIONS.some(([s]) => s === id)) return;
+  SECTIONS.forEach(([s]) => { document.getElementById(s).hidden = s !== id; });
+  nav.querySelectorAll('.navtab').forEach((b) => {
+    const on = b.dataset.target === id;
+    b.setAttribute('aria-selected', String(on));
+    b.tabIndex = on ? 0 : -1;
+    if (on && focusTab) b.focus();
   });
-}, { rootMargin: '-70px 0px -65% 0px' });
-SECTIONS.forEach(([id]) => obs.observe(document.getElementById(id)));
+  if (history.replaceState) history.replaceState(null, '', '#' + id);
+  // 切换后回到顶部：新板块的第一屏才是重点，停在半截高度上会让人以为内容没变
+  if (scroll) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+nav.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-target]');
+  if (b) showSection(b.dataset.target);
+});
+
+// 键盘操作：左右方向键在标签之间移动，Home / End 跳到首尾
+nav.addEventListener('keydown', (e) => {
+  const keys = { ArrowLeft: -1, ArrowRight: 1, Home: 'first', End: 'last' };
+  if (!(e.key in keys)) return;
+  e.preventDefault();
+  const cur = SECTIONS.findIndex(([s]) => s === document.activeElement.dataset?.target);
+  if (cur < 0) return;
+  const step = keys[e.key];
+  const next = step === 'first' ? 0 : step === 'last' ? SECTIONS.length - 1
+    : (cur + step + SECTIONS.length) % SECTIONS.length;
+  showSection(SECTIONS[next][0], { focusTab: true, scroll: false });
+});
+
+// 支持带 #sec-xxx 的链接直接打开对应板块
+const initial = location.hash.replace('#', '');
+if (initial) showSection(initial, { scroll: false });
 
 const wk = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(DATA.latestDate + 'T00:00:00Z').getUTCDay()];
 $('asof').textContent = `数据截至 ${DATA.latestDate}（${wk}）`;
