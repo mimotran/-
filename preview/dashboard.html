@@ -427,6 +427,31 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
 /* 精确值压一档：紧凑值负责一眼读出量级，精确值负责能抄进 Excel，主次要分开 */
 .tip-exact { font-weight: 400; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .tip-mom { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* --- 区间滑块 -------------------------------------------------------------
+   一条压扁的全量走势 + 一个可拖可缩的窗口。作用是回答「我现在看的是全年里的
+   哪一段」—— 光有「近 30 天」这种按钮，缩放之后就没有任何位置感了。 */
+.brush {
+  position: relative; height: 38px; margin-top: 12px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--card); overflow: hidden; touch-action: none; user-select: none;
+}
+.brush svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* 窗口外压暗、窗口内上色：只靠两根竖线标边界，在一条起伏的缩略图上根本看不出来 */
+.brush-mask { position: absolute; top: 0; bottom: 0; background: var(--line-soft); opacity: .72; pointer-events: none; }
+.brush-sel { position: absolute; top: 0; bottom: 0; cursor: grab; border-left: 1.5px solid var(--sky); border-right: 1.5px solid var(--sky); }
+.brush-sel::before { content: ''; position: absolute; inset: 0; background: var(--sky); opacity: .13; pointer-events: none; }
+.brush-sel:active { cursor: grabbing; }
+.brush-h {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 9px; height: 22px; border-radius: 4px;
+  background: var(--card); border: 1px solid var(--sky); cursor: ew-resize;
+  box-shadow: 0 1px 3px rgb(26 28 30 / .12);
+}
+.brush-h::after { content: ''; position: absolute; inset: 6px 3px; border-left: 1px solid var(--sky); border-right: 1px solid var(--sky); opacity: .5; }
+.brush-h-l { left: -5px; }
+.brush-h-r { right: -5px; }
+.brush-hint { margin-top: 6px; font-size: 11px; color: var(--ink-3); }
 .tip-sep { margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--line); }
 
 .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
@@ -678,6 +703,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         </div>
         <!-- 四个指标各一张图：量纲不同，叠在一张图上要么看不见小的，要么得上双轴 -->
         <div class="chartgrid" id="store-charts"></div>
+        <div class="brush" id="store-brush"></div>
+        <p class="brush-hint">拖动滑块或在图上滚动鼠标可改变时间范围</p>
       </div>
     </div>
   </section>
@@ -798,6 +825,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         </div>
         <div class="chart" id="pd-chart"></div>
         <div class="legend" id="pd-legend"></div>
+        <div class="brush" id="pd-brush"></div>
       </div>
 
       <!-- 二 + 三：月度对比与年累计占比并排，同一年的两种切法 -->
@@ -877,6 +905,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <div class="chart" id="su-chart"></div>
         <div class="legend" id="su-legend"></div>
         <div class="chart" id="su-share-chart" style="margin-top:18px"></div>
+        <div class="brush" id="su-brush"></div>
         <div class="prod-month-foot" id="su-foot"></div>
       </div>
 
@@ -1157,6 +1186,132 @@ function presetWindow(days, custom) {
   if (days === 0) return custom || { from: shiftDays(DATA.latestDate, -59), to: DATA.latestDate };
   const from = days === -1 ? YEAR_START_DATE : shiftDays(DATA.latestDate, -(days - 1));
   return { from: from < DATA.earliestDate ? DATA.earliestDate : from, to: DATA.latestDate };
+}
+
+/**
+ * 给一张（或一组）趋势图装上「滚轮缩放 + 下方滑块」。
+ *
+ * 两个交互指向同一个状态：可见区间。滑块负责「我在全年的哪一段」，
+ * 滚轮负责「就着光标那天前后看细一点」。两者都只调 set()，
+ * 由调用方决定怎么落到自己的 state 上并重画 —— 组件不碰别人的状态。
+ *
+ * values 是**全量**（对齐 D.dates）的一条序列，只用来在滑块里画个走势缩略图。
+ */
+const MIN_SPAN = 5; // 最少留 5 天，再细柱子就只剩几根，看不出趋势
+
+function mountRangeZoom(opts) {
+  const { chartHost, brushHost, values, get, set } = opts;
+  const N = D.dates.length;
+  const clampIdx = (i) => Math.max(0, Math.min(N - 1, Math.round(i)));
+
+  // 缩略图只画一次，和窗口无关
+  const peak = Math.max(...values.map((v) => Math.abs(v)), 1);
+  const step = Math.max(1, Math.ceil(N / 240)); // 采样，几百个点足够看形状
+  const pts = [];
+  for (let i = 0; i < N; i += step) {
+    pts.push(`${((i / (N - 1)) * 100).toFixed(2)},${(100 - (values[i] / peak) * 92).toFixed(2)}`);
+  }
+  brushHost.innerHTML =
+    `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+       <polyline points="${pts.join(' ')}" fill="none" stroke="var(--sky-soft)" stroke-width="1.4" vector-effect="non-scaling-stroke"/>
+     </svg>
+     <div class="brush-mask" data-side="l"></div>
+     <div class="brush-mask" data-side="r"></div>
+     <div class="brush-sel"><span class="brush-h brush-h-l"></span><span class="brush-h brush-h-r"></span></div>`;
+
+  const sel = brushHost.querySelector('.brush-sel');
+  const maskL = brushHost.querySelector('[data-side="l"]');
+  const maskR = brushHost.querySelector('[data-side="r"]');
+
+  function paint() {
+    const w = get();
+    const [lo, hi] = rangeSlice(w.from, w.to);
+    const a = (lo / (N - 1)) * 100, b = (hi / (N - 1)) * 100;
+    sel.style.left = `${a}%`;
+    sel.style.width = `${Math.max(b - a, 0.6)}%`;
+    maskL.style.left = '0'; maskL.style.width = `${a}%`;
+    maskR.style.left = `${b}%`; maskR.style.right = '0'; maskR.style.width = 'auto';
+  }
+
+  const apply = (lo, hi) => {
+    lo = clampIdx(lo); hi = clampIdx(hi);
+    if (hi - lo + 1 < MIN_SPAN) hi = clampIdx(lo + MIN_SPAN - 1);
+    set({ from: D.dates[lo], to: D.dates[hi] });
+    paint();
+  };
+
+  // --- 滑块拖拽：左右手柄改边界，中间整体平移 ---
+  let drag = null;
+  const fracAt = (ev) => {
+    const r = brushHost.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width));
+  };
+
+  brushHost.addEventListener('pointerdown', (ev) => {
+    const [lo, hi] = rangeSlice(get().from, get().to);
+    const mode = ev.target.classList.contains('brush-h-l') ? 'l'
+      : ev.target.classList.contains('brush-h-r') ? 'r'
+        : ev.target === sel ? 'move' : 'jump';
+    if (mode === 'jump') {
+      // 点空白处：把当前长度的窗口挪到点击位置，比强迫用户拖过去快
+      const span = hi - lo;
+      const c = fracAt(ev) * (N - 1);
+      apply(c - span / 2, c - span / 2 + span);
+      return;
+    }
+    drag = { mode, lo, hi, startFrac: fracAt(ev) };
+    // 捕获失败不该中断拖拽：没有捕获只是拖出元素外会断，不是致命错误
+    try { brushHost.setPointerCapture(ev.pointerId); } catch { /* 某些合成事件没有有效 pointerId */ }
+    ev.preventDefault();
+  });
+
+  brushHost.addEventListener('pointermove', (ev) => {
+    if (!drag) return;
+    const f = fracAt(ev), cur = f * (N - 1);
+    if (drag.mode === 'l') apply(Math.min(cur, drag.hi - MIN_SPAN + 1), drag.hi);
+    else if (drag.mode === 'r') apply(drag.lo, Math.max(cur, drag.lo + MIN_SPAN - 1));
+    else {
+      const shift = (f - drag.startFrac) * (N - 1);
+      const span = drag.hi - drag.lo;
+      let lo = drag.lo + shift;
+      lo = Math.max(0, Math.min(N - 1 - span, lo));
+      apply(lo, lo + span);
+    }
+  });
+
+  const endDrag = (ev) => {
+    if (!drag) return;
+    drag = null;
+    try { brushHost.releasePointerCapture(ev.pointerId); } catch { /* 已经放开了 */ }
+  };
+  brushHost.addEventListener('pointerup', endDrag);
+  brushHost.addEventListener('pointercancel', endDrag);
+
+  /**
+   * 滚轮缩放，以光标所在的那一天为锚点。
+   *
+   * 已经到全量还往外滚、已经到下限还往里滚时**不** preventDefault ——
+   * 否则鼠标停在图上时页面就滚不动了，用户会以为页面卡住。
+   */
+  chartHost.addEventListener('wheel', (ev) => {
+    const [lo, hi] = rangeSlice(get().from, get().to);
+    const span = hi - lo + 1;
+    const out = ev.deltaY > 0;
+    if (out && span >= N) return;
+    if (!out && span <= MIN_SPAN) return;
+    ev.preventDefault();
+
+    const r = chartHost.getBoundingClientRect();
+    const t = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width));
+    const anchor = lo + t * (span - 1);
+    const next = Math.max(MIN_SPAN, Math.min(N, Math.round(span * (out ? 1.25 : 0.8))));
+    let nlo = Math.round(anchor - t * (next - 1));
+    nlo = Math.max(0, Math.min(N - next, nlo));
+    apply(nlo, nlo + next - 1);
+  }, { passive: false });
+
+  paint();
+  return { paint };
 }
 
 // --- 顶栏 -----------------------------------------------------------------
@@ -2017,7 +2172,6 @@ const STORE_CHARTS = [
   { k: 'gmv', label: 'GMV', format: 'currency', color: CH.skySoft },
   { k: 'deviceSales', label: '主机销量', format: 'integer', color: CH.brand },
   { k: 'refundRate', label: '退款率', format: 'percent', color: CH.violet },
-  { k: 'uv', label: 'UV', format: 'integer', color: CH.amber },
 ];
 
 const RANGES = RANGE_PRESETS;
@@ -2047,6 +2201,19 @@ $('trend-apply').addEventListener('click', () => {
 /** 当前趋势区间：预设按天数往回推，自定义直接用选的日期 */
 function trendWindow() { return presetWindow(storeRange, trendCustom); }
 
+/**
+ * 滑块 / 滚轮改区间之后，把预设按钮切到「自定义」并把日期填回输入框。
+ * 不切的话按钮还高亮着「近 30 天」、图上却是别的区间，自相矛盾。
+ */
+function syncCustomUi(w, ids) {
+  $(ids.from).value = w.from;
+  $(ids.to).value = w.to;
+  [...$(ids.seg).children].forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.d === '0')));
+  $(ids.panel).hidden = false;
+}
+
+let storeBrush = null;
+
 function drawStore() {
   const w = trendWindow();
   const pts = trendRange(w.from, w.to);
@@ -2070,6 +2237,21 @@ function drawStore() {
   for (const m of STORE_CHARTS) {
     barChart($(`sc-${m.k}`), pts, (p) => p[m.k],
       { format: m.format, color: m.color, label: m.label, ma: 7, height: 210 });
+  }
+
+  // 图是每次重画的，滑块只挂一次 —— 重复挂会叠加一堆 wheel 监听
+  if (!storeBrush) {
+    storeBrush = mountRangeZoom({
+      chartHost: $('store-charts'), brushHost: $('store-brush'), values: D.cols.gmv,
+      get: trendWindow,
+      set: (w) => {
+        storeRange = 0; trendCustom = w;
+        syncCustomUi(w, { seg: 'store-range', panel: 'trend-custom', from: 'trend-from', to: 'trend-to' });
+        drawStore();
+      },
+    });
+  } else {
+    storeBrush.paint();
   }
 }
 drawStore();
@@ -2112,9 +2294,11 @@ function mountTrendCard(host, opts) {
       </div>
     </div>
     <div class="chart" id="${id}-chart"></div>
-    <div class="legend" id="${id}-legend"></div>`;
+    <div class="legend" id="${id}-legend"></div>
+    <div class="brush" id="${id}-brush"></div>`;
   host.appendChild(card);
 
+  let brush = null;
   const from = $(`${id}-from`), to = $(`${id}-to`);
   from.value = shiftDays(DATA.latestDate, -59);
   to.value = DATA.latestDate;
@@ -2150,8 +2334,22 @@ function mountTrendCard(host, opts) {
     lineChart($(`${id}-chart`), pts, opts.series, { format: opts.format, label: opts.title, height: 230 });
     $(`${id}-legend`).innerHTML = opts.series.map((s) =>
       `<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${esc(s.name)}</span>`).join('');
+    if (brush) brush.paint();
   }
+
   draw();
+  // 缩略图用第一条序列的全量走势，只是给个位置感，画谁都行
+  const full = trendRange(DATA.earliestDate, DATA.latestDate);
+  brush = mountRangeZoom({
+    chartHost: $(`${id}-chart`), brushHost: $(`${id}-brush`),
+    values: full.map(opts.series[0].pick),
+    get: window_,
+    set: (w) => {
+      days = 0; custom = w;
+      syncCustomUi(w, { seg: `${id}-seg`, panel: `${id}-range`, from: `${id}-from`, to: `${id}-to` });
+      draw();
+    },
+  });
 }
 
 // --- 投放趋势：投放费 / ROI / 成交各一张，各自选区间 ------------------------
@@ -2496,7 +2694,7 @@ function prodRollup(from, to, mk) {
 
   // --- 一：分产品每日 --------------------------------------------------------
   const PD_PRESETS = RANGE_PRESETS;
-  let pdDays = 30, pdCustom = null;
+  let pdDays = 30, pdCustom = null, pdBrush = null;
 
   $('pd-seg').innerHTML = PD_PRESETS.map(([d, l]) =>
     `<button data-d="${d}" aria-pressed="${d === pdDays}">${l}</button>`).join('');
@@ -2565,6 +2763,7 @@ function prodRollup(from, to, mk) {
     });
     $('pd-legend').innerHTML = SERIES.map((s) =>
       `<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${esc(s.name)}</span>`).join('');
+    if (pdBrush) pdBrush.paint();
   }
 
   // --- 二：月度对比 ---------------------------------------------------------
@@ -2697,6 +2896,18 @@ function prodRollup(from, to, mk) {
     drawDaily(); drawMonth(); drawYear();
   }
   drawAll();
+
+  // 只有「分产品每日」是时间序列，月度对比和年累计环形没有可缩放的区间
+  pdBrush = mountRangeZoom({
+    chartHost: $('pd-chart'), brushHost: $('pd-brush'),
+    values: D.dates.map((_, i) => SERIES.reduce((sum, sr) => sum + PCOL[sr.line].gmv[i], 0)),
+    get: pdWindow,
+    set: (w) => {
+      pdDays = 0; pdCustom = w;
+      syncCustomUi(w, { seg: 'pd-seg', panel: 'pd-range', from: 'pd-from', to: 'pd-to' });
+      drawDaily();
+    },
+  });
 })();
 
 (function () {
@@ -2894,7 +3105,7 @@ const isPaidChannel = (c) => c.startsWith('付费');
 
   // --- 二：搜索 UV（自带区间，和上面的周期无关）-----------------------------
   const SU_PRESETS = RANGE_PRESETS;
-  let suDays = 30, suCustom = null;
+  let suDays = 30, suCustom = null, suBrush = null;
 
   $('su-seg').innerHTML = SU_PRESETS.map(([d, l]) =>
     `<button data-d="${d}" aria-pressed="${d === suDays}">${l}</button>`).join('');
@@ -2948,6 +3159,7 @@ const isPaidChannel = (c) => c.startsWith('付费');
     barChart($('su-share-chart'), pts, (p) => div(p.searchUv, p.uv), {
       format: 'percent', label: '搜索 UV 占比', color: CH.skySoft, height: 190,
     });
+    if (suBrush) suBrush.paint();
     $('su-foot').textContent = '下图为搜索 UV 占总 UV 的比例（黑线为 7 日均值，虚线为整体趋势）。大促期间推荐流量涌入，占比会被稀释，这是结构变化不是搜索变差。';
   }
 
@@ -3029,5 +3241,16 @@ const isPaidChannel = (c) => c.startsWith('付费');
   }
   drawAll();
   drawSearchUv();
+
+  suBrush = mountRangeZoom({
+    chartHost: $('su-chart'), brushHost: $('su-brush'),
+    values: D.cols.searchUv,
+    get: () => presetWindow(suDays, suCustom),
+    set: (w) => {
+      suDays = 0; suCustom = w;
+      syncCustomUi(w, { seg: 'su-seg', panel: 'su-range', from: 'su-from', to: 'su-to' });
+      drawSearchUv();
+    },
+  });
 })();
 </script>
