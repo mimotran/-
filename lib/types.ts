@@ -35,8 +35,6 @@ export interface DailyMetric {
   searchUv: number;
   /** 支付人数 */
   buyers: number;
-  /** 支付订单数 */
-  orders: number;
   /** 加购人数 */
   addToCart: number;
   /** 新客成交金额（元）——新客率在聚合后由它除以 GMV 得出 */
@@ -49,8 +47,8 @@ export interface DailyMetric {
   adGmvInsite: number;
   /** 站外投放带来的成交（元） */
   adGmvOffsite: number;
-  /** 搜索带来的支付订单数。搜索转化率 = 它 ÷ searchUv */
-  searchOrders: number;
+  /** 搜索带来的支付人数。搜索转化率 = 它 ÷ searchUv */
+  searchBuyers: number;
   /** 搜索带来的成交金额（元）。搜索 UV 价值 = 它 ÷ searchUv */
   searchGmv: number;
   /**
@@ -60,8 +58,10 @@ export interface DailyMetric {
    * 所以两者相加会超过总 UV，不能当成分区来读。表里各算各的占比。
    */
   paidUv: number;
-  /** 预估利润（元）= 退后 GMV × 毛利率 − 投放费 */
-  grossProfit: number;
+  /** 付费流量带来的成交金额（元）。来自流量表，和投放报表的 adGmv 口径不同，两者都留 */
+  paidGmv: number;
+  /** 当天的店铺活动标签（日常 / 年货节 / 38活动…），来自日报 A 列 */
+  campaign: string;
 }
 
 /** 投放的两个大盘口径 */
@@ -105,23 +105,19 @@ export interface ProductMetric {
 }
 
 /**
- * 关键词分组。
+ * 流量来源明细。
  *
- * 品牌词和品类词的转化率差三倍以上，混在一张榜里排名没有意义 ——
- * 头部永远是品牌词，而品牌词的量是品牌势能的结果，不是投放能直接撬动的。
- * `other` 是尾部长尾，只进合计，不单独列。
+ * 原来这里是搜索关键词，但真实数据源里没有词级数据 —— 流量表拆到的是
+ * 「搜索 / 推荐 / 付费-品专 / 付费-关键词推广 / 付费-淘宝客 / 付费-短视频」
+ * 这一层。按有什么做什么，不编没有的粒度。
  */
-export type KeywordGroup = 'brand' | 'category' | 'other';
-
-/** 搜索关键词明细 */
-export interface KeywordMetric {
+export interface TrafficChannelMetric {
   date: DateStr;
-  keyword: string;
-  group: KeywordGroup;
-  /** 该词带来的访客数 */
+  channel: string;
+  /** 该来源带来的访客数 */
   uv: number;
+  buyers: number;
   gmv: number;
-  orders: number;
 }
 
 /** 目标周期。季度和半年由月度目标累加得出，不单独填 */
@@ -149,7 +145,7 @@ export interface DashboardSnapshot {
   daily: DailyMetric[];
   ads: AdMetric[];
   products: ProductMetric[];
-  keywords: KeywordMetric[];
+  trafficChannels: TrafficChannelMetric[];
   targets: Target[];
   /** 同步过程中的告警，展示在看板顶部 */
   warnings: string[];
@@ -206,7 +202,6 @@ export interface Aggregate {
   uv: number;
   searchUv: number;
   buyers: number;
-  orders: number;
   addToCart: number;
   newCustomerGmv: number;
   adCost: number;
@@ -215,10 +210,10 @@ export interface Aggregate {
   adGmv: number;
   adGmvInsite: number;
   adGmvOffsite: number;
-  searchOrders: number;
+  searchBuyers: number;
   searchGmv: number;
   paidUv: number;
-  grossProfit: number;
+  paidGmv: number;
   // --- 派生比率 ---
   /** 退款率 = 退款金额 ÷ GMV */
   refundRate: number;
@@ -242,9 +237,7 @@ export interface Aggregate {
   roi: number;
   roiInsite: number;
   roiOffsite: number;
-  /** 利润率 = 预估利润 ÷ GMV */
-  profitRate: number;
-  /** 搜索转化率 = 搜索订单 ÷ 搜索 UV */
+  /** 搜索转化率 = 搜索支付人数 ÷ 搜索 UV */
   searchConversionRate: number;
   /** 搜索 UV 价值 = 搜索成交 ÷ 搜索 UV */
   searchUvValue: number;
@@ -252,7 +245,7 @@ export interface Aggregate {
   searchGmvShare: number;
   /** 付费 UV 占比 = 付费 UV ÷ 总 UV */
   paidUvShare: number;
-  /** 付费成交占比 = 投放成交 ÷ GMV */
+  /** 付费成交占比 = 付费成交 ÷ GMV */
   paidGmvShare: number;
 }
 

@@ -10,14 +10,12 @@ import { resolve } from 'node:path';
 import { getSnapshot } from '../lib/data/source';
 import {
   GOAL_METRICS,
-  KEYWORD_GROUP_LABELS,
   LINE_LABELS,
   RATE_COMPANIONS,
   STORE_CORE,
   STORE_EXTRA,
   buildView,
 } from '../lib/metrics';
-import type { KeywordGroup } from '../lib/types';
 import { loadLocalEnv } from './env';
 
 loadLocalEnv();
@@ -35,15 +33,25 @@ async function main() {
    */
   const dailyKeys = [
     'gmv', 'deviceSales', 'gmvAfterRefund', 'refund', 'uv', 'searchUv',
-    'buyers', 'orders', 'addToCart', 'newCustomerGmv',
+    'buyers', 'addToCart', 'newCustomerGmv',
     'adCostInsite', 'adCostOffsite', 'adGmvInsite', 'adGmvOffsite',
-    'searchOrders', 'searchGmv', 'paidUv', 'grossProfit',
+    'searchBuyers', 'searchGmv', 'paidUv', 'paidGmv',
   ] as const;
 
+  /**
+   * 大部分列取整（体积小一半，且本来就是整数：人数、件数、访客）。
+   * 但**派生出来的金额**要留两位小数 —— 站内/站外成交是「消耗 × ROI」算出来的，
+   * 取整后再回过头除以消耗，ROI 会和源表对不上（8.76 变成 8.760045）。
+   * 差值远低于显示精度，可交叉校验会一直报警，等于把哨兵调成噪音。
+   */
+  const keepDecimals = new Set<string>(['adGmvInsite', 'adGmvOffsite', 'newCustomerGmv']);
   const daily = {
     dates: snapshot.daily.map((row) => row.date),
     cols: Object.fromEntries(
-      dailyKeys.map((key) => [key, snapshot.daily.map((row) => Math.round(row[key]))]),
+      dailyKeys.map((key) => [
+        key,
+        snapshot.daily.map((row) => (keepDecimals.has(key) ? Math.round(row[key] * 100) / 100 : Math.round(row[key]))),
+      ]),
     ),
   };
 
@@ -96,33 +104,24 @@ async function main() {
     });
   }
 
-  /**
-   * 关键词日明细，按列存并对齐到 daily.dates。
-   *
-   * 流量块的关键词表要支持任意区间（昨日 / MTD / 全年 / 自定义），只有一份
-   * 区间快照不够。词的数量是可控的十几个，按列存完全放得下。
-   */
-  function keywordColumns() {
-    const meta = new Map<string, KeywordGroup>();
-    for (const r of snapshot.keywords) if (!meta.has(r.keyword)) meta.set(r.keyword, r.group);
-
-    return [...meta.entries()].map(([keyword, group]) => {
+  /** 流量来源日明细，同样按列存并对齐到 daily.dates */
+  function trafficColumns() {
+    const channels = [...new Set(snapshot.trafficChannels.map((r) => r.channel))];
+    return channels.map((channel) => {
       const uv = new Array<number>(daily.dates.length).fill(0);
+      const buyers = new Array<number>(daily.dates.length).fill(0);
       const gmv = new Array<number>(daily.dates.length).fill(0);
-      const orders = new Array<number>(daily.dates.length).fill(0);
-      for (const r of snapshot.keywords) {
-        if (r.keyword !== keyword) continue;
+      for (const r of snapshot.trafficChannels) {
+        if (r.channel !== channel) continue;
         const i = dateIndex.get(r.date);
         if (i === undefined) continue;
-        uv[i] += r.uv;
-        gmv[i] += r.gmv;
-        orders[i] += r.orders;
+        uv[i] += r.uv; buyers[i] += r.buyers; gmv[i] += r.gmv;
       }
       return {
-        keyword, group,
+        channel,
         uv: uv.map((v) => Math.round(v)),
+        buyers: buyers.map((v) => Math.round(v)),
         gmv: gmv.map((v) => Math.round(v)),
-        orders: orders.map((v) => Math.round(v)),
       };
     });
   }
@@ -135,8 +134,7 @@ async function main() {
     daily,
     adDaily: { insite: adColumns('insite'), offsite: adColumns('offsite') },
     productDaily: productColumns(),
-    keywordDaily: keywordColumns(),
-    keywordGroupLabels: KEYWORD_GROUP_LABELS,
+    trafficDaily: trafficColumns(),
     productLabels: Object.fromEntries(
       [...new Set(snapshot.products.map((r) => r.line))].map((l) => [l, LINE_LABELS[l]]),
     ),
@@ -171,7 +169,7 @@ async function main() {
     insite: view.insite,
     offsite: view.offsite,
     products: view.products,
-    keywords: view.keywords,
+    trafficChannels: view.trafficChannels,
     breakdownLabel: view.breakdownPeriod.label,
     breakdownRange: view.breakdownPeriod.range,
   };

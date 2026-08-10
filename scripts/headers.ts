@@ -20,7 +20,6 @@ import {
 import {
   AD_ALIASES,
   DAILY_ALIASES,
-  KEYWORD_ALIASES,
   PRODUCT_ALIASES,
   TARGET_ALIASES,
   matchHeaders,
@@ -38,7 +37,6 @@ const ALIASES: Record<TableKey, AliasMap> = {
   adsInsite: AD_ALIASES,
   adsOffsite: AD_ALIASES,
   products: PRODUCT_ALIASES,
-  keywords: KEYWORD_ALIASES,
   targets: TARGET_ALIASES,
 };
 

@@ -50,35 +50,39 @@ function compare(
 function check(snapshot: DashboardSnapshot): Issue[] {
   const dailyGmv = sumByDate(snapshot.daily, (row) => row.gmv);
   const dailyAdCost = sumByDate(snapshot.daily, (row) => row.adCostInsite + row.adCostOffsite);
-  const dailySearchUv = sumByDate(snapshot.daily, (row) => row.searchUv);
-  // 搜索成交是关键词明细的合计，不是独立填的数 —— 对不上就是有一边算错了
-  const dailySearchGmv = sumByDate(snapshot.daily, (row) => row.searchGmv);
 
   return [
     ...compare('商品 GMV', sumByDate(snapshot.products, (row) => row.gmv), dailyGmv, 1),
     ...compare('投放消耗', sumByDate(snapshot.ads, (row) => row.cost), dailyAdCost, 1),
-    ...compare('关键词搜索 UV', sumByDate(snapshot.keywords, (row) => row.uv), dailySearchUv, 1),
-    ...compare('关键词搜索成交', sumByDate(snapshot.keywords, (row) => row.gmv), dailySearchGmv, 1),
+    /**
+     * 流量来源不参与对账。
+     *
+     * 真表里「总搜索」和一级来源「搜索」是两个口径：前者含付费关键词，后者只算自然搜索；
+     * 六路来源之和也不等于总访客（同一个人可能从多个入口进来，还有没被归类的）。
+     * 这不是数据错，是平台报表本来就这么给的 —— 所以页面上占比的分母用的是
+     * 「这几路的合计」，而不是总 UV。硬拿它们对账只会天天报假警。
+     */
     ...checkPaidUv(snapshot),
   ];
 }
 
 /**
- * 付费 UV 检查的是**区间**而不是等式。
+ * 付费 UV 检查的是**上界**，不是等式。
  *
- * 站外 CID 的点击发生在抖音 / 小红书站内，只有小部分跳到天猫，所以
- * 付费 UV ≠ 全部点击之和。但它必须夹在两条线之间：
- *   下界 站内点击（站内点击就是店铺访客，跑不掉）
- *   上界 总访客（付费访客是总访客的子集，超了就是把两个平台的人混着数了）
- * 上界这一条正是之前 mock 里把站外点击 1:1 计入时踩到的坑 —— 占比能到 101%。
+ * 付费 UV 是「进店的独立访客」，点击是「点了几次」—— 一个人点两次算两次点击、
+ * 一个访客，所以点击必然 ≥ 付费 UV，两者不可能相等。同理付费访客是总访客的
+ * 子集。只卡这两条上界：
+ *   付费 UV ≤ 总点击   超了说明把点击当访客数了
+ *   付费 UV ≤ 总访客   超了说明把站外平台的人也算进店铺访客了
+ * 后一条正是之前 mock 里把站外点击 1:1 计入时踩到的坑 —— 占比能到 101%。
  */
 function checkPaidUv(snapshot: DashboardSnapshot): Issue[] {
-  const insiteClicks = sumByDate(snapshot.ads.filter((r) => r.scope === 'insite'), (row) => row.clicks);
+  const clicks = sumByDate(snapshot.ads, (row) => row.clicks);
   const issues: Issue[] = [];
   for (const row of snapshot.daily) {
-    const floor = insiteClicks.get(row.date) ?? 0;
-    if (row.paidUv + 1 < floor) {
-      issues.push({ scope: '付费 UV 低于站内点击', date: row.date, expected: floor, actual: row.paidUv });
+    const totalClicks = clicks.get(row.date) ?? 0;
+    if (totalClicks > 0 && row.paidUv > totalClicks * 1.02) {
+      issues.push({ scope: '付费 UV 超过总点击', date: row.date, expected: totalClicks, actual: row.paidUv });
     }
     if (row.paidUv > row.uv) {
       issues.push({ scope: '付费 UV 超过总访客', date: row.date, expected: row.uv, actual: row.paidUv });
@@ -93,7 +97,7 @@ async function main() {
   console.log(`数据源 ${snapshot.source}，覆盖 ${snapshot.coverage.from} ~ ${snapshot.coverage.to}`);
   console.log(
     `  日报 ${snapshot.daily.length} 行 · 投放 ${snapshot.ads.length} 行 · ` +
-      `商品 ${snapshot.products.length} 行 · 关键词 ${snapshot.keywords.length} 行 · ` +
+      `商品 ${snapshot.products.length} 行 · 流量来源 ${snapshot.trafficChannels.length} 行 · ` +
       `目标 ${snapshot.targets.length} 行`,
   );
 

@@ -6,14 +6,13 @@
 export type FeishuDocType = 'bitable' | 'sheets';
 
 /** 看板需要的六张表。只有日报是必需的，其余缺了对应板块降级为空态 */
-export type TableKey = 'daily' | 'adsInsite' | 'adsOffsite' | 'products' | 'keywords' | 'targets';
+export type TableKey = 'daily' | 'adsInsite' | 'adsOffsite' | 'products' | 'targets';
 
 export const TABLE_KEYS: TableKey[] = [
   'daily',
   'adsInsite',
   'adsOffsite',
   'products',
-  'keywords',
   'targets',
 ];
 
@@ -22,7 +21,6 @@ export const TABLE_LABELS: Record<TableKey, string> = {
   adsInsite: '站内投放表',
   adsOffsite: '站外投放表',
   products: '商品明细表',
-  keywords: '搜索关键词表',
   targets: '目标表',
 };
 
@@ -32,7 +30,6 @@ export const TABLE_ENV_SUFFIX: Record<TableKey, string> = {
   adsInsite: 'ADS_INSITE',
   adsOffsite: 'ADS_OFFSITE',
   products: 'PRODUCTS',
-  keywords: 'KEYWORDS',
   targets: 'TARGETS',
 };
 

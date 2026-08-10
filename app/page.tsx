@@ -93,7 +93,7 @@ export default async function DashboardPage({
 
         <TrafficSection
           stats={view.stats}
-          keywords={view.keywords}
+          trafficChannels={view.trafficChannels}
           trend={view.trend}
           trendHint={trendHint}
           period={view.breakdownPeriod}

@@ -25,8 +25,7 @@ import type {
   GoalGroup,
   GoalPeriod,
   GoalRow,
-  KeywordGroup,
-  KeywordMetric,
+  TrafficChannelMetric,
   KpiValue,
   Period,
   ProductLine,
@@ -119,7 +118,6 @@ const ZERO: Aggregate = {
   uv: 0,
   searchUv: 0,
   buyers: 0,
-  orders: 0,
   addToCart: 0,
   newCustomerGmv: 0,
   adCost: 0,
@@ -128,10 +126,10 @@ const ZERO: Aggregate = {
   adGmv: 0,
   adGmvInsite: 0,
   adGmvOffsite: 0,
-  searchOrders: 0,
+  searchBuyers: 0,
   searchGmv: 0,
   paidUv: 0,
-  grossProfit: 0,
+  paidGmv: 0,
   refundRate: 0,
   adCostRate: 0,
   adCostRateInsite: 0,
@@ -144,7 +142,6 @@ const ZERO: Aggregate = {
   roi: 0,
   roiInsite: 0,
   roiOffsite: 0,
-  profitRate: 0,
   searchConversionRate: 0,
   searchUvValue: 0,
   searchGmvShare: 0,
@@ -176,17 +173,16 @@ export function aggregateRange(daily: DailyMetric[], range: DateRange | null): A
     acc.uv += row.uv;
     acc.searchUv += row.searchUv;
     acc.buyers += row.buyers;
-    acc.orders += row.orders;
     acc.addToCart += row.addToCart;
     acc.newCustomerGmv += row.newCustomerGmv;
     acc.adCostInsite += row.adCostInsite;
     acc.adCostOffsite += row.adCostOffsite;
     acc.adGmvInsite += row.adGmvInsite;
     acc.adGmvOffsite += row.adGmvOffsite;
-    acc.searchOrders += row.searchOrders;
+    acc.searchBuyers += row.searchBuyers;
     acc.searchGmv += row.searchGmv;
     acc.paidUv += row.paidUv;
-    acc.grossProfit += row.grossProfit;
+    acc.paidGmv += row.paidGmv;
   }
 
   acc.adCost = acc.adCostInsite + acc.adCostOffsite;
@@ -204,12 +200,11 @@ export function aggregateRange(daily: DailyMetric[], range: DateRange | null): A
   acc.roi = safeDiv(acc.adGmv, acc.adCost);
   acc.roiInsite = safeDiv(acc.adGmvInsite, acc.adCostInsite);
   acc.roiOffsite = safeDiv(acc.adGmvOffsite, acc.adCostOffsite);
-  acc.profitRate = safeDiv(acc.grossProfit, acc.gmv);
-  acc.searchConversionRate = safeDiv(acc.searchOrders, acc.searchUv);
+  acc.searchConversionRate = safeDiv(acc.searchBuyers, acc.searchUv);
   acc.searchUvValue = safeDiv(acc.searchGmv, acc.searchUv);
   acc.searchGmvShare = safeDiv(acc.searchGmv, acc.gmv);
   acc.paidUvShare = safeDiv(acc.paidUv, acc.uv);
-  acc.paidGmvShare = safeDiv(acc.adGmv, acc.gmv);
+  acc.paidGmvShare = safeDiv(acc.paidGmv, acc.gmv);
 
   return acc;
 }
@@ -248,7 +243,6 @@ export const STORE_CORE: KpiSpec[] = [
 export const STORE_EXTRA: KpiSpec[] = [
   { key: 'gmvAfterRefund', label: '退后 GMV', pick: (a) => a.gmvAfterRefund, format: 'currency', higherIsBetter: true },
   { key: 'buyers', label: '支付人数', pick: (a) => a.buyers, format: 'integer', higherIsBetter: true },
-  { key: 'orders', label: '支付订单数', pick: (a) => a.orders, format: 'integer', higherIsBetter: true },
   { key: 'aov', label: '客单价', pick: (a) => a.aov, format: 'currency', higherIsBetter: true },
   { key: 'conversionRate', label: '支付转化率', pick: (a) => a.conversionRate, format: 'percent', higherIsBetter: true },
   { key: 'uvValue', label: 'UV 价值', pick: (a) => a.uvValue, format: 'decimal', higherIsBetter: true },
@@ -349,29 +343,16 @@ export const RATE_COMPANIONS: Record<string, RateCompanion> = {
   adCostRateInsite: { pick: (a) => a.adCostRateInsite, higherIsBetter: false, weightBy: 'gmv' },
   adCostRateOffsite: { pick: (a) => a.adCostRateOffsite, higherIsBetter: false, weightBy: 'gmv' },
   adCostRate: { pick: (a) => a.adCostRate, higherIsBetter: false, weightBy: 'gmv' },
-  profitRate: { pick: (a) => a.profitRate, higherIsBetter: true, weightBy: 'gmv' },
   searchConversionRate: { pick: (a) => a.searchConversionRate, higherIsBetter: true, weightBy: 'searchUv' },
 };
 
 export const GOAL_METRICS: GoalMetricDef[] = [
   // --- 销售 ---
   { key: 'gmv', label: 'GMV', group: '销售', format: 'currency', pick: (a) => a.gmv, higherIsBetter: true, emphasis: true },
-  { key: 'deviceSales', label: '销量', group: '销售', format: 'integer', pick: (a) => a.deviceSales, higherIsBetter: true },
-  { key: 'refund', label: '退款金额', group: '销售', format: 'currency', pick: (a) => a.refund, higherIsBetter: false, rateKey: 'refundRate' },
-
+  { key: 'deviceSales', label: '主机销量', group: '销售', format: 'integer', pick: (a) => a.deviceSales, higherIsBetter: true },
   // --- 费用 ---
-  { key: 'adCostInsite', label: '站内投放费', group: '费用', format: 'currency', pick: (a) => a.adCostInsite, higherIsBetter: false, rateKey: 'adCostRateInsite' },
-  { key: 'roiInsite', label: '站内 ROI', group: '费用', format: 'multiple', pick: (a) => a.roiInsite, higherIsBetter: true, weightBy: 'adCostInsite' },
-  { key: 'adCostOffsite', label: '站外投放费', group: '费用', format: 'currency', pick: (a) => a.adCostOffsite, higherIsBetter: false, rateKey: 'adCostRateOffsite' },
-  { key: 'roiOffsite', label: '站外 ROI', group: '费用', format: 'multiple', pick: (a) => a.roiOffsite, higherIsBetter: true, weightBy: 'adCostOffsite' },
-  { key: 'adCost', label: '总投放费', group: '费用', format: 'currency', pick: (a) => a.adCost, higherIsBetter: false, rateKey: 'adCostRate', emphasis: true },
-
-  // --- 利润 ---
-  { key: 'grossProfit', label: '利润（预估）', group: '利润', format: 'currency', pick: (a) => a.grossProfit, higherIsBetter: true, rateKey: 'profitRate', emphasis: true },
-
-  // --- 流量 ---
-  { key: 'searchUv', label: '搜索 UV', group: '流量', format: 'integer', pick: (a) => a.searchUv, higherIsBetter: true },
-  { key: 'searchOrders', label: '搜索订单', group: '流量', format: 'integer', pick: (a) => a.searchOrders, higherIsBetter: true, rateKey: 'searchConversionRate' },
+  // 投放费和总费比是同一件事的两种看法，合成一行；率搭档在右侧多给三列
+  { key: 'adCost', label: '投放费', group: '费用', format: 'currency', pick: (a) => a.adCost, higherIsBetter: false, rateKey: 'adCostRate', emphasis: true },
 ];
 
 const GOAL_GROUP_ORDER: GoalGroup[] = ['销售', '费用', '利润', '流量'];
@@ -740,9 +721,10 @@ export function adBreakdown(
 // ---------------------------------------------------------------------------
 
 export const LINE_LABELS: Record<ProductLine, string> = {
-  pro: 'NOTE Pro',
-  pins: 'NotePin',
-  note: 'NOTE',
+  // 名字照飞书表里的 spu 写，不自己美化 —— 运营在两边对数时得能一眼对上
+  pro: 'Note Pro',
+  pins: 'NotePin S',
+  note: 'Note',
   member: '会员',
   accessory: '配件',
 };
@@ -853,130 +835,68 @@ export function productBreakdown(
 // 搜索关键词
 // ---------------------------------------------------------------------------
 
-export interface KeywordRow {
-  keyword: string;
-  group: KeywordGroup;
+export interface TrafficChannelRow {
+  channel: string;
   uv: number;
+  buyers: number;
   gmv: number;
-  orders: number;
-  /** 该词的转化率 */
+  /** 该来源的支付转化率 */
   conversionRate: number;
+  /** UV 价值 = 成交 ÷ 访客 */
+  uvValue: number;
   uvShare: number;
+  gmvShare: number;
   uvDelta: number | null;
-}
-
-export function keywordBreakdown(
-  keywords: KeywordMetric[],
-  range: DateRange,
-  compareRange: DateRange | null,
-  limit = 15,
-): KeywordRow[] {
-  type Acc = { uv: number; gmv: number; orders: number; group: KeywordGroup };
-  const current = new Map<string, Acc>();
-  const previous = new Map<string, number>();
-
-  for (const row of keywords) {
-    if (inRange(row.date, range)) {
-      const acc = current.get(row.keyword) ?? { uv: 0, gmv: 0, orders: 0, group: row.group };
-      acc.uv += row.uv;
-      acc.gmv += row.gmv;
-      acc.orders += row.orders;
-      current.set(row.keyword, acc);
-    }
-    if (compareRange && inRange(row.date, compareRange)) {
-      previous.set(row.keyword, (previous.get(row.keyword) ?? 0) + row.uv);
-    }
-  }
-
-  const totalUv = [...current.values()].reduce((sum, item) => sum + item.uv, 0);
-
-  return [...current.entries()]
-    .map(([keyword, acc]) => ({
-      keyword,
-      group: acc.group,
-      uv: acc.uv,
-      gmv: acc.gmv,
-      orders: acc.orders,
-      conversionRate: safeDiv(acc.orders, acc.uv),
-      uvShare: safeDiv(acc.uv, totalUv),
-      uvDelta: delta(acc.uv, previous.get(keyword) ?? 0, compareRange !== null && previous.has(keyword)),
-    }))
-    .sort((a, b) => b.uv - a.uv)
-    .slice(0, limit);
-}
-
-export const KEYWORD_GROUP_LABELS: Record<KeywordGroup, string> = {
-  brand: '品牌词',
-  category: '品类词',
-  other: '其他词',
-};
-
-export interface KeywordGroupRow {
-  group: KeywordGroup;
-  label: string;
-  uv: number;
-  gmv: number;
-  orders: number;
-  conversionRate: number;
-  /** 该组占全部搜索 UV 的比例 */
-  uvShare: number;
-  uvDelta: number | null;
-  /** 组内明细，按 UV 降序。other 组只汇总不展开，rows 为空 */
-  rows: KeywordRow[];
 }
 
 /**
- * 关键词按品牌词 / 品类词分组。
+ * 流量来源拆解。
  *
- * 分组而不是一张大榜：两类词的转化率差三倍以上，混排的话头部永远是品牌词，
- * 而品牌词的量是品牌势能的结果，投放撬不动；能靠投放拉的是品类词。
- * 两类各自看趋势才有动作含义。
+ * 这里原来是搜索关键词，真实数据源里没有词级数据，能拿到的最细粒度就是
+ * 「搜索 / 推荐 / 付费-品专 / 付费-关键词推广 / 付费-淘宝客 / 付费-短视频」。
  *
- * 组占比的分母是**全部**搜索 UV（含 other 长尾），所以 brand + category 之和
- * 小于 100% —— 这是对的，缺的那块就是长尾，不该被摊进两个组里。
+ * 占比的分母是**这些来源的合计**，不是店铺总 UV —— 表里这几路加起来不等于
+ * 总访客（同一个人可能从多个入口进来，也有没被归类的），拿总 UV 当分母的话
+ * 各行占比加起来不到 100%，看图的人会以为少画了一块。
  */
-export function keywordGroups(
-  keywords: KeywordMetric[],
+export function trafficChannelBreakdown(
+  rows: TrafficChannelMetric[],
   range: DateRange,
   compareRange: DateRange | null,
-): { groups: KeywordGroupRow[]; totalUv: number; totalGmv: number; totalOrders: number } {
-  const all = keywordBreakdown(keywords, range, compareRange, Number.MAX_SAFE_INTEGER);
+): TrafficChannelRow[] {
+  type Acc = { uv: number; buyers: number; gmv: number };
+  const current = new Map<string, Acc>();
+  const previous = new Map<string, number>();
 
-  const prevByGroup = new Map<KeywordGroup, number>();
-  let hasCompare = false;
-  if (compareRange) {
-    for (const row of keywords) {
-      if (!inRange(row.date, compareRange)) continue;
-      hasCompare = true;
-      prevByGroup.set(row.group, (prevByGroup.get(row.group) ?? 0) + row.uv);
+  for (const row of rows) {
+    if (inRange(row.date, range)) {
+      const acc = current.get(row.channel) ?? { uv: 0, buyers: 0, gmv: 0 };
+      acc.uv += row.uv;
+      acc.buyers += row.buyers;
+      acc.gmv += row.gmv;
+      current.set(row.channel, acc);
+    }
+    if (compareRange && inRange(row.date, compareRange)) {
+      previous.set(row.channel, (previous.get(row.channel) ?? 0) + row.uv);
     }
   }
 
-  const totalUv = all.reduce((s, r) => s + r.uv, 0);
-  const totalGmv = all.reduce((s, r) => s + r.gmv, 0);
-  const totalOrders = all.reduce((s, r) => s + r.orders, 0);
+  const totalUv = [...current.values()].reduce((s, x) => s + x.uv, 0);
+  const totalGmv = [...current.values()].reduce((s, x) => s + x.gmv, 0);
 
-  // 固定顺序，不按大小排 —— 分组是口径，位置换来换去会让人以为结构变了
-  const ORDER: KeywordGroup[] = ['brand', 'category', 'other'];
-  const groups = ORDER.map((group) => {
-    const rows = all.filter((r) => r.group === group);
-    const uv = rows.reduce((s, r) => s + r.uv, 0);
-    const gmv = rows.reduce((s, r) => s + r.gmv, 0);
-    const orders = rows.reduce((s, r) => s + r.orders, 0);
-    return {
-      group,
-      label: KEYWORD_GROUP_LABELS[group],
-      uv,
-      gmv,
-      orders,
-      conversionRate: safeDiv(orders, uv),
-      uvShare: safeDiv(uv, totalUv),
-      uvDelta: delta(uv, prevByGroup.get(group) ?? 0, hasCompare && prevByGroup.has(group)),
-      rows: group === 'other' ? [] : rows,
-    };
-  }).filter((g) => g.uv > 0);
-
-  return { groups, totalUv, totalGmv, totalOrders };
+  return [...current.entries()]
+    .map(([channel, acc]) => ({
+      channel,
+      uv: acc.uv,
+      buyers: acc.buyers,
+      gmv: acc.gmv,
+      conversionRate: safeDiv(acc.buyers, acc.uv),
+      uvValue: safeDiv(acc.gmv, acc.uv),
+      uvShare: safeDiv(acc.uv, totalUv),
+      gmvShare: safeDiv(acc.gmv, totalGmv),
+      uvDelta: delta(acc.uv, previous.get(channel) ?? 0, compareRange !== null && previous.has(channel)),
+    }))
+    .sort((a, b) => b.uv - a.uv);
 }
 
 // ---------------------------------------------------------------------------
@@ -1060,7 +980,7 @@ export interface DashboardView {
   insite: AdChannelRow[];
   offsite: AdChannelRow[];
   products: { lines: LineRow[]; items: ProductRow[] };
-  keywords: KeywordRow[];
+  trafficChannels: TrafficChannelRow[];
   /** 拆解板块（投放 / 产品 / 流量）用哪个周期的口径 */
   breakdownPeriod: Period;
 }
@@ -1099,7 +1019,7 @@ export function buildView(snapshot: DashboardSnapshot, custom: DateRange | null)
     insite: adBreakdown(snapshot.ads, 'insite', breakdownPeriod.range, breakdownPeriod.compareRange),
     offsite: adBreakdown(snapshot.ads, 'offsite', breakdownPeriod.range, breakdownPeriod.compareRange),
     products: productBreakdown(snapshot.products, breakdownPeriod.range, breakdownPeriod.compareRange),
-    keywords: keywordBreakdown(snapshot.keywords, breakdownPeriod.range, breakdownPeriod.compareRange),
+    trafficChannels: trafficChannelBreakdown(snapshot.trafficChannels, breakdownPeriod.range, breakdownPeriod.compareRange),
     breakdownPeriod,
   };
 }

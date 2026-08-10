@@ -2,8 +2,6 @@ import type {
   AdMetric,
   AdScope,
   DailyMetric,
-  KeywordGroup,
-  KeywordMetric,
   ProductLine,
   ProductMetric,
   Target,
@@ -11,7 +9,6 @@ import type {
 import {
   AD_ALIASES,
   DAILY_ALIASES,
-  KEYWORD_ALIASES,
   LINE_PATTERNS,
   PRODUCT_ALIASES,
   TARGET_ALIASES,
@@ -102,16 +99,15 @@ export function parseDaily(raw: Array<Record<string, unknown>>, defaultYear?: nu
       uv: toNumber(pick(row, DAILY_ALIASES.uv)),
       searchUv: toNumber(pick(row, DAILY_ALIASES.searchUv)),
       buyers: toNumber(pick(row, DAILY_ALIASES.buyers)),
-      orders: toNumber(pick(row, DAILY_ALIASES.orders)),
       addToCart: toNumber(pick(row, DAILY_ALIASES.addToCart)),
       newCustomerGmv: absoluteOr(row, 'newCustomerGmv', 'newCustomerRate', gmv),
       adCostInsite,
       adCostOffsite,
       adGmvInsite,
       adGmvOffsite,
-      // 搜索订单：表里没有就用整体转化率乘搜索 UV 兜底，是个近似
-      searchOrders: (() => {
-        const direct = pick(row, DAILY_ALIASES.searchOrders);
+      // 搜索支付人数：表里没有就用搜索转化率乘搜索 UV 兜底，是个近似
+      searchBuyers: (() => {
+        const direct = pick(row, DAILY_ALIASES.searchBuyers);
         if (direct !== undefined) return toNumber(direct);
         const rate = toNumber(pick(row, DAILY_ALIASES.searchConversionRate));
         return rate > 0 ? Math.round(toNumber(pick(row, DAILY_ALIASES.searchUv)) * rate) : 0;
@@ -138,14 +134,8 @@ export function parseDaily(raw: Array<Record<string, unknown>>, defaultYear?: nu
         const share = pick(row, DAILY_ALIASES.paidUvShare);
         return share !== undefined ? Math.round(toNumber(share) * toNumber(pick(row, DAILY_ALIASES.uv))) : 0;
       })(),
-      // 利润：表里没有就用「退后 GMV × 毛利率 − 投放费」估
-      grossProfit: (() => {
-        const direct = pick(row, DAILY_ALIASES.grossProfit);
-        if (direct !== undefined) return toNumber(direct);
-        const rate = pick(row, DAILY_ALIASES.profitRate);
-        if (rate !== undefined) return toNumber(rate) * gmv;
-        return 0;
-      })(),
+      paidGmv: toNumber(pick(row, DAILY_ALIASES.paidGmv)),
+      campaign: toText(pick(row, DAILY_ALIASES.campaign)) || '日常',
     };
 
     // 同一天出现多行时后写的覆盖前面的，方便运营直接在表尾追加修正行
@@ -225,27 +215,6 @@ function resolveLine(explicit: string, title: string): ProductLine {
   return 'accessory';
 }
 
-/**
- * 认词性：优先信表里的「词性」列，没有就按词本身判。
- *
- * 品牌词的判定放在品类词前面：「plaud 录音笔」同时命中两边，但它是品牌词 ——
- * 搜这个词的人已经认准了牌子，把它算进品类词会高估泛需求的规模。
- * 都不命中就归到长尾，不猜。
- */
-const BRAND_PATTERN = /plaud|notepin|note\s*pro|普劳德/i;
-const CATEGORY_PATTERN = /录音笔|录音设备|会议记录仪|ai\s*录音/i;
-
-function keywordGroupOf(explicit: string, keyword: string): KeywordGroup {
-  const tag = explicit.trim();
-  if (/品牌|brand/i.test(tag)) return 'brand';
-  if (/品类|类目|category/i.test(tag)) return 'category';
-  if (/其他|长尾|other/i.test(tag)) return 'other';
-
-  if (BRAND_PATTERN.test(keyword)) return 'brand';
-  if (CATEGORY_PATTERN.test(keyword)) return 'category';
-  return 'other';
-}
-
 export function parseProducts(
   raw: Array<Record<string, unknown>>,
   defaultYear?: number,
@@ -279,42 +248,6 @@ export function parseProducts(
   return { rows: sortByDate(rows), warnings };
 }
 
-export function parseKeywords(
-  raw: Array<Record<string, unknown>>,
-  defaultYear?: number,
-): ParseResult<KeywordMetric> {
-  const warnings: string[] = [];
-  const rows: KeywordMetric[] = [];
-  let skipped = 0;
-
-  raw.forEach((row) => {
-    const date = toDate(pick(row, KEYWORD_ALIASES.date), defaultYear);
-    const keyword = toText(pick(row, KEYWORD_ALIASES.keyword));
-    if (!date || !keyword) {
-      skipped += 1;
-      return;
-    }
-
-    rows.push({
-      date,
-      keyword,
-      group: keywordGroupOf(toText(pick(row, KEYWORD_ALIASES.group)), keyword),
-      uv: toNumber(pick(row, KEYWORD_ALIASES.uv)),
-      gmv: toNumber(pick(row, KEYWORD_ALIASES.gmv)),
-      orders: toNumber(pick(row, KEYWORD_ALIASES.orders)),
-    });
-  });
-
-  if (skipped > 0) warnings.push(`关键词表有 ${skipped} 行缺少日期或关键词，已跳过`);
-  return { rows: sortByDate(rows), warnings };
-}
-
-/**
- * 目标表。
- *
- * 一行一个周期：月份写 `2026-08` 或「8月」，年度写 `2026`。
- * 年度目标不是月度之和 —— 年初定的年目标通常更高，这个缺口本身就是信息。
- */
 export function parseTargets(
   raw: Array<Record<string, unknown>>,
   defaultYear?: number,

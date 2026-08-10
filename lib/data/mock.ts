@@ -6,8 +6,7 @@ import type {
   DailyMetric,
   DashboardSnapshot,
   DateStr,
-  KeywordMetric,
-  KeywordGroup,
+  TrafficChannelMetric,
   ProductLine,
   ProductMetric,
   Target,
@@ -112,35 +111,32 @@ const OFFSITE = [
 ];
 
 /**
- * 搜索词按品牌 / 品类分组，权重照着真实搜索词表的 YTD 量级配。
- *
- * `other` 是长尾：单个词量小、名字杂，逐个列出来只会把表撑长，
- * 但它占了搜索 UV 的四成多，不能不算 —— 所以进合计、不进明细。
- * 组占比的分母是全部搜索 UV，因此品牌 + 品类之和小于 100%，缺的那块就是长尾。
+ * 流量来源。权重照真实流量表的量级配。
+ * 「搜索」和「推荐」是自然流量，四路付费是投放买来的 —— 页面上按这两组读。
  */
-const KEYWORDS: { keyword: string; group: KeywordGroup; weight: number }[] = [
-  { keyword: 'Plaud', group: 'brand', weight: 1.0 },
-  { keyword: 'Plaud Note', group: 'brand', weight: 0.729 },
-  { keyword: 'Plaud Note Pro', group: 'brand', weight: 0.438 },
-  { keyword: 'Plaude', group: 'brand', weight: 0.075 },
-
-  { keyword: '智能录音笔', group: 'category', weight: 0.509 },
-  { keyword: 'AI录音笔', group: 'category', weight: 0.335 },
-  { keyword: '录音笔', group: 'category', weight: 0.198 },
-
-  { keyword: '会议录音笔', group: 'other', weight: 0.72 },
-  { keyword: '录音转文字', group: 'other', weight: 0.58 },
-  { keyword: '便携录音笔', group: 'other', weight: 0.42 },
-  { keyword: '采访录音笔', group: 'other', weight: 0.36 },
-  { keyword: '录音笔 专业', group: 'other', weight: 0.32 },
+const TRAFFIC_SOURCES: { channel: string; weight: number; cvr: number }[] = [
+  { channel: '搜索', weight: 0.30, cvr: 0.037 },
+  { channel: '推荐', weight: 0.42, cvr: 0.003 },
+  { channel: '付费-店铺直达（品专）', weight: 0.10, cvr: 0.043 },
+  { channel: '付费-关键词推广', weight: 0.11, cvr: 0.026 },
+  { channel: '付费-淘宝客', weight: 0.02, cvr: 0.030 },
+  { channel: '付费-短视频', weight: 0.05, cvr: 0.007 },
 ];
-
-const KEYWORD_WEIGHT_TOTAL = KEYWORDS.reduce((s, k) => s + k.weight, 0);
+const TRAFFIC_WEIGHT_TOTAL = TRAFFIC_SOURCES.reduce((s, k) => s + k.weight, 0);
 
 /**
  * 大促日历：返回当天的成交放大倍数。
  * 618 和双 11 是全年两个尖峰，年货节和 38 节是次级峰。
  */
+/** 当天的活动标签，和 campaignBoost 用的是同一张大促日历 */
+function campaignName(date: DateStr): string {
+  const b = campaignBoost(date);
+  if (b >= 3) return '大促';
+  if (b >= 1.8) return '年货节';
+  if (b >= 1.3) return '小活动';
+  return '日常';
+}
+
 function campaignBoost(date: DateStr): number {
   const m = month(date);
   const d = dayOfMonth(date);
@@ -164,7 +160,7 @@ export function buildMockSnapshot(): DashboardSnapshot {
   const daily: DailyMetric[] = [];
   const ads: AdMetric[] = [];
   const products: ProductMetric[] = [];
-  const keywords: KeywordMetric[] = [];
+  const trafficChannels: TrafficChannelMetric[] = [];
 
   for (let date = START; date <= end; date = addDays(date, 1)) {
     const t = diffDays(START, date);
@@ -221,9 +217,6 @@ export function buildMockSnapshot(): DashboardSnapshot {
     const buyers = Math.max(1, Math.round(gmv / aov));
     const conversion = 0.019 + rand() * 0.009;
     const uv = Math.round(buyers / conversion);
-    // 搜索 UV 占比 ~38%，大促期间被推荐流量稀释
-    const searchUv = Math.round(uv * (boost > 2 ? 0.3 : 0.38) * (0.9 + rand() * 0.2));
-    const orders = Math.round(buyers * (1.04 + rand() * 0.1));
     const addToCart = Math.round(uv * (0.09 + rand() * 0.035));
     // 新客率 ~88%：这个品类复购低，绝大部分是新客
     const newCustomerGmv = Math.round(gmv * (0.85 + rand() * 0.07));
@@ -269,7 +262,7 @@ export function buildMockSnapshot(): DashboardSnapshot {
      * （实测能到 101%），那是把两个平台的访客混在一起数了。
      */
     const OFFSITE_LANDING_RATE = 0.12;
-    let paidUv = 0;
+    let adClickUv = 0;
 
     let adCostInsite = 0;
     let adGmvInsite = 0;
@@ -277,7 +270,7 @@ export function buildMockSnapshot(): DashboardSnapshot {
       const r = emitAd('insite', item, insiteCost, boost > 2 ? 1.15 : 1);
       adCostInsite += r.cost;
       adGmvInsite += r.gmv;
-      paidUv += r.clicks;
+      adClickUv += r.clicks;
     }
 
     let adCostOffsite = 0;
@@ -286,39 +279,29 @@ export function buildMockSnapshot(): DashboardSnapshot {
       const r = emitAd('offsite', item, offsiteCost, 1);
       adCostOffsite += r.cost;
       adGmvOffsite += r.gmv;
-      paidUv += Math.round(r.clicks * OFFSITE_LANDING_RATE);
+      adClickUv += Math.round(r.clicks * OFFSITE_LANDING_RATE);
     }
 
     /**
-     * --- 搜索关键词：按权重瓜分当天的搜索 UV ---
+     * --- 流量来源：按权重瓜分当天的总 UV ---
      *
-     * 最后一个词吃掉余数，保证 Σ 关键词 UV === searchUv。
-     * 不这么做的话，逐词四舍五入的误差会累积，关键词表的合计对不上日报的搜索 UV，
-     * 页面上就会出现「占比加起来 99.4%」这种没法解释的数。
+     * 最后一路吃掉余数，保证 Σ 来源 UV === uv。不这么做的话逐路四舍五入的误差
+     * 会累积，明细表的合计对不上大盘，页面上就会出现「占比加起来 99.4%」。
      */
-    let remaining = searchUv;
-    let searchOrders = 0;
-    let searchGmv = 0;
-    KEYWORDS.forEach((kw, index) => {
-      const raw = Math.round((searchUv * kw.weight) / KEYWORD_WEIGHT_TOTAL);
-      const finalUv = index === KEYWORDS.length - 1 ? remaining : Math.max(0, Math.min(raw, remaining));
-      remaining -= finalUv;
-      if (finalUv <= 0) return;
-      // 品牌词的转化率是品类词的三倍多：搜品牌名的人已经决定买什么了
-      const kwConversion =
-        (kw.group === 'brand' ? 0.048 : kw.group === 'category' ? 0.015 : 0.011) * (0.8 + rand() * 0.4);
-      const kwOrders = Math.round(finalUv * kwConversion);
-      const kwGmv = Math.round(kwOrders * aov * (0.9 + rand() * 0.2));
-      searchOrders += kwOrders;
-      searchGmv += kwGmv;
-      keywords.push({
-        date,
-        keyword: kw.keyword,
-        group: kw.group,
-        uv: finalUv,
-        orders: kwOrders,
-        gmv: kwGmv,
-      });
+    let remainingUv = uv;
+    let searchUv = 0, searchBuyers = 0, searchGmv = 0;
+    let paidUv = 0, paidGmv = 0;
+    void adClickUv; // 投放点击只用来对账，不当付费 UV —— 付费 UV 以流量表口径为准
+    TRAFFIC_SOURCES.forEach((src, index) => {
+      const raw = Math.round((uv * src.weight) / TRAFFIC_WEIGHT_TOTAL);
+      const chUv = index === TRAFFIC_SOURCES.length - 1 ? remainingUv : Math.max(0, Math.min(raw, remainingUv));
+      remainingUv -= chUv;
+      if (chUv <= 0) return;
+      const chBuyers = Math.round(chUv * src.cvr * (0.8 + rand() * 0.4));
+      const chGmv = Math.round(chBuyers * aov * (0.9 + rand() * 0.2));
+      trafficChannels.push({ date, channel: src.channel, uv: chUv, buyers: chBuyers, gmv: chGmv });
+      if (src.channel === '搜索') { searchUv = chUv; searchBuyers = chBuyers; searchGmv = chGmv; }
+      if (src.channel.startsWith('付费')) { paidUv += chUv; paidGmv += chGmv; }
     });
 
     // 预估利润：退后 GMV × 毛利率 − 投放费。毛利率 52–56%，硬件品牌的常见区间
@@ -334,17 +317,17 @@ export function buildMockSnapshot(): DashboardSnapshot {
       uv,
       searchUv,
       buyers,
-      orders,
       addToCart,
       newCustomerGmv,
       adCostInsite,
       adCostOffsite,
       adGmvInsite,
       adGmvOffsite,
-      searchOrders,
+      searchBuyers,
       searchGmv,
       paidUv,
-      grossProfit,
+      paidGmv,
+      campaign: campaignName(date),
     });
   }
 
@@ -355,7 +338,7 @@ export function buildMockSnapshot(): DashboardSnapshot {
     daily,
     ads,
     products,
-    keywords,
+    trafficChannels,
     targets: buildTargets(daily, seeded(77001)),
     warnings: [],
   };
@@ -400,7 +383,6 @@ function buildTargets(daily: DailyMetric[], rand: () => number): Target[] {
       adCostInsite: agg.adCostInsite * scale,
       adCostOffsite: agg.adCostOffsite * scale,
       adCost: agg.adCost * scale,
-      grossProfit: agg.grossProfit * scale,
       searchUv: agg.searchUv * scale,
     };
   }
@@ -429,7 +411,6 @@ function buildTargets(daily: DailyMetric[], rand: () => number): Target[] {
         // 绝对量：往上提
         gmv: Math.round((b.gmv * stretch) / 10000) * 10000,
         deviceSales: Math.round((b.deviceSales * stretch) / 50) * 50,
-        grossProfit: Math.round((b.grossProfit * stretch) / 10000) * 10000,
         searchUv: Math.round((b.searchUv * stretch) / 100) * 100,
         // 费用类：目标是「别超」，所以按实际略微收紧
         adCostInsite: Math.round((b.adCostInsite * growth * (1.02 + rand() * 0.12)) / 1000) * 1000,
@@ -440,7 +421,6 @@ function buildTargets(daily: DailyMetric[], rand: () => number): Target[] {
         roiOffsite: round4(b.roiOffsite * (0.8 + rand() * 0.3)),
         adCostRateInsite: round4(b.adCostRateInsite * (0.95 + rand() * 0.25)),
         adCostRateOffsite: round4(b.adCostRateOffsite * (0.95 + rand() * 0.3)),
-        profitRate: round4(b.profitRate * (0.94 + rand() * 0.16)),
         searchConversionRate: round4(b.searchConversionRate * (0.88 + rand() * 0.2)),
       };
       values.adCost = values.adCostInsite + values.adCostOffsite;

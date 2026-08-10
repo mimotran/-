@@ -26,7 +26,7 @@ export async function readSnapshot(): Promise<DashboardSnapshot | null> {
     // 直接拿去渲染会在页面深处报「undefined is not iterable」，很难查。
     if (!Array.isArray(parsed.daily) || parsed.daily.length === 0) return null;
     if (!Array.isArray(parsed.ads) || !Array.isArray(parsed.targets)) return null;
-    if (!Array.isArray(parsed.products) || !Array.isArray(parsed.keywords)) return null;
+    if (!Array.isArray(parsed.products) || !Array.isArray(parsed.trafficChannels)) return null;
     return parsed;
   } catch {
     return null;

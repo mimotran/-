@@ -28,7 +28,6 @@ export const DAILY_ALIASES: AliasMap = {
   uv: ['UV', '访客数', '商品访客数', 'uv'],
   searchUv: ['搜索UV', '搜索访客数', '搜索流量', 'searchUv'],
   buyers: ['支付人数', '支付买家数', '成交人数', '买家数', 'buyers'],
-  orders: ['支付订单数', '成交订单数', '订单数', 'orders'],
   addToCart: ['加购人数', '加购件数', '加购数', 'addToCart'],
   adCost: ['投放费', '推广花费', '广告花费', '花费', 'adCost'],
   adCostInsite: ['站内消耗', '站内投放费', '站内花费', 'adCostInsite'],
@@ -51,7 +50,7 @@ export const DAILY_ALIASES: AliasMap = {
   adCostRateInsite: ['站内费比', '站内投放费率', 'adCostRateInsite'],
   adCostRateOffsite: ['站外费比', '站外投放费率', 'adCostRateOffsite'],
   /** 搜索订单数 / 搜索转化率：算搜索转化率用，两者有其一即可 */
-  searchOrders: ['搜索订单数', '搜索成交订单数', 'searchOrders'],
+  searchBuyers: ['搜索支付人数', '搜索成交人数', 'searchBuyers'],
   searchConversionRate: ['搜索转化率', '搜索支付转化率', 'searchConversionRate'],
   /** 搜索成交金额：没有这一列时用「搜索UV价值 × 搜索UV」或「成交占比 × GMV」反推 */
   searchGmv: ['搜索成交', '搜索成交金额', '搜索GMV', 'searchGmv'],
@@ -60,9 +59,8 @@ export const DAILY_ALIASES: AliasMap = {
   /** 付费流量 UV：没有这一列时用「付费UV占比 × 总UV」反推 */
   paidUv: ['付费UV', '付费流量UV', '总付费流量UV', 'paidUv'],
   paidUvShare: ['付费UV占比', 'UV占比', 'paidUvShare'],
-  /** 利润：有绝对值用绝对值，没有就用利润率乘 GMV */
-  grossProfit: ['利润', '预估利润', '毛利', '销售利润', 'grossProfit'],
-  profitRate: ['利润率', '销售利润率', '毛利率', 'profitRate'],
+  paidGmv: ['付费成交', '付费成交金额', 'paidGmv'],
+  campaign: ['店铺活动', '活动', '大促', 'campaign'],
 };
 
 /**
@@ -115,16 +113,6 @@ export const PRODUCT_ALIASES: AliasMap = {
   quantity: ['销量', '支付件数', '成交件数', 'quantity'],
   uv: ['UV', '访客数', '商品访客数', 'uv'],
   refund: ['退款金额', '退款', 'refund'],
-};
-
-export const KEYWORD_ALIASES: AliasMap = {
-  date: ['日期', '时间', '统计日期', 'date'],
-  keyword: ['关键词', '搜索词', '词', 'keyword'],
-  /** 词性：表里没有这一列时按 BRAND_PATTERNS 从词本身判 */
-  group: ['词性', '词类', '分组', '类型', 'group'],
-  uv: ['搜索UV', 'UV', '访客数', '搜索人数', 'uv'],
-  gmv: ['成交金额', 'GMV', '支付金额', 'gmv'],
-  orders: ['订单数', '支付订单数', '成交订单数', 'orders'],
 };
 
 /** 目标表里定位「哪个周期」的那一列 */

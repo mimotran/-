@@ -63,7 +63,7 @@ async function handle(request: Request): Promise<NextResponse> {
         daily: snapshot.daily.length,
         ads: snapshot.ads.length,
         products: snapshot.products.length,
-        keywords: snapshot.keywords.length,
+        trafficChannels: snapshot.trafficChannels.length,
         targets: snapshot.targets.length,
       },
       persisted,

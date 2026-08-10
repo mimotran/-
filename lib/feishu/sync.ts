@@ -9,9 +9,10 @@ import {
   type TableKey,
   type TableTargets,
 } from './config';
-import { parseAds, parseDaily, parseKeywords, parseProducts, parseTargets } from './normalize';
+import { parseAds, parseDaily, parseProducts, parseTargets } from './normalize';
 import { readSheetRange } from './sheets';
 import { resolveWikiNode } from './wiki';
+import { readWorkbook } from './workbook';
 
 /**
  * 从飞书文档拉一份完整快照。
@@ -83,7 +84,7 @@ export async function syncFromFeishu(
   ]);
 
   const sourceFor = (key: TableKey): ResolvedSource =>
-    key === 'keywords' ? keywordsSource : key === 'adsInsite' || key === 'adsOffsite' ? adsSource : main;
+    key === 'adsInsite' || key === 'adsOffsite' ? adsSource : main;
 
   /** 可选表：没配或读失败只记 warning，不打断同步 */
   async function readOptional(key: TableKey): Promise<Array<Record<string, unknown>>> {
@@ -101,52 +102,53 @@ export async function syncFromFeishu(
     }
   }
 
-  const [rawDaily, rawInsite, rawOffsite, rawProducts, rawKeywords, rawTargets] = await Promise.all([
+  /**
+   * 电子表格走 workbook 解析。
+   *
+   * 真实的天猫日报是人肉排版的多页签工作簿（合并表头、月/周/日混在一张表里、
+   * 同名列在六个分组下重复），通用的「按列名别名找列」表达不了这种结构。
+   * 多维表格那条路仍然走 normalize —— 那边一行就是一条记录，通用解析是对的。
+   */
+  if (main.docType === 'sheets') {
+    const year = Number(process.env.FEISHU_DATA_YEAR) || new Date().getUTCFullYear();
+    const snapshot = await readWorkbook(cfg, main.token, year);
+    return { ...snapshot, warnings: [...warnings, ...snapshot.warnings].slice(0, 20) };
+  }
+
+  const [rawDaily, rawInsite, rawOffsite, rawProducts, rawTargets] = await Promise.all([
     readTable(cfg, main, main.targets.daily),
     readOptional('adsInsite'),
     readOptional('adsOffsite'),
     readOptional('products'),
-    readOptional('keywords'),
     readOptional('targets'),
   ]);
 
   // 日报表里「7月1日」这种写法不带年份，用当前年份补齐
-  const defaultYear = new Date().getUTCFullYear();
+  const defaultYear = Number(process.env.FEISHU_DATA_YEAR) || new Date().getUTCFullYear();
 
   const daily = parseDaily(rawDaily, defaultYear);
   const insite = parseAds(rawInsite, 'insite', defaultYear);
   const offsite = parseAds(rawOffsite, 'offsite', defaultYear);
   const products = parseProducts(rawProducts, defaultYear);
-  const keywords = parseKeywords(rawKeywords, defaultYear);
   const targets = parseTargets(rawTargets, defaultYear);
 
   if (daily.rows.length === 0) {
-    throw new Error(
-      '日报表没有解析出任何有效数据。先跑 `npm run headers` 看真实表头，' +
-        '列名对不上就在 lib/feishu/mapping.ts 里补一个别名',
-    );
+    throw new Error('日报表没有解析出任何有效数据。先跑 `npm run headers` 看真实表头');
   }
 
   warnings.push(
-    ...daily.warnings,
-    ...insite.warnings,
-    ...offsite.warnings,
-    ...products.warnings,
-    ...keywords.warnings,
-    ...targets.warnings,
+    ...daily.warnings, ...insite.warnings, ...offsite.warnings,
+    ...products.warnings, ...targets.warnings,
   );
 
   return {
-    source: main.docType === 'bitable' ? 'feishu-bitable' : 'feishu-sheets',
+    source: 'feishu-bitable',
     syncedAt: new Date().toISOString(),
-    coverage: {
-      from: daily.rows[0].date,
-      to: daily.rows[daily.rows.length - 1].date,
-    },
+    coverage: { from: daily.rows[0].date, to: daily.rows[daily.rows.length - 1].date },
     daily: daily.rows,
     ads: [...insite.rows, ...offsite.rows],
     products: products.rows,
-    keywords: keywords.rows,
+    trafficChannels: [],
     targets: targets.rows,
     // warning 太多时只留前 20 条，页面上放不下也没人看
     warnings: warnings.slice(0, 20),
