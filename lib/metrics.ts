@@ -664,6 +664,8 @@ export interface AdChannelRow {
   ctr: number;
   /** 占该 scope 总投放费的比例 */
   costShare: number;
+  /** 上一个可比周期的投放费。用来算「多花了多少钱」这种绝对增量 */
+  prevCost: number | null;
   /** 相对可比周期的投放费变化 */
   costDelta: number | null;
 }
@@ -705,6 +707,7 @@ export function adBreakdown(
       clicks: item.clicks,
       ctr: safeDiv(item.clicks, item.impressions),
       costShare: safeDiv(item.cost, totalCost),
+      prevCost: compareRange !== null && previous.has(channel) ? (previous.get(channel) ?? 0) : null,
       costDelta: delta(item.cost, previous.get(channel) ?? 0, compareRange !== null && previous.has(channel)),
     }))
     .sort((a, b) => b.cost - a.cost);
