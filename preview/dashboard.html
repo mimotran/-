@@ -417,11 +417,16 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
   box-shadow: var(--shadow); padding: 10px 12px; font-size: 12px;
   min-width: 168px; transition: opacity .12s;
 }
-.tip-date { font-weight: 600; margin-bottom: 6px; }
-.tip-row { display: flex; align-items: center; gap: 7px; margin-top: 3px; white-space: nowrap; }
-.tip-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.tip-date { font-weight: 600; margin-bottom: 7px; }
+/* 值不右对齐、跟着标签走：一行读下来是「谁 · 多少 · 变了多少」，
+   右对齐会把标签和数字拉开一大截，单行 tooltip 里反而更难对上。 */
+.tip-row { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; white-space: nowrap; }
+.tip-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; align-self: center; }
 .tip-name { color: var(--ink-2); }
-.tip-val { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+.tip-val { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
+/* 精确值压一档：紧凑值负责一眼读出量级，精确值负责能抄进 Excel，主次要分开 */
+.tip-exact { font-weight: 400; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tip-mom { color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .tip-sep { margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--line); }
 
 .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
@@ -942,6 +947,54 @@ function fmtBy(v, f) {
 
 const mdShort = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
 const cnDate = (d) => `${d.slice(0, 4)} 年 ${+d.slice(5, 7)} 月 ${+d.slice(8, 10)} 日`;
+
+/** tooltip 的日期头：`08-09 周日`。带星期是因为电商的周内波动很大，看趋势必须知道是周几 */
+const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const tipDate = (d) => `${d.slice(5, 7)}-${d.slice(8, 10)} ${WEEKDAYS[new Date(d + 'T00:00:00Z').getUTCDay()]}`;
+
+/**
+ * tooltip 里的一个数值：紧凑值加粗 + 括号里的精确值。
+ * 两者相同时不重复显示 —— 「4,343 (4,343)」只是噪音。
+ */
+function tipValue(v, f) {
+  if (f !== 'currency' && f !== 'integer') return fmtBy(v, f).join('');
+  const [n, unit] = compact(v);
+  const suffix = f === 'currency' ? '元' : '';
+  /**
+   * 只有被压成「万 / 亿」时才补括号里的精确值。
+   * 四位数以内 compact 返回的本来就是精确值，再括一遍就成了「5,048元 (5,048)」。
+   */
+  if (!unit) return `${n}${suffix}`;
+  return `${n}${unit}${suffix} <span class="tip-exact">(${Math.round(v).toLocaleString('zh-CN')})</span>`;
+}
+
+/**
+ * 环比上一个点。基数为 0 或没有上一个点时不显示，不写「+∞」。
+ *
+ * 比率指标给**百分点差**而不是相对变化：退款率 22.5% → 21.1% 写成「-6.6%」，
+ * 读的人分不清是掉了 6.6 个点还是掉到了原来的 93.4%。和目标达成表一个口径。
+ */
+function tipMom(cur, prev, format) {
+  if (prev === undefined || prev === null) return '';
+  if (format === 'percent') {
+    const pp = (cur - prev) * 100;
+    if (Math.abs(pp) < 0.005) return `<span class="tip-mom">· 环比 持平</span>`;
+    return `<span class="tip-mom">· 环比 ${pp >= 0 ? '+' : ''}${pp.toFixed(2)}pp</span>`;
+  }
+  if (!(Math.abs(prev) > 0)) return '';
+  const d = (cur - prev) / Math.abs(prev);
+  return `<span class="tip-mom">· 环比 ${d >= 0 ? '+' : ''}${(d * 100).toFixed(1)}%</span>`;
+}
+
+/** 一整行。color 给色块，name 给标签，extra 是占比之类的附加信息 */
+function tipRow(color, name, value, format, opts = {}) {
+  return `<div class="tip-row${opts.sep ? ' tip-sep' : ''}">` +
+    `<span class="tip-dot" style="background:${color}"></span>` +
+    `<span class="tip-name">${esc(name)}</span>` +
+    `<span class="tip-val">${tipValue(value, format)}</span>` +
+    (opts.extra || '') +
+    `</div>`;
+}
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /**
@@ -1887,8 +1940,9 @@ function barChart(el, pts, pick, opts) {
     </svg><div class="tip"></div>`;
 
   hookTip(el, pts, (i) => {
-    const rows = [`<div class="tip-row"><span class="tip-dot" style="background:${o.color || CH.skySoft}"></span><span class="tip-name">${esc(o.label || '值')}</span><span class="tip-val">${fmtExact(vals[i], o.format)}</span></div>`];
-    rows.push(`<div class="tip-row"><span class="tip-dot" style="background:var(--ink)"></span><span class="tip-name">7 日均值</span><span class="tip-val">${fmtExact(ma[i], o.format)}</span></div>`);
+    const rows = [tipRow(o.color || CH.skySoft, `当日${o.label || '值'}`, vals[i], o.format,
+      { extra: tipMom(vals[i], i > 0 ? vals[i - 1] : undefined, o.format) })];
+    rows.push(tipRow('var(--ink)', '7 日均值', ma[i], o.format));
     if (trendUp !== null) {
       rows.push(`<div class="tip-row tip-sep"><span class="tip-dot" style="background:${trendUp ? 'var(--gain)' : 'var(--loss)'}"></span><span class="tip-name">整体趋势</span><span class="tip-val" style="color:${trendUp ? 'var(--gain)' : 'var(--loss)'}">${trendUp ? '上行' : '下行'}</span></div>`);
     }
@@ -1926,7 +1980,8 @@ function lineChart(el, pts, series, opts) {
     </svg><div class="tip"></div>`;
 
   hookTip(el, pts, (i) => series.map((s) =>
-    `<div class="tip-row"><span class="tip-dot" style="background:${s.color}"></span><span class="tip-name">${esc(s.name)}</span><span class="tip-val">${fmtExact(s.pick(pts[i]), o.format)}</span></div>`).join(''), W, M, pw);
+    tipRow(s.color, s.name, s.pick(pts[i]), o.format,
+      { extra: tipMom(s.pick(pts[i]), i > 0 ? s.pick(pts[i - 1]) : undefined, o.format) })).join(''), W, M, pw);
 }
 
 /** 竖直准星找 X，一个 tooltip 列出该 X 上所有系列 —— 读者瞄的是日期，不是那条 2px 的线 */
@@ -1939,7 +1994,7 @@ function hookTip(el, pts, rows, W, M, pw) {
     i = Math.max(0, Math.min(pts.length - 1, i));
     const px = M.l + (pts.length === 1 ? pw / 2 : (i * pw) / (pts.length - 1));
     cur.setAttribute('x1', px); cur.setAttribute('x2', px); cur.setAttribute('opacity', '.28');
-    tip.innerHTML = `<div class="tip-date">${cnDate(pts[i].date)}</div>${rows(i)}`;
+    tip.innerHTML = `<div class="tip-date">${tipDate(pts[i].date)}</div>${rows(i)}`;
     tip.style.opacity = '1';
     const left = (px / W) * r.width;
     tip.style.left = Math.max(4, Math.min(r.width - tip.offsetWidth - 4, left - tip.offsetWidth / 2)) + 'px';
@@ -2496,9 +2551,16 @@ function prodRollup(from, to, mk) {
       tip: (i) => {
         const it = items[i];
         const tot = SERIES.reduce((s, sr) => s + it.vals[sr.line], 0);
-        return `<div class="tip-date">${cnDate(it.date)}</div>` +
-          SERIES.map((sr) => `<div class="tip-row"><span class="tip-dot" style="background:${sr.color}"></span><span class="tip-name">${esc(sr.name)}</span><span class="tip-val">${fmtExact(it.vals[sr.line], m.format)}<span style="color:var(--ink-3);font-weight:400"> · ${fmtPct(div(it.vals[sr.line], tot), 1)}</span></span></div>`).join('') +
-          `<div class="tip-row tip-sep"><span class="tip-dot" style="background:var(--ink)"></span><span class="tip-name">合计</span><span class="tip-val">${fmtExact(tot, m.format)}</span></div>`;
+        const prev = i > 0 ? items[i - 1] : null;
+        return `<div class="tip-date">${tipDate(it.date)}</div>` +
+          SERIES.map((sr) => tipRow(sr.color, sr.name, it.vals[sr.line], m.format, {
+            extra: `<span class="tip-exact">· ${fmtPct(div(it.vals[sr.line], tot), 1)}</span>` +
+              tipMom(it.vals[sr.line], prev ? prev.vals[sr.line] : undefined, m.format),
+          })).join('') +
+          tipRow('var(--ink)', '合计', tot, m.format, {
+            sep: true,
+            extra: tipMom(tot, prev ? SERIES.reduce((s2, sr) => s2 + prev.vals[sr.line], 0) : undefined, m.format),
+          });
       },
     });
     $('pd-legend').innerHTML = SERIES.map((s) =>
@@ -2561,12 +2623,13 @@ function prodRollup(from, to, mk) {
             const pv = i > 0 ? items[i - 1].vals[sr.line] : null;
             const mom = pv !== null && pv > 0 ? (v - pv) / pv : null;
             const col = mom === null ? 'var(--ink-3)' : mom >= 0 ? 'var(--gain)' : 'var(--loss)';
-            return `<div class="tip-row"><span class="tip-dot" style="background:${sr.color}"></span><span class="tip-name">${esc(sr.name)}</span><span class="tip-val">${fmtExact(v, m.format)}<span style="color:var(--ink-3);font-weight:400"> · ${fmtPct(div(v, tot), 1)}</span>${mom === null ? '' : `<span style="color:${col};font-weight:600"> ${mom >= 0 ? '▲' : '▼'}${(Math.abs(mom) * 100).toFixed(1)}%</span>`}</span></div>`;
+            void col;
+            return tipRow(sr.color, sr.name, v, m.format, {
+              extra: `<span class="tip-exact">· ${fmtPct(div(v, tot), 1)}</span>` +
+                (mom === null ? '' : `<span class="tip-mom">· 环比 ${mom >= 0 ? '+' : ''}${(mom * 100).toFixed(1)}%</span>`),
+            });
           }).join('') +
-          `<div class="tip-row tip-sep"><span class="tip-dot" style="background:var(--ink)"></span><span class="tip-name">合计</span><span class="tip-val">${fmtExact(tot, m.format)}${prev === null || prev <= 0 ? '' : (() => {
-            const mm = (tot - prev) / prev;
-            return `<span style="color:${mm >= 0 ? 'var(--gain)' : 'var(--loss)'};font-weight:600"> ${mm >= 0 ? '▲' : '▼'}${(Math.abs(mm) * 100).toFixed(1)}%</span>`;
-          })()}</span></div>` +
+          tipRow('var(--ink)', '合计', tot, m.format, { sep: true, extra: tipMom(tot, prev, m.format) }) +
           (it.partial ? `<div class="tip-row" style="color:var(--ink-3)">未完整月份，环比仅供参考</div>` : '');
       },
     });
