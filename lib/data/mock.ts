@@ -7,6 +7,7 @@ import type {
   DashboardSnapshot,
   DateStr,
   KeywordMetric,
+  KeywordGroup,
   ProductLine,
   ProductMetric,
   Target,
@@ -110,20 +111,31 @@ const OFFSITE = [
   { channel: 'B站CID-天猫分摊', share: 0.1, roi: 3.1, cvr: 0.006, ctr: 0.009 },
 ];
 
-const KEYWORDS = [
-  '录音笔',
-  'plaud',
-  'ai录音笔',
-  '会议录音笔',
-  '录音转文字',
-  '智能录音笔',
-  'plaud note',
-  '便携录音笔',
-  '录音笔 专业',
-  '采访录音笔',
-  'notepin',
-  '录音笔 转写',
+/**
+ * 搜索词按品牌 / 品类分组，权重照着真实搜索词表的 YTD 量级配。
+ *
+ * `other` 是长尾：单个词量小、名字杂，逐个列出来只会把表撑长，
+ * 但它占了搜索 UV 的四成多，不能不算 —— 所以进合计、不进明细。
+ * 组占比的分母是全部搜索 UV，因此品牌 + 品类之和小于 100%，缺的那块就是长尾。
+ */
+const KEYWORDS: { keyword: string; group: KeywordGroup; weight: number }[] = [
+  { keyword: 'Plaud', group: 'brand', weight: 1.0 },
+  { keyword: 'Plaud Note', group: 'brand', weight: 0.729 },
+  { keyword: 'Plaud Note Pro', group: 'brand', weight: 0.438 },
+  { keyword: 'Plaude', group: 'brand', weight: 0.075 },
+
+  { keyword: '智能录音笔', group: 'category', weight: 0.509 },
+  { keyword: 'AI录音笔', group: 'category', weight: 0.335 },
+  { keyword: '录音笔', group: 'category', weight: 0.198 },
+
+  { keyword: '会议录音笔', group: 'other', weight: 0.72 },
+  { keyword: '录音转文字', group: 'other', weight: 0.58 },
+  { keyword: '便携录音笔', group: 'other', weight: 0.42 },
+  { keyword: '采访录音笔', group: 'other', weight: 0.36 },
+  { keyword: '录音笔 专业', group: 'other', weight: 0.32 },
 ];
+
+const KEYWORD_WEIGHT_TOTAL = KEYWORDS.reduce((s, k) => s + k.weight, 0);
 
 /**
  * 大促日历：返回当天的成交放大倍数。
@@ -245,8 +257,19 @@ export function buildMockSnapshot(): DashboardSnapshot {
         impressions: Math.round(clicks / ctr),
         clicks,
       });
-      return { cost, gmv: channelGmv };
+      return { cost, gmv: channelGmv, clicks };
     };
+
+    /**
+     * 付费流量 UV：进到**天猫店铺**的付费访客，和投放明细同源，不另编一个数。
+     *
+     * 站内点击就是店铺内的访客，1:1 计入。
+     * 站外 CID 的点击发生在抖音 / 小红书 / B 站站内，绝大多数人看完就走，
+     * 只有小部分真的跳到天猫 —— 按 1:1 算的话付费 UV 会逼近甚至超过总 UV
+     * （实测能到 101%），那是把两个平台的访客混在一起数了。
+     */
+    const OFFSITE_LANDING_RATE = 0.12;
+    let paidUv = 0;
 
     let adCostInsite = 0;
     let adGmvInsite = 0;
@@ -254,6 +277,7 @@ export function buildMockSnapshot(): DashboardSnapshot {
       const r = emitAd('insite', item, insiteCost, boost > 2 ? 1.15 : 1);
       adCostInsite += r.cost;
       adGmvInsite += r.gmv;
+      paidUv += r.clicks;
     }
 
     let adCostOffsite = 0;
@@ -262,29 +286,38 @@ export function buildMockSnapshot(): DashboardSnapshot {
       const r = emitAd('offsite', item, offsiteCost, 1);
       adCostOffsite += r.cost;
       adGmvOffsite += r.gmv;
+      paidUv += Math.round(r.clicks * OFFSITE_LANDING_RATE);
     }
 
-    // --- 搜索关键词：占满当天的搜索 UV ---
+    /**
+     * --- 搜索关键词：按权重瓜分当天的搜索 UV ---
+     *
+     * 最后一个词吃掉余数，保证 Σ 关键词 UV === searchUv。
+     * 不这么做的话，逐词四舍五入的误差会累积，关键词表的合计对不上日报的搜索 UV，
+     * 页面上就会出现「占比加起来 99.4%」这种没法解释的数。
+     */
     let remaining = searchUv;
     let searchOrders = 0;
-    KEYWORDS.forEach((keyword, index) => {
-      // 齐夫分布：头部词吃掉大部分搜索量
-      const share = 1 / Math.pow(index + 1.5, 1.15);
-      const kwUv = index === KEYWORDS.length - 1 ? remaining : Math.round(searchUv * share * 0.42);
-      const finalUv = Math.max(0, Math.min(kwUv, remaining));
+    let searchGmv = 0;
+    KEYWORDS.forEach((kw, index) => {
+      const raw = Math.round((searchUv * kw.weight) / KEYWORD_WEIGHT_TOTAL);
+      const finalUv = index === KEYWORDS.length - 1 ? remaining : Math.max(0, Math.min(raw, remaining));
       remaining -= finalUv;
       if (finalUv <= 0) return;
-      // 品牌词转化率明显高于泛词
-      const isBrand = keyword.includes('plaud') || keyword.includes('notepin');
-      const kwConversion = (isBrand ? 0.048 : 0.014) * (0.8 + rand() * 0.4);
+      // 品牌词的转化率是品类词的三倍多：搜品牌名的人已经决定买什么了
+      const kwConversion =
+        (kw.group === 'brand' ? 0.048 : kw.group === 'category' ? 0.015 : 0.011) * (0.8 + rand() * 0.4);
       const kwOrders = Math.round(finalUv * kwConversion);
+      const kwGmv = Math.round(kwOrders * aov * (0.9 + rand() * 0.2));
       searchOrders += kwOrders;
+      searchGmv += kwGmv;
       keywords.push({
         date,
-        keyword,
+        keyword: kw.keyword,
+        group: kw.group,
         uv: finalUv,
         orders: kwOrders,
-        gmv: Math.round(kwOrders * aov * (0.9 + rand() * 0.2)),
+        gmv: kwGmv,
       });
     });
 
@@ -309,6 +342,8 @@ export function buildMockSnapshot(): DashboardSnapshot {
       adGmvInsite,
       adGmvOffsite,
       searchOrders,
+      searchGmv,
+      paidUv,
       grossProfit,
     });
   }

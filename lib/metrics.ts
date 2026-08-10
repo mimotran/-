@@ -25,6 +25,7 @@ import type {
   GoalGroup,
   GoalPeriod,
   GoalRow,
+  KeywordGroup,
   KeywordMetric,
   KpiValue,
   Period,
@@ -128,6 +129,8 @@ const ZERO: Aggregate = {
   adGmvInsite: 0,
   adGmvOffsite: 0,
   searchOrders: 0,
+  searchGmv: 0,
+  paidUv: 0,
   grossProfit: 0,
   refundRate: 0,
   adCostRate: 0,
@@ -143,6 +146,10 @@ const ZERO: Aggregate = {
   roiOffsite: 0,
   profitRate: 0,
   searchConversionRate: 0,
+  searchUvValue: 0,
+  searchGmvShare: 0,
+  paidUvShare: 0,
+  paidGmvShare: 0,
 };
 
 function safeDiv(numerator: number, denominator: number): number {
@@ -177,6 +184,8 @@ export function aggregateRange(daily: DailyMetric[], range: DateRange | null): A
     acc.adGmvInsite += row.adGmvInsite;
     acc.adGmvOffsite += row.adGmvOffsite;
     acc.searchOrders += row.searchOrders;
+    acc.searchGmv += row.searchGmv;
+    acc.paidUv += row.paidUv;
     acc.grossProfit += row.grossProfit;
   }
 
@@ -197,6 +206,10 @@ export function aggregateRange(daily: DailyMetric[], range: DateRange | null): A
   acc.roiOffsite = safeDiv(acc.adGmvOffsite, acc.adCostOffsite);
   acc.profitRate = safeDiv(acc.grossProfit, acc.gmv);
   acc.searchConversionRate = safeDiv(acc.searchOrders, acc.searchUv);
+  acc.searchUvValue = safeDiv(acc.searchGmv, acc.searchUv);
+  acc.searchGmvShare = safeDiv(acc.searchGmv, acc.gmv);
+  acc.paidUvShare = safeDiv(acc.paidUv, acc.uv);
+  acc.paidGmvShare = safeDiv(acc.adGmv, acc.gmv);
 
   return acc;
 }
@@ -842,6 +855,7 @@ export function productBreakdown(
 
 export interface KeywordRow {
   keyword: string;
+  group: KeywordGroup;
   uv: number;
   gmv: number;
   orders: number;
@@ -857,12 +871,13 @@ export function keywordBreakdown(
   compareRange: DateRange | null,
   limit = 15,
 ): KeywordRow[] {
-  const current = new Map<string, { uv: number; gmv: number; orders: number }>();
+  type Acc = { uv: number; gmv: number; orders: number; group: KeywordGroup };
+  const current = new Map<string, Acc>();
   const previous = new Map<string, number>();
 
   for (const row of keywords) {
     if (inRange(row.date, range)) {
-      const acc = current.get(row.keyword) ?? { uv: 0, gmv: 0, orders: 0 };
+      const acc = current.get(row.keyword) ?? { uv: 0, gmv: 0, orders: 0, group: row.group };
       acc.uv += row.uv;
       acc.gmv += row.gmv;
       acc.orders += row.orders;
@@ -878,6 +893,7 @@ export function keywordBreakdown(
   return [...current.entries()]
     .map(([keyword, acc]) => ({
       keyword,
+      group: acc.group,
       uv: acc.uv,
       gmv: acc.gmv,
       orders: acc.orders,
@@ -887,6 +903,80 @@ export function keywordBreakdown(
     }))
     .sort((a, b) => b.uv - a.uv)
     .slice(0, limit);
+}
+
+export const KEYWORD_GROUP_LABELS: Record<KeywordGroup, string> = {
+  brand: '品牌词',
+  category: '品类词',
+  other: '其他词',
+};
+
+export interface KeywordGroupRow {
+  group: KeywordGroup;
+  label: string;
+  uv: number;
+  gmv: number;
+  orders: number;
+  conversionRate: number;
+  /** 该组占全部搜索 UV 的比例 */
+  uvShare: number;
+  uvDelta: number | null;
+  /** 组内明细，按 UV 降序。other 组只汇总不展开，rows 为空 */
+  rows: KeywordRow[];
+}
+
+/**
+ * 关键词按品牌词 / 品类词分组。
+ *
+ * 分组而不是一张大榜：两类词的转化率差三倍以上，混排的话头部永远是品牌词，
+ * 而品牌词的量是品牌势能的结果，投放撬不动；能靠投放拉的是品类词。
+ * 两类各自看趋势才有动作含义。
+ *
+ * 组占比的分母是**全部**搜索 UV（含 other 长尾），所以 brand + category 之和
+ * 小于 100% —— 这是对的，缺的那块就是长尾，不该被摊进两个组里。
+ */
+export function keywordGroups(
+  keywords: KeywordMetric[],
+  range: DateRange,
+  compareRange: DateRange | null,
+): { groups: KeywordGroupRow[]; totalUv: number; totalGmv: number; totalOrders: number } {
+  const all = keywordBreakdown(keywords, range, compareRange, Number.MAX_SAFE_INTEGER);
+
+  const prevByGroup = new Map<KeywordGroup, number>();
+  let hasCompare = false;
+  if (compareRange) {
+    for (const row of keywords) {
+      if (!inRange(row.date, compareRange)) continue;
+      hasCompare = true;
+      prevByGroup.set(row.group, (prevByGroup.get(row.group) ?? 0) + row.uv);
+    }
+  }
+
+  const totalUv = all.reduce((s, r) => s + r.uv, 0);
+  const totalGmv = all.reduce((s, r) => s + r.gmv, 0);
+  const totalOrders = all.reduce((s, r) => s + r.orders, 0);
+
+  // 固定顺序，不按大小排 —— 分组是口径，位置换来换去会让人以为结构变了
+  const ORDER: KeywordGroup[] = ['brand', 'category', 'other'];
+  const groups = ORDER.map((group) => {
+    const rows = all.filter((r) => r.group === group);
+    const uv = rows.reduce((s, r) => s + r.uv, 0);
+    const gmv = rows.reduce((s, r) => s + r.gmv, 0);
+    const orders = rows.reduce((s, r) => s + r.orders, 0);
+    return {
+      group,
+      label: KEYWORD_GROUP_LABELS[group],
+      uv,
+      gmv,
+      orders,
+      conversionRate: safeDiv(orders, uv),
+      uvShare: safeDiv(uv, totalUv),
+      uvDelta: delta(uv, prevByGroup.get(group) ?? 0, hasCompare && prevByGroup.has(group)),
+      rows: group === 'other' ? [] : rows,
+    };
+  }).filter((g) => g.uv > 0);
+
+  return { groups, totalUv, totalGmv, totalOrders };
 }
 
 // ---------------------------------------------------------------------------

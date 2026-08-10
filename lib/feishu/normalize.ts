@@ -2,6 +2,7 @@ import type {
   AdMetric,
   AdScope,
   DailyMetric,
+  KeywordGroup,
   KeywordMetric,
   ProductLine,
   ProductMetric,
@@ -115,6 +116,28 @@ export function parseDaily(raw: Array<Record<string, unknown>>, defaultYear?: nu
         const rate = toNumber(pick(row, DAILY_ALIASES.searchConversionRate));
         return rate > 0 ? Math.round(toNumber(pick(row, DAILY_ALIASES.searchUv)) * rate) : 0;
       })(),
+      /**
+       * 搜索成交：优先绝对值；其次「搜索 UV 价值 × 搜索 UV」；再次「成交占比 × GMV」。
+       * 三条路都走不通就留 0 —— 宁可让搜索 UV 价值显示为 0，也不要拿总转化率
+       * 乘出一个看起来合理、实际是编的数。
+       */
+      searchGmv: (() => {
+        const direct = pick(row, DAILY_ALIASES.searchGmv);
+        if (direct !== undefined) return toNumber(direct);
+        const uvValue = pick(row, DAILY_ALIASES.searchUvValue);
+        if (uvValue !== undefined) {
+          return toNumber(uvValue) * toNumber(pick(row, DAILY_ALIASES.searchUv));
+        }
+        const share = pick(row, DAILY_ALIASES.searchGmvShare);
+        return share !== undefined ? toNumber(share) * gmv : 0;
+      })(),
+      // 付费 UV：表里没有就用「付费 UV 占比 × 总 UV」反推
+      paidUv: (() => {
+        const direct = pick(row, DAILY_ALIASES.paidUv);
+        if (direct !== undefined) return toNumber(direct);
+        const share = pick(row, DAILY_ALIASES.paidUvShare);
+        return share !== undefined ? Math.round(toNumber(share) * toNumber(pick(row, DAILY_ALIASES.uv))) : 0;
+      })(),
       // 利润：表里没有就用「退后 GMV × 毛利率 − 投放费」估
       grossProfit: (() => {
         const direct = pick(row, DAILY_ALIASES.grossProfit);
@@ -202,6 +225,27 @@ function resolveLine(explicit: string, title: string): ProductLine {
   return 'accessory';
 }
 
+/**
+ * 认词性：优先信表里的「词性」列，没有就按词本身判。
+ *
+ * 品牌词的判定放在品类词前面：「plaud 录音笔」同时命中两边，但它是品牌词 ——
+ * 搜这个词的人已经认准了牌子，把它算进品类词会高估泛需求的规模。
+ * 都不命中就归到长尾，不猜。
+ */
+const BRAND_PATTERN = /plaud|notepin|note\s*pro|普劳德/i;
+const CATEGORY_PATTERN = /录音笔|录音设备|会议记录仪|ai\s*录音/i;
+
+function keywordGroupOf(explicit: string, keyword: string): KeywordGroup {
+  const tag = explicit.trim();
+  if (/品牌|brand/i.test(tag)) return 'brand';
+  if (/品类|类目|category/i.test(tag)) return 'category';
+  if (/其他|长尾|other/i.test(tag)) return 'other';
+
+  if (BRAND_PATTERN.test(keyword)) return 'brand';
+  if (CATEGORY_PATTERN.test(keyword)) return 'category';
+  return 'other';
+}
+
 export function parseProducts(
   raw: Array<Record<string, unknown>>,
   defaultYear?: number,
@@ -254,6 +298,7 @@ export function parseKeywords(
     rows.push({
       date,
       keyword,
+      group: keywordGroupOf(toText(pick(row, KEYWORD_ALIASES.group)), keyword),
       uv: toNumber(pick(row, KEYWORD_ALIASES.uv)),
       gmv: toNumber(pick(row, KEYWORD_ALIASES.gmv)),
       orders: toNumber(pick(row, KEYWORD_ALIASES.orders)),

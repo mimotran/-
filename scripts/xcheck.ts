@@ -4,7 +4,7 @@
  * 重写就有走样的风险，这个脚本把两边的结果摆在一起比。
  */
 import { getSnapshot } from '../lib/data/source';
-import { adBreakdown, aggregateRange, buildGoals, buildTrend, productBreakdown } from '../lib/metrics';
+import { adBreakdown, aggregateRange, buildGoals, buildTrend, keywordGroups, productBreakdown } from '../lib/metrics';
 import { loadLocalEnv } from './env';
 
 loadLocalEnv();
@@ -29,6 +29,11 @@ async function main() {
       aov: +a.aov.toFixed(4),
       roi: +a.roi.toFixed(4),
       conversionRate: +a.conversionRate.toFixed(6),
+      searchUvValue: +a.searchUvValue.toFixed(4),
+      searchGmvShare: +a.searchGmvShare.toFixed(6),
+      paidUvShare: +a.paidUvShare.toFixed(6),
+      paidUv: a.paidUv,
+      searchGmv: Math.round(a.searchGmv),
     };
   });
   // 目标达成的自定义区间：预览页也重写了一份，同样要逐项对上
@@ -114,6 +119,34 @@ async function main() {
     })),
   }));
 
-  console.log(JSON.stringify({ aggregates: out, goals, trends, breakdowns, products }));
+  /**
+   * 关键词分组：流量块的品牌词 / 品类词两张表在浏览器里从 keywordDaily 重新求和，
+   * 要和 keywordGroups 对上。组占比的分母是全部搜索 UV（含长尾），
+   * 这一点最容易在重写时写成「两组之和」，那样占比会被放大到 100%。
+   */
+  const kwRanges = [
+    { from: '2026-08-09', to: '2026-08-09' },
+    { from: '2026-08-01', to: '2026-08-09' },
+    { from: '2026-01-01', to: '2026-08-09' },
+    { from: '2026-05-01', to: '2026-05-31' },
+  ];
+  const keywordGroupRows = kwRanges.map((r) => {
+    const g = keywordGroups(snap.keywords, r, null);
+    return {
+      range: `${r.from}~${r.to}`,
+      totalUv: g.totalUv,
+      groups: g.groups.map((x) => ({
+        group: x.group,
+        uv: x.uv,
+        gmv: Math.round(x.gmv),
+        orders: x.orders,
+        conversionRate: +x.conversionRate.toFixed(8),
+        uvShare: +x.uvShare.toFixed(8),
+        rows: x.rows.map((r2) => ({ keyword: r2.keyword, uv: r2.uv, gmv: Math.round(r2.gmv), orders: r2.orders })),
+      })),
+    };
+  });
+
+  console.log(JSON.stringify({ aggregates: out, goals, trends, breakdowns, products, keywordGroups: keywordGroupRows }));
 }
 main();

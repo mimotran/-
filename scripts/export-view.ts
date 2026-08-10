@@ -8,7 +8,16 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { getSnapshot } from '../lib/data/source';
-import { GOAL_METRICS, LINE_LABELS, RATE_COMPANIONS, STORE_CORE, STORE_EXTRA, buildView } from '../lib/metrics';
+import {
+  GOAL_METRICS,
+  KEYWORD_GROUP_LABELS,
+  LINE_LABELS,
+  RATE_COMPANIONS,
+  STORE_CORE,
+  STORE_EXTRA,
+  buildView,
+} from '../lib/metrics';
+import type { KeywordGroup } from '../lib/types';
 import { loadLocalEnv } from './env';
 
 loadLocalEnv();
@@ -28,7 +37,7 @@ async function main() {
     'gmv', 'deviceSales', 'gmvAfterRefund', 'refund', 'uv', 'searchUv',
     'buyers', 'orders', 'addToCart', 'newCustomerGmv',
     'adCostInsite', 'adCostOffsite', 'adGmvInsite', 'adGmvOffsite',
-    'searchOrders', 'grossProfit',
+    'searchOrders', 'searchGmv', 'paidUv', 'grossProfit',
   ] as const;
 
   const daily = {
@@ -87,6 +96,37 @@ async function main() {
     });
   }
 
+  /**
+   * 关键词日明细，按列存并对齐到 daily.dates。
+   *
+   * 流量块的关键词表要支持任意区间（昨日 / MTD / 全年 / 自定义），只有一份
+   * 区间快照不够。词的数量是可控的十几个，按列存完全放得下。
+   */
+  function keywordColumns() {
+    const meta = new Map<string, KeywordGroup>();
+    for (const r of snapshot.keywords) if (!meta.has(r.keyword)) meta.set(r.keyword, r.group);
+
+    return [...meta.entries()].map(([keyword, group]) => {
+      const uv = new Array<number>(daily.dates.length).fill(0);
+      const gmv = new Array<number>(daily.dates.length).fill(0);
+      const orders = new Array<number>(daily.dates.length).fill(0);
+      for (const r of snapshot.keywords) {
+        if (r.keyword !== keyword) continue;
+        const i = dateIndex.get(r.date);
+        if (i === undefined) continue;
+        uv[i] += r.uv;
+        gmv[i] += r.gmv;
+        orders[i] += r.orders;
+      }
+      return {
+        keyword, group,
+        uv: uv.map((v) => Math.round(v)),
+        gmv: gmv.map((v) => Math.round(v)),
+        orders: orders.map((v) => Math.round(v)),
+      };
+    });
+  }
+
   /** 指标定义随数据一起导出：预览页只按 key 取值，不重复维护一份标签表 */
   const spec = (list: typeof STORE_CORE) =>
     list.map((m) => ({ key: m.key, label: m.label, format: m.format, higherIsBetter: m.higherIsBetter }));
@@ -95,6 +135,8 @@ async function main() {
     daily,
     adDaily: { insite: adColumns('insite'), offsite: adColumns('offsite') },
     productDaily: productColumns(),
+    keywordDaily: keywordColumns(),
+    keywordGroupLabels: KEYWORD_GROUP_LABELS,
     productLabels: Object.fromEntries(
       [...new Set(snapshot.products.map((r) => r.line))].map((l) => [l, LINE_LABELS[l]]),
     ),

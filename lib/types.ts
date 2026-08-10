@@ -51,6 +51,15 @@ export interface DailyMetric {
   adGmvOffsite: number;
   /** 搜索带来的支付订单数。搜索转化率 = 它 ÷ searchUv */
   searchOrders: number;
+  /** 搜索带来的成交金额（元）。搜索 UV 价值 = 它 ÷ searchUv */
+  searchGmv: number;
+  /**
+   * 付费流量 UV：投放带来的访客数。
+   *
+   * 和 searchUv 不是互斥的两块 —— 一个从付费位点进来的人也可能是搜索来的，
+   * 所以两者相加会超过总 UV，不能当成分区来读。表里各算各的占比。
+   */
+  paidUv: number;
   /** 预估利润（元）= 退后 GMV × 毛利率 − 投放费 */
   grossProfit: number;
 }
@@ -95,10 +104,20 @@ export interface ProductMetric {
   refund: number;
 }
 
+/**
+ * 关键词分组。
+ *
+ * 品牌词和品类词的转化率差三倍以上，混在一张榜里排名没有意义 ——
+ * 头部永远是品牌词，而品牌词的量是品牌势能的结果，不是投放能直接撬动的。
+ * `other` 是尾部长尾，只进合计，不单独列。
+ */
+export type KeywordGroup = 'brand' | 'category' | 'other';
+
 /** 搜索关键词明细 */
 export interface KeywordMetric {
   date: DateStr;
   keyword: string;
+  group: KeywordGroup;
   /** 该词带来的访客数 */
   uv: number;
   gmv: number;
@@ -197,6 +216,8 @@ export interface Aggregate {
   adGmvInsite: number;
   adGmvOffsite: number;
   searchOrders: number;
+  searchGmv: number;
+  paidUv: number;
   grossProfit: number;
   // --- 派生比率 ---
   /** 退款率 = 退款金额 ÷ GMV */
@@ -225,6 +246,14 @@ export interface Aggregate {
   profitRate: number;
   /** 搜索转化率 = 搜索订单 ÷ 搜索 UV */
   searchConversionRate: number;
+  /** 搜索 UV 价值 = 搜索成交 ÷ 搜索 UV */
+  searchUvValue: number;
+  /** 搜索成交占比 = 搜索成交 ÷ GMV */
+  searchGmvShare: number;
+  /** 付费 UV 占比 = 付费 UV ÷ 总 UV */
+  paidUvShare: number;
+  /** 付费成交占比 = 投放成交 ÷ GMV */
+  paidGmvShare: number;
 }
 
 /** 目标达成的大区块：一个区块一行 */

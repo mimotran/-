@@ -53,6 +53,13 @@ export const DAILY_ALIASES: AliasMap = {
   /** 搜索订单数 / 搜索转化率：算搜索转化率用，两者有其一即可 */
   searchOrders: ['搜索订单数', '搜索成交订单数', 'searchOrders'],
   searchConversionRate: ['搜索转化率', '搜索支付转化率', 'searchConversionRate'],
+  /** 搜索成交金额：没有这一列时用「搜索UV价值 × 搜索UV」或「成交占比 × GMV」反推 */
+  searchGmv: ['搜索成交', '搜索成交金额', '搜索GMV', 'searchGmv'],
+  searchUvValue: ['搜索UV价值', 'searchUvValue'],
+  searchGmvShare: ['搜索成交占比', '成交占比', 'searchGmvShare'],
+  /** 付费流量 UV：没有这一列时用「付费UV占比 × 总UV」反推 */
+  paidUv: ['付费UV', '付费流量UV', '总付费流量UV', 'paidUv'],
+  paidUvShare: ['付费UV占比', 'UV占比', 'paidUvShare'],
   /** 利润：有绝对值用绝对值，没有就用利润率乘 GMV */
   grossProfit: ['利润', '预估利润', '毛利', '销售利润', 'grossProfit'],
   profitRate: ['利润率', '销售利润率', '毛利率', 'profitRate'],
@@ -113,6 +120,8 @@ export const PRODUCT_ALIASES: AliasMap = {
 export const KEYWORD_ALIASES: AliasMap = {
   date: ['日期', '时间', '统计日期', 'date'],
   keyword: ['关键词', '搜索词', '词', 'keyword'],
+  /** 词性：表里没有这一列时按 BRAND_PATTERNS 从词本身判 */
+  group: ['词性', '词类', '分组', '类型', 'group'],
   uv: ['搜索UV', 'UV', '访客数', '搜索人数', 'uv'],
   gmv: ['成交金额', 'GMV', '支付金额', 'gmv'],
   orders: ['订单数', '支付订单数', '成交订单数', 'orders'],
