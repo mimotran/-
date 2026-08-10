@@ -147,6 +147,14 @@ export interface DashboardSnapshot {
   products: ProductMetric[];
   trafficChannels: TrafficChannelMetric[];
   targets: Target[];
+  /**
+   * 月度实际值，键是 `2026-08`。
+   *
+   * 只放**没有日明细**的指标（目前是利润）。飞书目标表里利润只给到月，
+   * 硬摊到每天等于编数；放在这里，按整月对齐的区间（MTD / QTD / YTD）能用，
+   * 跨月中间截断的自定义区间则老实显示「—」。
+   */
+  monthlyActuals: Record<string, Record<string, number>>;
   /** 同步过程中的告警，展示在看板顶部 */
   warnings: string[];
 }
@@ -271,7 +279,8 @@ export interface GoalRow {
    */
   accumulates: boolean;
   target: number | null;
-  actual: number;
+  /** 月度口径的指标遇到对不齐整月的区间时为 null，页面显示「—」 */
+  actual: number | null;
   /** 达成度 = 实际 ÷ 目标 */
   attainment: number | null;
   /** 这次表现是好是坏；没有目标时为 null */

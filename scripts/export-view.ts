@@ -144,11 +144,13 @@ async function main() {
       key: m.key, label: m.label, group: m.group, format: m.format,
       higherIsBetter: m.higherIsBetter, rateKey: m.rateKey ?? null,
       weightBy: m.weightBy ?? null, emphasis: m.emphasis === true,
+      monthlyOnly: m.monthlyOnly === true,
     })),
     rateCompanions: Object.fromEntries(
       Object.entries(RATE_COMPANIONS).map(([k, v]) => [k, { higherIsBetter: v.higherIsBetter, weightBy: v.weightBy }]),
     ),
     targets: snapshot.targets,
+    monthlyActuals: snapshot.monthlyActuals,
     source: snapshot.source,
     syncedAt: snapshot.syncedAt,
     latestDate: view.latestDate,

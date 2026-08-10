@@ -340,6 +340,22 @@ export function buildMockSnapshot(): DashboardSnapshot {
     products,
     trafficChannels,
     targets: buildTargets(daily, seeded(77001)),
+    /**
+     * 利润只给月度值，故意不给日明细 —— 真实数据源就是这样，
+     * mock 也照着来，免得开发时一切正常、接上真表才发现页面处理不了 null。
+     */
+    monthlyActuals: (() => {
+      const out: Record<string, Record<string, number>> = {};
+      const r = seeded(88002);
+      for (const row of daily) {
+        const m = row.date.slice(0, 7);
+        const margin = 0.52 + r() * 0.04;
+        const profit = (row.gmv - row.refund) * margin - row.adCostInsite - row.adCostOffsite;
+        (out[m] ??= { grossProfit: 0 }).grossProfit += profit;
+      }
+      for (const m of Object.keys(out)) out[m].grossProfit = Math.round(out[m].grossProfit);
+      return out;
+    })(),
     warnings: [],
   };
 }

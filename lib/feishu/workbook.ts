@@ -285,31 +285,89 @@ export async function readWorkbook(
   }
   if (products.length === 0) warnings.push('「附-产品」一行都没解析出来，产品板块会是空的');
 
-  // ---- 1.目标达成：月度目标 -------------------------------------------------
+  // ---- 1.目标达成：右侧「项目」区块给出每月的目标和实际 ---------------------
+  /**
+   * 版式是「区块 | 指标名 | (1月 目标/实际/达成率/上月MTD/MTD环比) | (2月 …) …」，
+   * 一行一个指标、按月横向铺开 —— 和别的页签「一行一天」正好转置了，
+   * 所以这里单独走一套解析，不复用上面的按行取数。
+   */
   const goalGrid = await readGrid(cfg, spreadsheetToken, idOf(TAB_TITLES.goals), {
-    headerRow: 3, groupRows: [2], lastRow: 60, lastCol: 'BZ',
+    headerRow: 3, lastRow: 40, lastCol: 'DZ',
   });
-  const gMonth = 2; // C 列是月份
-  const tGmv = colIn(goalGrid, '渠道目标', 'GMV');
-  const tSales = colIn(goalGrid, '渠道目标', '主机销量');
-  const tCost = colIn(goalGrid, '渠道目标', '总费用');
-  const tCostRate = colIn(goalGrid, '渠道目标', '总费比');
+
+  /** 表里的指标名 → 模型里的 key。认不出的行直接跳过，不猜 */
+  const GOAL_KEY_BY_LABEL: Record<string, string> = {
+    'GMV': 'gmv',
+    '销量': 'deviceSales',
+    '退款率': 'refundRate',
+    '站内投放费': 'adCostInsite',
+    '站内ROI': 'roiInsite',
+    '站内费比': 'adCostRateInsite',
+    '站外投放费': 'adCostOffsite',
+    '站外ROI': 'roiOffsite',
+    '站外费比': 'adCostRateOffsite',
+    '总投放费': 'adCost',
+    '总费比': 'adCostRate',
+    '利润（预估）': 'grossProfit',
+    '利润率（GMV）': 'profitRate',
+    '搜索UV': 'searchUv',
+    '搜索转化率': 'searchConversionRate',
+  };
 
   const targets: Target[] = [];
-  if (tGmv < 0) {
-    warnings.push('「1.目标达成」找不到「渠道目标」分组，目标达成板块会没有目标线');
+  const monthlyActuals: Record<string, Record<string, number>> = {};
+
+  // 月份表头在表头行的上一行，每个月占 5 列（目标/实际/达成率/上月MTD/MTD环比）
+  const monthRow = goalGrid.rows[goalGrid.headerRow - 1] ?? [];
+  const monthCols: Array<{ month: number; col: number }> = [];
+  monthRow.forEach((cell, c) => {
+    const m = parseMonth(cell);
+    if (m !== null) monthCols.push({ month: m, col: c });
+  });
+
+  if (monthCols.length === 0) {
+    warnings.push('「1.目标达成」右侧没找到按月展开的「项目」区块，目标达成板块会没有目标线');
   } else {
-    for (let r = 0; r < goalGrid.rows.length; r++) {
-      const month = parseMonth(goalGrid.rows[r][gMonth]);
-      if (month === null) continue;
-      const values: Record<string, number> = {};
-      const put = (k: string, c: number) => { if (c >= 0) { const v = num(goalGrid.rows[r][c]); if (v > 0) values[k] = v; } };
-      put('gmv', tGmv);
-      put('deviceSales', tSales);
-      put('adCost', tCost);
-      put('adCostRate', tCostRate);
-      if (Object.keys(values).length) {
-        targets.push({ period: 'month', key: `${year}-${String(month).padStart(2, '0')}`, values });
+    const header = goalGrid.rows[goalGrid.headerRow] ?? [];
+    // 「项目」那一列右边就是指标名列
+    const projectCol = header.findIndex((h) => h.trim() === '项目');
+    const labelCol = projectCol >= 0 ? projectCol + 1 : -1;
+
+    for (let r = goalGrid.headerRow + 1; r < goalGrid.rows.length; r++) {
+      const row = goalGrid.rows[r];
+      // 利润那两行的名字写在「区块」列里、指标名列是空的，所以两列都要看
+      const label = (row[labelCol] || row[projectCol] || '').trim();
+      const key = GOAL_KEY_BY_LABEL[label];
+      if (!key) continue;
+
+      for (const { month, col: mc } of monthCols) {
+        const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+        const targetVal = num(row[mc]);
+        const actualVal = num(row[mc + 1]);
+
+        if (targetVal !== 0) {
+          let t = targets.find((x) => x.key === monthStr);
+          if (!t) { t = { period: 'month', key: monthStr, values: {} }; targets.push(t); }
+          t.values[key] = targetVal;
+        }
+        // 实际值只留没有日明细的那些；其余一律从日报聚合，免得同一个数两处口径打架
+        if (key === 'grossProfit' && actualVal !== 0) {
+          (monthlyActuals[monthStr] ??= {})[key] = actualVal;
+        }
+      }
+    }
+
+    /**
+     * 绝对值目标要和率目标自洽。
+     * 表里只给了退款率和搜索转化率的目标，没给退款金额和搜索支付人数 ——
+     * 但页面上这两行的主指标是绝对值，缺了目标整行就变成「—」。
+     * 用「率目标 × 对应分母目标」补出来，两边永远一致。
+     */
+    for (const t of targets) {
+      const v = t.values;
+      if (v.refundRate !== undefined && v.gmv !== undefined) v.refund ??= v.refundRate * v.gmv;
+      if (v.searchConversionRate !== undefined && v.searchUv !== undefined) {
+        v.searchBuyers ??= Math.round(v.searchConversionRate * v.searchUv);
       }
     }
   }
@@ -324,6 +382,7 @@ export async function readWorkbook(
     products,
     trafficChannels,
     targets,
+    monthlyActuals,
     warnings,
   };
 }

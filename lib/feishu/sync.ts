@@ -150,6 +150,7 @@ export async function syncFromFeishu(
     products: products.rows,
     trafficChannels: [],
     targets: targets.rows,
+    monthlyActuals: {},
     // warning 太多时只留前 20 条，页面上放不下也没人看
     warnings: warnings.slice(0, 20),
   };

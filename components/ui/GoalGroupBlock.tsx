@@ -56,7 +56,7 @@ function GoalCard({ row, compareLabel }: { row: GoalRow; compareLabel: string })
       </div>
 
       <div className="mt-1.5 text-lg font-semibold leading-none text-[var(--text-primary)]">
-        {formatByKind(row.actual, row.format)}
+        {row.actual === null ? '—' : formatByKind(row.actual, row.format)}
       </div>
 
       <div className="mt-1.5 text-[11px] text-[var(--text-muted)]">

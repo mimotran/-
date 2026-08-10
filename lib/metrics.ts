@@ -329,6 +329,12 @@ export interface GoalMetricDef {
   weightBy?: string;
   /** 重点指标，表格里左侧加一道色条 */
   emphasis?: boolean;
+  /**
+   * 只有月度值、没有日明细的指标（利润）。
+   * 实际值不从 daily 聚合，改从 snapshot.monthlyActuals 取；
+   * 区间对不齐整月时返回 null，页面显示「—」而不是编一个数。
+   */
+  monthlyOnly?: boolean;
 }
 
 /** 率搭档的定义：只用来取值和加权，不单独成行 */
@@ -344,15 +350,32 @@ export const RATE_COMPANIONS: Record<string, RateCompanion> = {
   adCostRateOffsite: { pick: (a) => a.adCostRateOffsite, higherIsBetter: false, weightBy: 'gmv' },
   adCostRate: { pick: (a) => a.adCostRate, higherIsBetter: false, weightBy: 'gmv' },
   searchConversionRate: { pick: (a) => a.searchConversionRate, higherIsBetter: true, weightBy: 'searchUv' },
+  // 利润率没有日明细，pick 用不上；实际值由「月度利润 ÷ 区间 GMV」现算
+  profitRate: { pick: () => 0, higherIsBetter: true, weightBy: 'gmv' },
 };
 
+/**
+ * 指标登记表，顺序和飞书「1.目标达成」里「项目」那一栏完全一致。
+ *
+ * 绝对量和它的率合成一行：投放费和费比是同一件事的两种看法，拆两行会让人
+ * 来回对照。所以「站内投放费」这一行右侧同时给出站内费比的目标 / 实际 / 费率差。
+ */
 export const GOAL_METRICS: GoalMetricDef[] = [
   // --- 销售 ---
   { key: 'gmv', label: 'GMV', group: '销售', format: 'currency', pick: (a) => a.gmv, higherIsBetter: true, emphasis: true },
-  { key: 'deviceSales', label: '主机销量', group: '销售', format: 'integer', pick: (a) => a.deviceSales, higherIsBetter: true },
+  { key: 'deviceSales', label: '销量', group: '销售', format: 'integer', pick: (a) => a.deviceSales, higherIsBetter: true },
+  { key: 'refund', label: '退款金额', group: '销售', format: 'currency', pick: (a) => a.refund, higherIsBetter: false, rateKey: 'refundRate' },
   // --- 费用 ---
-  // 投放费和总费比是同一件事的两种看法，合成一行；率搭档在右侧多给三列
-  { key: 'adCost', label: '投放费', group: '费用', format: 'currency', pick: (a) => a.adCost, higherIsBetter: false, rateKey: 'adCostRate', emphasis: true },
+  { key: 'adCostInsite', label: '站内投放费', group: '费用', format: 'currency', pick: (a) => a.adCostInsite, higherIsBetter: false, rateKey: 'adCostRateInsite' },
+  { key: 'roiInsite', label: '站内 ROI', group: '费用', format: 'multiple', pick: (a) => a.roiInsite, higherIsBetter: true, weightBy: 'adCostInsite' },
+  { key: 'adCostOffsite', label: '站外投放费', group: '费用', format: 'currency', pick: (a) => a.adCostOffsite, higherIsBetter: false, rateKey: 'adCostRateOffsite' },
+  { key: 'roiOffsite', label: '站外 ROI', group: '费用', format: 'multiple', pick: (a) => a.roiOffsite, higherIsBetter: true, weightBy: 'adCostOffsite' },
+  { key: 'adCost', label: '总投放费', group: '费用', format: 'currency', pick: (a) => a.adCost, higherIsBetter: false, rateKey: 'adCostRate', emphasis: true },
+  // --- 利润：表里只给到月，没有日明细 ---
+  { key: 'grossProfit', label: '利润（预估）', group: '利润', format: 'currency', pick: () => 0, higherIsBetter: true, rateKey: 'profitRate', emphasis: true, monthlyOnly: true },
+  // --- 流量 ---
+  { key: 'searchUv', label: '搜索 UV', group: '流量', format: 'integer', pick: (a) => a.searchUv, higherIsBetter: true },
+  { key: 'searchBuyers', label: '搜索支付人数', group: '流量', format: 'integer', pick: (a) => a.searchBuyers, higherIsBetter: true, rateKey: 'searchConversionRate' },
 ];
 
 const GOAL_GROUP_ORDER: GoalGroup[] = ['销售', '费用', '利润', '流量'];
@@ -379,12 +402,25 @@ function monthOverlap(range: DateRange, cursor: DateStr): number {
 export function targetsForRange(targets: Target[], range: DateRange): Record<string, number | null> {
   const sums: Record<string, number> = {};
   const weighted: Record<string, { num: number; den: number }> = {};
+  /**
+   * 每个指标被多少个月覆盖到，以及区间一共跨了多少个月。
+   *
+   * 缺月不能当 0 加。飞书表里退款率只从 7 月才开始填，全年累计如果把
+   * 「7+8 月的目标」拿去比「1–8 月的实际」，达成率会显示 484% —— 数字不是错的，
+   * 是问题问错了。所以某一项只要在**已经排过目标的月份**里缺一个月，整项作废。
+   *
+   * 基数只数「有目标记录的月份」而不是日历月份：全年周期跨 12 个月，
+   * 但表里只排到 8 月，按 12 算的话每一项都会作废，整张表变成空的。
+   */
+  const covered: Record<string, number> = {};
+  let months = 0;
 
   for (let cursor = startOfMonth(range.from); cursor <= range.to; cursor = addMonths(cursor, 1)) {
-    const target = monthTarget(targets, monthKey(cursor));
-    if (!target) continue;
     const ratio = monthOverlap(range, cursor);
     if (ratio <= 0) continue;
+    const target = monthTarget(targets, monthKey(cursor));
+    if (!target) continue;
+    months += 1;
 
     // 主指标 + 率搭档一起处理：率搭档同样不能相加，要按分母加权
     const entries: Array<{ key: string; weightBy?: string }> = [];
@@ -398,6 +434,7 @@ export function targetsForRange(targets: Target[], range: DateRange): Record<str
     for (const entry of entries) {
       const value = target.values[entry.key];
       if (value === undefined) continue;
+      covered[entry.key] = (covered[entry.key] ?? 0) + 1;
 
       if (entry.weightBy) {
         const weight = (target.values[entry.weightBy] ?? 0) * ratio;
@@ -414,6 +451,8 @@ export function targetsForRange(targets: Target[], range: DateRange): Record<str
 
   const out: Record<string, number | null> = {};
   for (const key of new Set([...Object.keys(sums), ...Object.keys(weighted)])) {
+    // 区间里有任何一个月缺这项目标，整项就作废
+    if ((covered[key] ?? 0) < months) { out[key] = null; continue; }
     const acc = weighted[key];
     out[key] = acc ? (acc.den > 0 ? acc.num / acc.den : null) : (sums[key] ?? null);
   }
@@ -452,6 +491,8 @@ function buildGoalRows(
   compareRange: DateRange | null,
   /** 实际值只结算到今天：未来的日子还没有数据 */
   actualRange: DateRange,
+  latest: DateStr,
+  monthlyActuals: Record<string, Record<string, number>>,
   /** 计划进度，用作「现在算不算达标」的基准 */
   pace: number,
   finished: boolean,
@@ -472,13 +513,19 @@ function buildGoalRows(
   const target = targetsForRange(targets, range);
 
   const rows: GoalRow[] = GOAL_METRICS.map((metric) => {
-    const actualValue = metric.pick(actual);
+    // 有日明细的从聚合取；只有月度的（利润）从 monthlyActuals 取，对不齐整月就是 null
+    const actualValue = metric.monthlyOnly
+      ? monthlyActualSum(monthlyActuals, metric.key, actualRange, latest)
+      : metric.pick(actual);
+    const prevActual = metric.monthlyOnly
+      ? monthlyActualSum(monthlyActuals, metric.key, compareRange, latest)
+      : hasCompare ? metric.pick(previous) : null;
     const targetValue = target[metric.key] ?? null;
 
     let attainment: number | null = null;
     let good: boolean | null = null;
 
-    if (targetValue !== null && targetValue !== 0) {
+    if (targetValue !== null && targetValue !== 0 && actualValue !== null) {
       attainment = actualValue / targetValue;
       /**
        * 基准分两种，取决于这个指标会不会随时间累加：
@@ -495,7 +542,13 @@ function buildGoalRows(
 
     // 率搭档：同一行右侧多给「目标% / 实际% / 费率差」三列
     const companion = metric.rateKey ? RATE_COMPANIONS[metric.rateKey] : undefined;
-    const rateActual = companion ? companion.pick(actual) : null;
+    /**
+     * 利润率没有独立的月度值，用「月度利润 ÷ 区间 GMV」现算 ——
+     * 先汇总再相除，和别的比率口径一致；直接把各月利润率平均是错的。
+     */
+    const rateActual = metric.monthlyOnly
+      ? (actualValue === null || actual.gmv === 0 ? null : actualValue / actual.gmv)
+      : companion ? companion.pick(actual) : null;
     const rateTarget = metric.rateKey ? (target[metric.rateKey] ?? null) : null;
     const ppDiff = rateActual !== null && rateTarget !== null ? rateActual - rateTarget : null;
     const rateGood =
@@ -517,8 +570,8 @@ function buildGoalRows(
       rateActual,
       ppDiff,
       rateGood,
-      prevActual: hasCompare ? metric.pick(previous) : null,
-      prevDelta: delta(actualValue, metric.pick(previous), hasCompare),
+      prevActual,
+      prevDelta: actualValue === null || prevActual === null ? null : delta(actualValue, prevActual, hasCompare),
       higherIsBetter: metric.higherIsBetter,
     };
   });
@@ -535,11 +588,40 @@ function buildGoalRows(
  * 每一档都给「达成」和「计划进度」两个数 —— 只看达成率没法判断好坏，
  * 8 月 7 号完成 25% 是超前，12 月 20 号完成 90% 是落后。
  */
+/**
+ * 月度口径的实际值。
+ *
+ * 只有当区间是「从某个月 1 号开始、到某个月末或最新一天为止」时才能用月度值回答 ——
+ * MTD / QTD / H2TD / YTD 全都满足（最后一个月本身就是不完整的，飞书表里那一格
+ * 给的也正是当月累计）。中间截断的自定义区间（比如 6/15–8/6）没法用月度值拼出来，
+ * 返回 null，页面显示「—」，不猜。
+ */
+function monthlyActualSum(
+  monthlyActuals: Record<string, Record<string, number>>,
+  key: string,
+  range: DateRange | null,
+  latest: DateStr,
+): number | null {
+  if (!range) return null;
+  if (range.from.slice(8) !== '01') return null;
+  const endsClean = range.to === endOfMonth(range.to) || range.to === latest;
+  if (!endsClean) return null;
+
+  let sum = 0;
+  let hit = false;
+  for (let m = range.from.slice(0, 7); m <= range.to.slice(0, 7); m = monthKey(addMonths(`${m}-01`, 1))) {
+    const v = monthlyActuals[m]?.[key];
+    if (v !== undefined) { sum += v; hit = true; }
+  }
+  return hit ? sum : null;
+}
+
 export function buildGoals(
   daily: DailyMetric[],
   targets: Target[],
   latest: DateStr,
   custom: DateRange | null,
+  monthlyActuals: Record<string, Record<string, number>> = {},
 ): GoalPeriod[] {
   const y = latest.slice(0, 4);
   const quarter = quarterOf(latest);
@@ -566,7 +648,7 @@ export function buildGoals(
       compareLabel,
       timeProgress: pace,
       finished,
-      groups: buildGoalRows(daily, targets, range, compareRange, actualRange, pace, finished),
+      groups: buildGoalRows(daily, targets, range, compareRange, actualRange, latest, monthlyActuals, pace, finished),
     };
   };
 
@@ -1013,7 +1095,7 @@ export function buildView(snapshot: DashboardSnapshot, custom: DateRange | null)
     earliestDate: earliest,
     periods,
     stats,
-    goals: buildGoals(daily, snapshot.targets, latest, custom),
+    goals: buildGoals(daily, snapshot.targets, latest, custom, snapshot.monthlyActuals),
     trend: buildTrend(daily, trendRange),
     trendRange,
     insite: adBreakdown(snapshot.ads, 'insite', breakdownPeriod.range, breakdownPeriod.compareRange),

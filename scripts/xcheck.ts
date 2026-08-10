@@ -45,14 +45,14 @@ async function main() {
     { from: '2025-10-01', to: '2025-12-31' },
   ];
   const goals = goalRanges.map((r) => {
-    const period = buildGoals(snap.daily, snap.targets, latest, r).find((p) => p.key === 'custom');
+    const period = buildGoals(snap.daily, snap.targets, latest, r, snap.monthlyActuals).find((p) => p.key === 'custom');
     return {
       range: `${r.from}~${r.to}`,
       timeProgress: +(period?.timeProgress ?? 0).toFixed(6),
       rows: (period?.groups ?? []).flatMap((g) => g.rows).map((row) => ({
         key: row.key,
         target: row.target === null ? null : +row.target.toFixed(4),
-        actual: +row.actual.toFixed(4),
+        actual: row.actual === null ? null : +row.actual.toFixed(4),
         attainment: row.attainment === null ? null : +row.attainment.toFixed(6),
         ppDiff: row.ppDiff === null ? null : +row.ppDiff.toFixed(6),
         good: row.good,
