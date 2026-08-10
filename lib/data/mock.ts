@@ -95,13 +95,19 @@ const INSITE = [
   { channel: 'Display', share: 0.08, roi: 7, cvr: 0.015, ctr: 0.011 },
 ];
 
-/** 站外渠道：拉新为主，ROI 明显低于站内，但带来的是新客 */
+/**
+ * 站外渠道：拉新为主，ROI 明显低于站内，但带来的是新客。
+ *
+ * CID 投放（抖音 / 小红书 / B 站）回传的通常只有消耗和归因成交，
+ * 拿不到曝光和点击 —— 所以站外的表里只展示推广消耗、成交金额、ROI 三列。
+ * cvr / ctr 仍然生成，是为了和站内共用一套模型，页面上不展示。
+ */
 const OFFSITE = [
-  { channel: '抖音种草', share: 0.36, roi: 5.2, cvr: 0.011, ctr: 0.013 },
-  { channel: '小红书', share: 0.27, roi: 4.4, cvr: 0.009, ctr: 0.012 },
-  { channel: '微信朋友圈', share: 0.18, roi: 3.6, cvr: 0.007, ctr: 0.010 },
-  { channel: 'B 站', share: 0.11, roi: 3.1, cvr: 0.006, ctr: 0.009 },
-  { channel: '知乎', share: 0.08, roi: 2.4, cvr: 0.005, ctr: 0.008 },
+  { channel: '抖音CID', share: 0.34, roi: 5.2, cvr: 0.011, ctr: 0.013 },
+  { channel: '小红书CID', share: 0.24, roi: 4.4, cvr: 0.009, ctr: 0.012 },
+  { channel: 'UD', share: 0.2, roi: 4.0, cvr: 0.008, ctr: 0.011 },
+  { channel: '腾讯', share: 0.12, roi: 3.6, cvr: 0.007, ctr: 0.010 },
+  { channel: 'B站CID-天猫分摊', share: 0.1, roi: 3.1, cvr: 0.006, ctr: 0.009 },
 ];
 
 const KEYWORDS = [
