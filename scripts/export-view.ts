@@ -38,12 +38,39 @@ async function main() {
     ),
   };
 
+  /**
+   * 触点 / 渠道的日明细，同样按列存并**对齐到 daily.dates**。
+   *
+   * 对齐是必须的：投放表可能有某天缺行（那天没投），直接按投放表自己的日期
+   * 建索引，日期就和日报错位了 —— 页面上按区间求和会静默取错天数。
+   */
+  const dateIndex = new Map(daily.dates.map((d, i) => [d, i]));
+  const adMetricKeys = ['cost', 'gmv', 'orders', 'impressions', 'clicks'] as const;
+
+  function adColumns(scope: 'insite' | 'offsite') {
+    const rows = snapshot.ads.filter((r) => r.scope === scope);
+    const channels = [...new Set(rows.map((r) => r.channel))];
+    return channels.map((channel) => {
+      const cols = Object.fromEntries(
+        adMetricKeys.map((k) => [k, new Array<number>(daily.dates.length).fill(0)]),
+      ) as Record<(typeof adMetricKeys)[number], number[]>;
+      for (const r of rows) {
+        if (r.channel !== channel) continue;
+        const i = dateIndex.get(r.date);
+        if (i === undefined) continue; // 投放表有、日报没有的日期，跳过
+        for (const k of adMetricKeys) cols[k][i] += Math.round(r[k]);
+      }
+      return { channel, ...cols };
+    });
+  }
+
   /** 指标定义随数据一起导出：预览页只按 key 取值，不重复维护一份标签表 */
   const spec = (list: typeof STORE_CORE) =>
     list.map((m) => ({ key: m.key, label: m.label, format: m.format, higherIsBetter: m.higherIsBetter }));
 
   const payload = {
     daily,
+    adDaily: { insite: adColumns('insite'), offsite: adColumns('offsite') },
     storeMetrics: { core: spec(STORE_CORE), extra: spec(STORE_EXTRA) },
     // 目标定义 + 月度目标：预览页要靠它们算任意自定义区间的达成
     goalMetrics: GOAL_METRICS.map((m) => ({

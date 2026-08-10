@@ -4,7 +4,7 @@
  * 重写就有走样的风险，这个脚本把两边的结果摆在一起比。
  */
 import { getSnapshot } from '../lib/data/source';
-import { aggregateRange, buildGoals, buildTrend } from '../lib/metrics';
+import { adBreakdown, aggregateRange, buildGoals, buildTrend } from '../lib/metrics';
 import { loadLocalEnv } from './env';
 
 loadLocalEnv();
@@ -76,6 +76,24 @@ async function main() {
     })),
   }));
 
-  console.log(JSON.stringify({ aggregates: out, goals, trends }));
+  // 分触点 / 分渠道拆解：预览页要支持任意区间，也重写了一份
+  const bdCases = [
+    { scope: 'insite' as const, from: '2026-08-01', to: '2026-08-09', cf: '2026-07-01', ct: '2026-07-09' },
+    { scope: 'insite' as const, from: '2026-06-01', to: '2026-06-30', cf: '2026-05-02', ct: '2026-05-31' },
+    { scope: 'offsite' as const, from: '2026-01-01', to: '2026-08-09', cf: '2025-01-01', ct: '2025-08-09' },
+  ];
+  const breakdowns = bdCases.map((c) => ({
+    key: `${c.scope}:${c.from}~${c.to}`,
+    rows: adBreakdown(snap.ads, c.scope, { from: c.from, to: c.to }, { from: c.cf, to: c.ct }).map((r) => ({
+      channel: r.channel,
+      cost: r.cost, gmv: r.gmv, orders: r.orders,
+      impressions: r.impressions, clicks: r.clicks,
+      roi: +r.roi.toFixed(8), cvr: +r.cvr.toFixed(8), ctr: +r.ctr.toFixed(8),
+      costShare: +r.costShare.toFixed(8),
+      prevCost: r.prevCost,
+    })),
+  }));
+
+  console.log(JSON.stringify({ aggregates: out, goals, trends, breakdowns }));
 }
 main();
