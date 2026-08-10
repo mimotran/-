@@ -1090,6 +1090,22 @@ const shiftDays = (date, n) => {
 };
 const dayGap = (a, b) => Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000);
 
+/**
+ * 趋势卡的区间预设，四个板块共用一套。
+ *
+ * 约定：正数 = 最近 N 天，`-1` = 全年（本年 1 月 1 日至今），`0` = 自定义。
+ * 抽出来是因为「全年」很容易在某一处被写成「最近 365 天」的滚动窗口 ——
+ * 那是另一个东西，跨年时会把去年 12 月也算进来。
+ */
+const RANGE_PRESETS = [[7, '近 7 天'], [30, '近 30 天'], [90, '近 90 天'], [-1, '全年'], [0, '自定义']];
+const YEAR_START_DATE = `${DATA.latestDate.slice(0, 4)}-01-01`;
+
+function presetWindow(days, custom) {
+  if (days === 0) return custom || { from: shiftDays(DATA.latestDate, -59), to: DATA.latestDate };
+  const from = days === -1 ? YEAR_START_DATE : shiftDays(DATA.latestDate, -(days - 1));
+  return { from: from < DATA.earliestDate ? DATA.earliestDate : from, to: DATA.latestDate };
+}
+
 // --- 顶栏 -----------------------------------------------------------------
 const SECTIONS = [
   ['sec-goal', '目标达成'], ['sec-store', '店铺整体'], ['sec-insite', '站内投放'],
@@ -1949,7 +1965,7 @@ const STORE_CHARTS = [
   { k: 'uv', label: 'UV', format: 'integer', color: CH.amber },
 ];
 
-const RANGES = [[7, '近 7 天'], [30, '近 30 天'], [90, '近 90 天'], [0, '自定义']];
+const RANGES = RANGE_PRESETS;
 let storeRange = 30;
 let trendCustom = null;
 
@@ -1974,13 +1990,7 @@ $('trend-apply').addEventListener('click', () => {
 });
 
 /** 当前趋势区间：预设按天数往回推，自定义直接用选的日期 */
-function trendWindow() {
-  if (storeRange === 0) {
-    return trendCustom || { from: shiftDays(DATA.latestDate, -59), to: DATA.latestDate };
-  }
-  const from = shiftDays(DATA.latestDate, -(storeRange - 1));
-  return { from: from < DATA.earliestDate ? DATA.earliestDate : from, to: DATA.latestDate };
-}
+function trendWindow() { return presetWindow(storeRange, trendCustom); }
 
 function drawStore() {
   const w = trendWindow();
@@ -2018,7 +2028,7 @@ drawStore();
  *
  * 区间状态存在闭包里，各卡互不影响。
  */
-const TREND_PRESETS = [[7, '近 7 天'], [30, '近 30 天'], [90, '近 90 天'], [0, '自定义']];
+const TREND_PRESETS = RANGE_PRESETS;
 let trendCardSeq = 0;
 
 function mountTrendCard(host, opts) {
@@ -2071,11 +2081,7 @@ function mountTrendCard(host, opts) {
     draw();
   });
 
-  function window_() {
-    if (days === 0) return custom || { from: shiftDays(DATA.latestDate, -59), to: DATA.latestDate };
-    const f = shiftDays(DATA.latestDate, -(days - 1));
-    return { from: f < DATA.earliestDate ? DATA.earliestDate : f, to: DATA.latestDate };
-  }
+  function window_() { return presetWindow(days, custom); }
 
   function draw() {
     const w = window_();
@@ -2434,7 +2440,7 @@ function prodRollup(from, to, mk) {
   };
 
   // --- 一：分产品每日 --------------------------------------------------------
-  const PD_PRESETS = [[7, '近 7 天'], [30, '近 30 天'], [90, '近 90 天'], [-1, '全年'], [0, '自定义']];
+  const PD_PRESETS = RANGE_PRESETS;
   let pdDays = 30, pdCustom = null;
 
   $('pd-seg').innerHTML = PD_PRESETS.map(([d, l]) =>
@@ -2460,14 +2466,7 @@ function prodRollup(from, to, mk) {
     drawDaily();
   });
 
-  function pdWindow() {
-    if (pdDays === 0) return pdCustom || { from: shiftDays(DATA.latestDate, -59), to: DATA.latestDate };
-    if (pdDays === -1) {
-      return { from: YEAR_START < DATA.earliestDate ? DATA.earliestDate : YEAR_START, to: DATA.latestDate };
-    }
-    const f = shiftDays(DATA.latestDate, -(pdDays - 1));
-    return { from: f < DATA.earliestDate ? DATA.earliestDate : f, to: DATA.latestDate };
-  }
+  function pdWindow() { return presetWindow(pdDays, pdCustom); }
 
   function drawDaily() {
     const m = M_();
@@ -2831,7 +2830,7 @@ const isPaidChannel = (c) => c.startsWith('付费');
   }
 
   // --- 二：搜索 UV（自带区间，和上面的周期无关）-----------------------------
-  const SU_PRESETS = [[7, '近 7 天'], [30, '近 30 天'], [90, '近 90 天'], [0, '自定义']];
+  const SU_PRESETS = RANGE_PRESETS;
   let suDays = 30, suCustom = null;
 
   $('su-seg').innerHTML = SU_PRESETS.map(([d, l]) =>
@@ -2857,12 +2856,7 @@ const isPaidChannel = (c) => c.startsWith('付费');
   });
 
   function drawSearchUv() {
-    const w = suDays === 0
-      ? (suCustom || { from: shiftDays(DATA.latestDate, -59), to: DATA.latestDate })
-      : (() => {
-        const f = shiftDays(DATA.latestDate, -(suDays - 1));
-        return { from: f < DATA.earliestDate ? DATA.earliestDate : f, to: DATA.latestDate };
-      })();
+    const w = presetWindow(suDays, suCustom);
     const pts = trendRange(w.from, w.to);
     if (pts.length === 0) {
       $('su-chart').innerHTML = '<div style="padding:28px;text-align:center;color:var(--ink-3)">所选区间没有数据</div>';
