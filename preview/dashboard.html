@@ -249,14 +249,17 @@ body {
 .section[hidden] { display: none; }
 .section-head {
   display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 8px;
 }
 .section-no {
   font-size: 11px; font-weight: 600; color: var(--ink-3);
   letter-spacing: .12em; display: block; margin-bottom: 2px;
 }
 .section-title { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -.015em; }
-.section-desc { font-size: 12.5px; color: var(--ink-2); margin: 6px 0 0; max-width: 66ch; }
+/* 说明独占一行、占满宽度。
+   原来它和右侧的周期选择器挤在同一行的左半边，还带 max-width:66ch，
+   一句话被折成三四行，比句子本身还占地方。 */
+.section-desc { font-size: 12.5px; color: var(--ink-2); margin: 0 0 14px; }
 
 /* --- 分段控件 ------------------------------------------------------------ */
 .seg {
@@ -596,10 +599,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
       <div>
         <span class="section-no">01</span>
         <h2 class="section-title">目标达成</h2>
-        <p class="section-desc"><b>达成率 = 实际 ÷ 目标</b>；总费比这类率型指标看的是<b>百分点差</b>（实际 − 目标）—— 费比目标 8.8%、实际 7.07%，写成「达成率 80%」没有意义，要知道的是「省了 1.7 个点」。目标口径来自飞书表「1.目标达成」的渠道目标列，表里给到哪几项就只做哪几项。</p>
       </div>
       <button class="csvbtn" id="goal-csv">↓ 下载 CSV</button>
     </div>
+    <p class="section-desc"><b>达成率 = 实际 ÷ 目标</b>；费比这类率型看的是<b>百分点差</b>。目标取自飞书表「1.目标达成」的渠道目标列，表里给到几项就只做几项。</p>
 
     <div class="card timebar">
       <span class="timebar-label">时间</span>
@@ -625,9 +628,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
       <div>
         <span class="section-no">02</span>
         <h2 class="section-title">店铺整体</h2>
-        <p class="section-desc">核心 8 项直接展示，其余 8 项收在展开里。比率均为区间内先汇总再相除，不是每日比率的平均。</p>
       </div>
     </div>
+    <p class="section-desc">核心 8 项直接展示，其余收在展开里。所有比率都是区间内<b>先汇总再相除</b>，不是每日比率的平均。</p>
     <div class="card timebar" id="store-timebar">
       <span class="timebar-label">时间</span>
       <div class="seg" id="store-seg2" role="group" aria-label="统计周期"></div>
@@ -679,9 +682,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
       <div>
         <span class="section-no">03</span>
         <h2 class="section-title">站内投放</h2>
-        <p class="section-desc">摘要给站内自身的消耗、成交与 ROI；下面的对照行给总盘和站外，用来判断预算该往哪边挪。</p>
       </div>
     </div>
+    <p class="section-desc">摘要给站内自身的消耗、成交与 ROI；下面的对照行给总盘和站外，用来判断预算该往哪边挪。</p>
     <div class="alertbar" id="insite-alert" hidden></div>
     <div class="card glance-inline" id="insite-glance"></div>
     <div class="adsum" id="insite-sum"></div>
@@ -724,9 +727,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
       <div>
         <span class="section-no">04</span>
         <h2 class="section-title">站外投放</h2>
-        <p class="section-desc">站外以拉新为主，ROI 天然低于站内，但带来的是新客。不要拿两者的 ROI 直接比高低。</p>
       </div>
     </div>
+    <p class="section-desc">站外以拉新为主，ROI 天然低于站内，但带来的是新客 —— 不要拿两者的 ROI 直接比高低。</p>
     <div class="alertbar" id="offsite-alert" hidden></div>
     <div class="card glance-inline" id="offsite-glance"></div>
     <div class="adsum" id="offsite-sum"></div>
@@ -769,10 +772,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
       <div>
         <span class="section-no">05</span>
         <h2 class="section-title">产品</h2>
-        <p class="section-desc" id="product-desc"></p>
       </div>
       <div class="seg" id="product-metric-seg" role="group" aria-label="产品口径"></div>
     </div>
+    <p class="section-desc" id="product-desc"></p>
     <div class="stack">
       <!-- 一：分产品每日堆叠 -->
       <div class="card card-pad">
@@ -829,7 +832,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
       <div>
         <span class="section-no">06</span>
         <h2 class="section-title">流量</h2>
-        <p class="section-desc">总览 → 搜索 UV → 流量来源。来源拆解到「搜索 / 推荐 / 四路付费」，这是真实数据源能给到的最细粒度。</p>
       </div>
       <div class="prod-head-tools">
         <div class="seg" id="traffic-seg" role="group" aria-label="统计周期"></div>
@@ -841,6 +843,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         </span>
       </div>
     </div>
+    <p class="section-desc">总览 → 搜索 UV → 流量来源。来源拆到「搜索 / 推荐 / 四路付费」，这是数据源能给到的最细粒度。</p>
     <div class="stack">
       <!-- 一：总览 -->
       <div class="card card-pad">
