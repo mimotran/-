@@ -86,10 +86,13 @@ export const TARGET_METRIC_ALIASES: AliasMap = {
 export const AD_ALIASES: AliasMap = {
   date: ['日期', '时间', '统计日期', 'date'],
   channel: ['触点', '渠道', '资源位', '推广方式', '广告类型', '媒体', 'channel'],
-  cost: ['投放费', '消耗', '花费', '成本', 'cost'],
-  gmv: ['成交金额', '成交', 'GMV', '支付金额', 'gmv'],
+  cost: ['投放费', '消耗', 'SPD', '花费', '成本', 'cost'],
+  gmv: ['成交金额', '成交', 'Sales', 'GMV', '支付金额', 'gmv'],
+  orders: ['订单数', '成交订单数', 'Order', 'Orders', 'orders'],
   impressions: ['曝光量', '展现量', '曝光', 'impressions'],
   clicks: ['点击量', '点击数', '点击', 'clicks'],
+  /** CVR：没有订单数列时用它乘点击量反推 */
+  cvr: ['CVR', 'cvr', '转化率', '点击转化率'],
   /** ROI：没有「成交金额」列时用它乘投放费反推 */
   roi: ['ROI', 'roi', '投产比'],
   /** 有些表把站内 / 站外放在同一张表里，用这一列区分 */

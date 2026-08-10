@@ -79,22 +79,29 @@ const LINE_SHARE: Record<ProductLine, number> = {
 
 // --- 投放 ---------------------------------------------------------------
 
-/** 站内触点：费用占比 + ROI 基准。关键词推广效率最高，所以给最多预算 */
+/**
+ * 站内触点：费用占比 + ROI + CVR + 点击率。
+ *
+ * 搜索三档的效率梯度是这个品类的常态：品牌词的人已经认准了要买什么，
+ * ROI 和转化率都最高但量有限；品类词是主战场；其他词兜底。
+ * Branding / Video / Display 是种草位，ROI 低是设计使然，不是投得差。
+ */
 const INSITE = [
-  { channel: '关键词推广', share: 0.34, roi: 22 },
-  { channel: '引力魔方', share: 0.26, roi: 15 },
-  { channel: '万相台无界', share: 0.22, roi: 17 },
-  { channel: '超级短视频', share: 0.11, roi: 12 },
-  { channel: '品销宝', share: 0.07, roi: 9 },
+  { channel: 'Search_品牌词', share: 0.21, roi: 34, cvr: 0.085, ctr: 0.045 },
+  { channel: 'Search_品类词', share: 0.28, roi: 16, cvr: 0.042, ctr: 0.032 },
+  { channel: 'Search_其他', share: 0.16, roi: 11, cvr: 0.028, ctr: 0.024 },
+  { channel: 'Branding', share: 0.15, roi: 6.5, cvr: 0.012, ctr: 0.009 },
+  { channel: 'Video', share: 0.12, roi: 9, cvr: 0.02, ctr: 0.014 },
+  { channel: 'Display', share: 0.08, roi: 7, cvr: 0.015, ctr: 0.011 },
 ];
 
 /** 站外渠道：拉新为主，ROI 明显低于站内，但带来的是新客 */
 const OFFSITE = [
-  { channel: '抖音种草', share: 0.36, roi: 5.2 },
-  { channel: '小红书', share: 0.27, roi: 4.4 },
-  { channel: '微信朋友圈', share: 0.18, roi: 3.6 },
-  { channel: 'B 站', share: 0.11, roi: 3.1 },
-  { channel: '知乎', share: 0.08, roi: 2.4 },
+  { channel: '抖音种草', share: 0.36, roi: 5.2, cvr: 0.011, ctr: 0.013 },
+  { channel: '小红书', share: 0.27, roi: 4.4, cvr: 0.009, ctr: 0.012 },
+  { channel: '微信朋友圈', share: 0.18, roi: 3.6, cvr: 0.007, ctr: 0.010 },
+  { channel: 'B 站', share: 0.11, roi: 3.1, cvr: 0.006, ctr: 0.009 },
+  { channel: '知乎', share: 0.08, roi: 2.4, cvr: 0.005, ctr: 0.008 },
 ];
 
 const KEYWORDS = [
@@ -208,44 +215,47 @@ export function buildMockSnapshot(): DashboardSnapshot {
     const insiteCost = adCostTotal * (0.35 + rand() * 0.05);
     const offsiteCost = adCostTotal - insiteCost;
 
-    let adCostInsite = 0;
-    let adGmvInsite = 0;
-    for (const item of INSITE) {
-      const cost = Math.round(insiteCost * item.share * (0.88 + rand() * 0.24));
-      const roi = item.roi * (0.78 + rand() * 0.44) * (boost > 2 ? 1.15 : 1);
+    /**
+     * 触点级指标要**互相自洽**：Sales = SPD × ROI，Order = Sales ÷ 客单价，
+     * 点击 = Order ÷ CVR，曝光 = 点击 ÷ CTR。
+     * 反过来先随机生成点击再算 CVR，表里就会出现「ROI 很高但 CVR 极低」这种
+     * 自相矛盾的组合，运营一眼就知道数据是假的。
+     */
+    const emitAd = (scope: AdMetric['scope'], item: { channel: string; share: number; roi: number; cvr: number; ctr: number }, pool: number, roiTilt: number) => {
+      const cost = Math.round(pool * item.share * (0.88 + rand() * 0.24));
+      const roi = item.roi * (0.78 + rand() * 0.44) * roiTilt;
       const channelGmv = Math.round(cost * roi);
-      const impressions = Math.round(cost * (110 + rand() * 60));
+      const orders = Math.max(1, Math.round(channelGmv / aov));
+      const cvr = item.cvr * (0.85 + rand() * 0.3);
+      const clicks = Math.max(orders, Math.round(orders / cvr));
+      const ctr = item.ctr * (0.85 + rand() * 0.3);
       ads.push({
         date,
-        scope: 'insite',
+        scope,
         channel: item.channel,
         cost,
         gmv: channelGmv,
-        impressions,
-        clicks: Math.round(impressions * (0.018 + rand() * 0.02)),
+        orders,
+        impressions: Math.round(clicks / ctr),
+        clicks,
       });
-      adCostInsite += cost;
-      adGmvInsite += channelGmv;
+      return { cost, gmv: channelGmv };
+    };
+
+    let adCostInsite = 0;
+    let adGmvInsite = 0;
+    for (const item of INSITE) {
+      const r = emitAd('insite', item, insiteCost, boost > 2 ? 1.15 : 1);
+      adCostInsite += r.cost;
+      adGmvInsite += r.gmv;
     }
 
     let adCostOffsite = 0;
     let adGmvOffsite = 0;
     for (const item of OFFSITE) {
-      const cost = Math.round(offsiteCost * item.share * (0.85 + rand() * 0.3));
-      const roi = item.roi * (0.72 + rand() * 0.56);
-      const channelGmv = Math.round(cost * roi);
-      const impressions = Math.round(cost * (240 + rand() * 160));
-      ads.push({
-        date,
-        scope: 'offsite',
-        channel: item.channel,
-        cost,
-        gmv: channelGmv,
-        impressions,
-        clicks: Math.round(impressions * (0.009 + rand() * 0.014)),
-      });
-      adCostOffsite += cost;
-      adGmvOffsite += channelGmv;
+      const r = emitAd('offsite', item, offsiteCost, 1);
+      adCostOffsite += r.cost;
+      adGmvOffsite += r.gmv;
     }
 
     // --- 搜索关键词：占满当天的搜索 UV ---

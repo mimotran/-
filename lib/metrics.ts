@@ -655,13 +655,19 @@ export function buildGoals(
 
 export interface AdChannelRow {
   channel: string;
+  /** SPD：投放消耗 */
   cost: number;
+  /** Sales：成交金额 */
   gmv: number;
+  /** Order：成交订单数 */
+  orders: number;
   roi: number;
   impressions: number;
   clicks: number;
   /** 点击率 */
   ctr: number;
+  /** CVR：成交订单数 ÷ 点击量 */
+  cvr: number;
   /** 占该 scope 总投放费的比例 */
   costShare: number;
   /** 上一个可比周期的投放费。用来算「多花了多少钱」这种绝对增量 */
@@ -677,15 +683,16 @@ export function adBreakdown(
   range: DateRange,
   compareRange: DateRange | null,
 ): AdChannelRow[] {
-  const current = new Map<string, { cost: number; gmv: number; impressions: number; clicks: number }>();
+  const current = new Map<string, { cost: number; gmv: number; orders: number; impressions: number; clicks: number }>();
   const previous = new Map<string, number>();
 
   for (const row of ads) {
     if (row.scope !== scope) continue;
     if (inRange(row.date, range)) {
-      const acc = current.get(row.channel) ?? { cost: 0, gmv: 0, impressions: 0, clicks: 0 };
+      const acc = current.get(row.channel) ?? { cost: 0, gmv: 0, orders: 0, impressions: 0, clicks: 0 };
       acc.cost += row.cost;
       acc.gmv += row.gmv;
+      acc.orders += row.orders;
       acc.impressions += row.impressions;
       acc.clicks += row.clicks;
       current.set(row.channel, acc);
@@ -702,10 +709,12 @@ export function adBreakdown(
       channel,
       cost: item.cost,
       gmv: item.gmv,
+      orders: item.orders,
       roi: safeDiv(item.gmv, item.cost),
       impressions: item.impressions,
       clicks: item.clicks,
       ctr: safeDiv(item.clicks, item.impressions),
+      cvr: safeDiv(item.orders, item.clicks),
       costShare: safeDiv(item.cost, totalCost),
       prevCost: compareRange !== null && previous.has(channel) ? (previous.get(channel) ?? 0) : null,
       costDelta: delta(item.cost, previous.get(channel) ?? 0, compareRange !== null && previous.has(channel)),

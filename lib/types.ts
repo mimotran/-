@@ -69,8 +69,10 @@ export interface AdMetric {
   channel: string;
   /** 投放费（元） */
   cost: number;
-  /** 成交金额（元） */
+  /** 成交金额（元）。看板里叫 Sales */
   gmv: number;
+  /** 成交订单数。看板里叫 Order */
+  orders: number;
   /** 曝光量 */
   impressions: number;
   /** 点击量 */

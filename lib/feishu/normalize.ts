@@ -173,14 +173,19 @@ export function parseAds(
     const gmvRaw = pick(row, AD_ALIASES.gmv);
     const gmv = gmvRaw !== undefined ? toNumber(gmvRaw) : toNumber(pick(row, AD_ALIASES.roi)) * cost;
 
+    const clicks = toNumber(pick(row, AD_ALIASES.clicks));
+    const ordersRaw = pick(row, AD_ALIASES.orders);
+
     rows.push({
       date,
       scope,
       channel,
       cost,
       gmv,
+      // 订单数优先取绝对值列，没有就用 CVR 乘点击量反推
+      orders: ordersRaw !== undefined ? toNumber(ordersRaw) : Math.round(toNumber(pick(row, AD_ALIASES.cvr)) * clicks),
       impressions: toNumber(pick(row, AD_ALIASES.impressions)),
-      clicks: toNumber(pick(row, AD_ALIASES.clicks)),
+      clicks,
     });
   });
 
