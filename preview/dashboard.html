@@ -637,14 +637,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <div class="chips" id="insite-chips"></div>
         <div class="tablewrap"><table id="insite-table"></table></div>
       </div>
-      <div class="card card-pad">
-        <div class="card-head">
-          <div><h3 class="card-title">投放趋势</h3><p class="card-sub">站内与站外同轴对比</p></div>
-          <div class="seg" id="ads-metric" role="group" aria-label="投放趋势指标"></div>
-        </div>
-        <div class="chart" id="ads-chart"></div>
-        <div class="legend" id="ads-legend"></div>
-      </div>
+      <div class="stack" id="insite-trends"></div>
     </div>
   </section>
 
@@ -682,6 +675,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <div class="chips" id="offsite-chips"></div>
         <div class="tablewrap"><table id="offsite-table"></table></div>
       </div>
+      <div class="stack" id="offsite-trends"></div>
     </div>
   </section>
 
@@ -1803,24 +1797,118 @@ function drawStore() {
 }
 drawStore();
 
-// --- 投放趋势 --------------------------------------------------------------
-const ADS_METRICS = [
-  { k: 'cost', label: '投放费', format: 'currency', series: [['adCostInsite', '站内投放费', CH.sky], ['adCostOffsite', '站外投放费', CH.violet]] },
-  { k: 'roi', label: 'ROI', format: 'multiple', series: [['roiInsite', '站内 ROI', CH.sky], ['roiOffsite', '站外 ROI', CH.violet]] },
-  { k: 'gmv', label: '成交', format: 'currency', series: [['adGmvInsite', '站内成交', CH.sky], ['adGmvOffsite', '站外成交', CH.violet]] },
-];
-let adsMetric = 0;
-$('ads-metric').innerHTML = ADS_METRICS.map((m, i) => `<button data-i="${i}" aria-pressed="${i === 0}">${m.label}</button>`).join('');
-$('ads-metric').addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (!b) return; adsMetric = +b.dataset.i; [...$('ads-metric').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b))); drawAds(); });
+// --- 可复用的趋势卡 ---------------------------------------------------------
+/**
+ * 一张自带区间选择的趋势卡。
+ *
+ * 每张图各自选日期，而不是共用一个选择器 —— 看投放费想看近 90 天的预算节奏，
+ * 看 ROI 往往只关心最近一周有没有掉，两者用同一个区间总有一个是将就。
+ *
+ * 区间状态存在闭包里，各卡互不影响。
+ */
+const TREND_PRESETS = [[7, '近 7 天'], [30, '近 30 天'], [90, '近 90 天'], [0, '自定义']];
+let trendCardSeq = 0;
 
-function drawAds() {
-  const m = ADS_METRICS[adsMetric];
-  const pts = trendRange(shiftDays(DATA.latestDate, -29), DATA.latestDate);
-  lineChart($('ads-chart'), pts, m.series.map(([k, name, color]) => ({ name, color, pick: (p) => p[k] })), { format: m.format, label: m.label });
-  $('ads-legend').innerHTML = m.series.map(([, name, color]) =>
-    `<span class="legend-item"><span class="legend-swatch" style="background:${color}"></span>${name}</span>`).join('');
+function mountTrendCard(host, opts) {
+  const id = `tc${trendCardSeq++}`;
+  let days = opts.defaultDays ?? 30;
+  let custom = null;
+
+  const card = document.createElement('div');
+  card.className = 'card card-pad';
+  card.innerHTML = `
+    <div class="card-head">
+      <div>
+        <h3 class="card-title">${esc(opts.title)}</h3>
+        <p class="card-sub" id="${id}-sub"></p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <div class="seg" id="${id}-seg" role="group" aria-label="${esc(opts.title)}区间">
+          ${TREND_PRESETS.map(([d, l]) => `<button data-d="${d}" aria-pressed="${d === days}">${l}</button>`).join('')}
+        </div>
+        <span class="daterange" id="${id}-range" hidden>
+          <input type="date" id="${id}-from" aria-label="开始日期">
+          <span aria-hidden="true">至</span>
+          <input type="date" id="${id}-to" aria-label="结束日期">
+          <button class="csvbtn" id="${id}-apply">应用</button>
+        </span>
+      </div>
+    </div>
+    <div class="chart" id="${id}-chart"></div>
+    <div class="legend" id="${id}-legend"></div>`;
+  host.appendChild(card);
+
+  const from = $(`${id}-from`), to = $(`${id}-to`);
+  from.value = shiftDays(DATA.latestDate, -59);
+  to.value = DATA.latestDate;
+  [from, to].forEach((el) => { el.min = DATA.earliestDate; el.max = DATA.latestDate; });
+
+  $(`${id}-seg`).addEventListener('click', (e) => {
+    const b = e.target.closest('[data-d]'); if (!b) return;
+    days = +b.dataset.d;
+    [...$(`${id}-seg`).children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+    $(`${id}-range`).hidden = days !== 0;
+    draw();
+  });
+
+  $(`${id}-apply`).addEventListener('click', () => {
+    let a = from.value, b2 = to.value;
+    if (!a || !b2) return;
+    if (a > b2) [a, b2] = [b2, a];
+    custom = { from: a, to: b2 };
+    draw();
+  });
+
+  function window_() {
+    if (days === 0) return custom || { from: shiftDays(DATA.latestDate, -59), to: DATA.latestDate };
+    const f = shiftDays(DATA.latestDate, -(days - 1));
+    return { from: f < DATA.earliestDate ? DATA.earliestDate : f, to: DATA.latestDate };
+  }
+
+  function draw() {
+    const w = window_();
+    const pts = trendRange(w.from, w.to);
+    if (pts.length === 0) {
+      $(`${id}-chart`).innerHTML = '<div style="padding:28px;text-align:center;color:var(--ink-3)">所选区间没有数据</div>';
+      $(`${id}-sub`).textContent = `${w.from} 至 ${w.to}｜无数据`;
+      return;
+    }
+    $(`${id}-sub`).textContent = `${pts[0].date} 至 ${pts[pts.length - 1].date}（${pts.length} 天）｜${opts.sub}`;
+    lineChart($(`${id}-chart`), pts, opts.series, { format: opts.format, label: opts.title, height: 230 });
+    $(`${id}-legend`).innerHTML = opts.series.map((s) =>
+      `<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${esc(s.name)}</span>`).join('');
+  }
+  draw();
 }
-drawAds();
+
+// --- 投放趋势：投放费 / ROI / 成交各一张，各自选区间 ------------------------
+const ADS_TRENDS = [
+  {
+    title: '投放费', format: 'currency', sub: '站内与站外同轴对比，都是金额',
+    series: [
+      { name: '站内投放费', color: CH.sky, pick: (p) => p.adCostInsite },
+      { name: '站外投放费', color: CH.violet, pick: (p) => p.adCostOffsite },
+    ],
+  },
+  {
+    title: 'ROI', format: 'multiple', sub: '站外以拉新为主，ROI 天然低于站内，不要直接比高低',
+    series: [
+      { name: '站内 ROI', color: CH.sky, pick: (p) => p.roiInsite },
+      { name: '站外 ROI', color: CH.violet, pick: (p) => p.roiOffsite },
+    ],
+  },
+  {
+    title: '成交', format: 'currency', sub: '广告带来的成交金额',
+    series: [
+      { name: '站内成交', color: CH.sky, pick: (p) => p.adGmvInsite },
+      { name: '站外成交', color: CH.violet, pick: (p) => p.adGmvOffsite },
+    ],
+  },
+];
+
+for (const host of ['insite-trends', 'offsite-trends']) {
+  for (const t of ADS_TRENDS) mountTrendCard($(host), t);
+}
 
 // --- 流量趋势 --------------------------------------------------------------
 lineChart($('traffic-chart'), trendRange(shiftDays(DATA.latestDate, -29), DATA.latestDate), [
