@@ -4,7 +4,7 @@
  * 重写就有走样的风险，这个脚本把两边的结果摆在一起比。
  */
 import { getSnapshot } from '../lib/data/source';
-import { adBreakdown, aggregateRange, buildGoals, buildTrend } from '../lib/metrics';
+import { adBreakdown, aggregateRange, buildGoals, buildTrend, productBreakdown } from '../lib/metrics';
 import { loadLocalEnv } from './env';
 
 loadLocalEnv();
@@ -94,6 +94,26 @@ async function main() {
     })),
   }));
 
-  console.log(JSON.stringify({ aggregates: out, goals, trends, breakdowns }));
+  /**
+   * 分产品线拆解：产品块的三张图（每日堆叠 / 月度对比 / 年累计环形）都从
+   * 导出的 productDaily 列在浏览器里重新求和，同样要和 productBreakdown 对上。
+   * 特意挑了跨月、单日、全年三种区间 —— 边界那天最容易被切掉。
+   */
+  const prodRanges = [
+    { from: '2026-08-01', to: '2026-08-09' },
+    { from: '2026-06-01', to: '2026-06-30' },
+    { from: '2026-01-01', to: '2026-08-09' },
+    { from: '2025-12-31', to: '2025-12-31' },
+  ];
+  const products = prodRanges.map((r) => ({
+    range: `${r.from}~${r.to}`,
+    lines: productBreakdown(snap.products, r, null).lines.map((l) => ({
+      line: l.line,
+      gmv: Math.round(l.gmv),
+      quantity: l.quantity,
+    })),
+  }));
+
+  console.log(JSON.stringify({ aggregates: out, goals, trends, breakdowns, products }));
 }
 main();

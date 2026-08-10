@@ -8,7 +8,7 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { getSnapshot } from '../lib/data/source';
-import { GOAL_METRICS, RATE_COMPANIONS, STORE_CORE, STORE_EXTRA, buildView } from '../lib/metrics';
+import { GOAL_METRICS, LINE_LABELS, RATE_COMPANIONS, STORE_CORE, STORE_EXTRA, buildView } from '../lib/metrics';
 import { loadLocalEnv } from './env';
 
 loadLocalEnv();
@@ -64,6 +64,29 @@ async function main() {
     });
   }
 
+  /**
+   * 产品线的日明细，同样按列存并对齐到 daily.dates。
+   *
+   * 产品块要画「分产品每日 GMV 堆叠柱」和「月度对比」，两张图都需要按任意区间
+   * 重新聚合，只有一份区间快照（view.products）是不够的。
+   */
+  function productColumns() {
+    const lines = [...new Set(snapshot.products.map((r) => r.line))];
+    return lines.map((line) => {
+      const gmv = new Array<number>(daily.dates.length).fill(0);
+      const quantity = new Array<number>(daily.dates.length).fill(0);
+      for (const r of snapshot.products) {
+        if (r.line !== line) continue;
+        const i = dateIndex.get(r.date);
+        if (i === undefined) continue;
+        // 先累加原值再取整：逐条四舍五入会把同一天多个 SKU 的误差叠起来
+        gmv[i] += r.gmv;
+        quantity[i] += r.quantity;
+      }
+      return { line, gmv: gmv.map((v) => Math.round(v)), quantity: quantity.map((v) => Math.round(v)) };
+    });
+  }
+
   /** 指标定义随数据一起导出：预览页只按 key 取值，不重复维护一份标签表 */
   const spec = (list: typeof STORE_CORE) =>
     list.map((m) => ({ key: m.key, label: m.label, format: m.format, higherIsBetter: m.higherIsBetter }));
@@ -71,6 +94,10 @@ async function main() {
   const payload = {
     daily,
     adDaily: { insite: adColumns('insite'), offsite: adColumns('offsite') },
+    productDaily: productColumns(),
+    productLabels: Object.fromEntries(
+      [...new Set(snapshot.products.map((r) => r.line))].map((l) => [l, LINE_LABELS[l]]),
+    ),
     storeMetrics: { core: spec(STORE_CORE), extra: spec(STORE_EXTRA) },
     // 目标定义 + 月度目标：预览页要靠它们算任意自定义区间的达成
     goalMetrics: GOAL_METRICS.map((m) => ({
