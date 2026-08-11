@@ -614,9 +614,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* 条形从右往左长，数字永远压在条形的右端 —— 从左边长的话，小值会在
    左侧留下一小截和数字断开的色块，中间空一段，读起来像两件不相干的东西 */
 .kw-bar {
-  /* right 对齐到数字的右边缘（td 的 padding-right 就是 12px），
-     不是对齐到格子边 —— 对齐到格子边时，小值的色块会跑到数字右侧去 */
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  /* 从左往右长，起点对齐格子左边缘 —— 所有行的起跑线一样，长度才好横向比 */
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
   height: 18px; border-radius: 3px; opacity: .28; pointer-events: none;
 }
 .kw-name { font-weight: 500; }
@@ -2208,14 +2207,28 @@ function lineChart(el, pts, series, opts) {
     grid.push(`<line x1="${M.l}" x2="${W - M.r}" y1="${yy(v).toFixed(1)}" y2="${yy(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
       <text x="${M.l - 8}" y="${(yy(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--ink-3)" style="font-variant-numeric:tabular-nums">${o.format === 'percent' ? fmtPct(v, 0) : o.format === 'multiple' ? v.toFixed(1) : fmtCompact(v)}</text>`);
   }
-  const paths = series.map((s) =>
+  /**
+   * 标了 bar 的序列画成柱子，其余画成线。
+   *
+   * 前提是同轴可比 —— 这里两条都是访客数，共用一根轴本来就成立。量纲不同的
+   * 指标不能这么混，那是双轴，双轴的对齐方式是任意的，会凭空造出相关性。
+   * 柱子在下、线在上：柱子读「当天有多少」，线读「里面搜索占了多少」。
+   */
+  const bw = Math.max(2, (pw / pts.length) * 0.62);
+  const bars = series.filter((s) => s.bar).map((s) => pts.map((p, i) => {
+    // 首尾的柱心在绘图区边界上，不夹一下会被裁掉一半
+    const x = Math.min(M.l + pw - bw, Math.max(M.l, cx(i) - bw / 2));
+    const v = s.pick(p);
+    return `<rect x="${x.toFixed(1)}" y="${yy(v).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, M.t + ph - yy(v)).toFixed(1)}" rx="2" fill="${s.color}" opacity="${s.barOpacity ?? 1}"/>`;
+  }).join('')).join('');
+  const paths = series.filter((s) => !s.bar).map((s) =>
     `<path d="${pts.map((p, i) => `${i ? 'L' : 'M'}${cx(i).toFixed(1)},${yy(s.pick(p)).toFixed(1)}`).join('')}" fill="none" stroke="${s.color}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>`).join('');
   const step = Math.max(1, Math.ceil(pts.length / 9));
   const xlab = pts.map((p, i) => i % step === 0
     ? `<text x="${cx(i).toFixed(1)}" y="${H - 7}" text-anchor="middle" font-size="11" fill="var(--ink-3)">${mdShort(p.date)}</text>` : '').join('');
 
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px" role="img" aria-label="${esc(o.label || '趋势')}">
-      ${grid.join('')}${paths}
+      ${grid.join('')}${bars}${paths}
       <line class="cursor" x1="0" x2="0" y1="${M.t}" y2="${M.t + ph}" stroke="var(--ink)" stroke-width="1" opacity="0"/>
       ${xlab}
     </svg><div class="tip"></div>`;
@@ -3299,12 +3312,15 @@ const isPaidChannel = (c) => c.startsWith('付费');
       `${pts[0].date} 至 ${pts[pts.length - 1].date}（${pts.length} 天）｜搜索 UV ${fmtInt(a.searchUv)}` +
       `，占总 UV ${fmtPct(a.searchUvShare, 1)}｜与总 UV 同轴可比，都是访客数`;
 
+    // 总 UV 画成柱、搜索 UV 画成线：柱子读「当天来了多少人」，线读「其中搜索来了多少」，
+    // 两者同轴（都是访客数），线永远在柱子里面，包含关系一眼可见
     lineChart($('su-chart'), pts, [
-      { name: '总 UV', color: CH.sky, pick: (p) => p.uv },
+      { name: '总 UV', color: CH.skySoft, pick: (p) => p.uv, bar: true },
       { name: '搜索 UV', color: CH.brand, pick: (p) => p.searchUv },
     ], { format: 'integer', label: '搜索 UV', height: 240 });
-    $('su-legend').innerHTML = [['总 UV', CH.sky], ['搜索 UV', CH.brand]].map(([n, c]) =>
-      `<span class="legend-item"><span class="legend-swatch" style="background:${c}"></span>${n}</span>`).join('');
+    $('su-legend').innerHTML =
+      `<span class="legend-item"><span class="legend-swatch" style="background:${CH.skySoft}"></span>总 UV</span>` +
+      `<span class="legend-item"><span style="width:16px;height:2px;background:${CH.brand}"></span>搜索 UV</span>`;
 
     /**
      * 占比单画一张。
@@ -3360,7 +3376,7 @@ const isPaidChannel = (c) => c.startsWith('付费');
         const pv = prevByCh.get(r.channel);
         const d = !isTotal && pv > 0 ? (r.uv - pv) / pv : null;
         const bar = isTotal ? '' :
-          `<span class="kw-bar" style="width:${(r.uv / max * 86).toFixed(1)}%;background:${card.color}"></span>`;
+          `<span class="kw-bar" style="width:${(r.uv / max * 92).toFixed(1)}%;background:${card.color}"></span>`;
         return `<tr class="${isTotal ? 'kw-total' : ''}">
           <td class="kw-name">${esc(r.channel)}</td>
           <td class="num kw-bar-cell">${bar}<span style="position:relative">${fmtInt(r.uv)}</span></td>
