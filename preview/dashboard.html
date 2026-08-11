@@ -444,6 +444,21 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
 @media (prefers-reduced-motion: reduce) {
   .anim-bar, .anim-fade, .anim-slice, .rank-fill, .g-fill { animation: none; }
 }
+
+/* --- 悬停聚焦 ------------------------------------------------------------
+   压暗而不是加亮命中列：加亮要么改颜色（就和图例对不上了），要么描边（在
+   密集柱子上会糊成一片）。压暗保留所有原色，只是把注意力从别处收回来。
+   色带垫在柱子底下当背景，所以画在 grid 之后、柱子之前。 */
+svg .col-band {
+  /* fill-opacity 定深浅，opacity 只管显隐 —— 两者分开，过渡才不会连深浅一起改 */
+  fill: var(--ink); fill-opacity: .07; opacity: 0;
+  transition: opacity .14s ease; pointer-events: none;
+}
+svg [data-col] { transition: opacity .16s ease; }
+svg.col-focus [data-col]:not(.on) { opacity: .34; }
+@media (prefers-reduced-motion: reduce) {
+  svg .col-band, svg [data-col] { transition: none; }
+}
 .tip {
   position: absolute; z-index: 20; pointer-events: none; opacity: 0;
   background: var(--card); border: 1px solid var(--line); border-radius: 10px;
@@ -1188,13 +1203,47 @@ const ANIM = {
 };
 
 /**
- * 柱子的入场属性。
+ * 柱子的属性：入场动画 + 悬停聚焦用的列号。
+ *
  * 依次错开比一起弹出更容易读出「从左到右」的时间顺序，但整体铺开必须封顶在
  * 220ms —— 全年 365 根柱子每根错 10ms 就是 3.6 秒，那不是动效是等待。
+ * data-col 是给 focusCol() 认列用的，和动效无关，所以不受 ANIM 影响。
  */
 function barAnim(i, n) {
-  if (!ANIM.live()) return '';
-  return ` class="anim-bar" style="animation-delay:${Math.round(i * Math.min(10, 220 / Math.max(n, 1)))}ms"`;
+  if (!ANIM.live()) return ` data-col="${i}"`;
+  const delay = Math.round(i * Math.min(10, 220 / Math.max(n, 1)));
+  return ` data-col="${i}" class="anim-bar" style="animation-delay:${delay}ms"`;
+}
+
+/**
+ * 悬停聚焦：命中的那一列保持原色，其余压暗。
+ *
+ * 堆叠柱一天有三段颜色，相邻两天的同色段挨在一起，光靠一根准星线很难确定
+ * tooltip 里那三个数属于哪一根柱子。把其余列压下去，读的是哪一天就没有歧义了。
+ */
+function focusCol(svg, i) {
+  svg.classList.add('col-focus');
+  svg.querySelectorAll('[data-col].on').forEach((e) => e.classList.remove('on'));
+  svg.querySelectorAll(`[data-col="${i}"]`).forEach((e) => e.classList.add('on'));
+}
+
+function blurCols(svg) {
+  svg.classList.remove('col-focus');
+  svg.querySelectorAll('[data-col].on').forEach((e) => e.classList.remove('on'));
+}
+
+/** 命中列的背景色带。柱状图用它代替准星线 —— 线只指到一个点，色带圈住的是整根柱子 */
+function moveBand(svg, x, w) {
+  const band = svg.querySelector('.col-band');
+  if (!band) return;
+  band.setAttribute('x', x.toFixed(1));
+  band.setAttribute('width', Math.max(w, 2).toFixed(1));
+  band.style.opacity = '1';
+}
+
+function hideBand(svg) {
+  const band = svg.querySelector('.col-band');
+  if (band) band.style.opacity = '0';
 }
 
 /**
@@ -2277,10 +2326,10 @@ function barChart(el, pts, pick, opts) {
 
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px" role="img" aria-label="${esc(o.label || '趋势')}">
       ${gridY.join('')}
+      <rect class="col-band" x="0" y="${M.t}" width="0" height="${ph}" rx="3"/>
       ${pts.map((p, i) => `<rect${barAnim(i, n)} x="${(cx(i) - bw / 2).toFixed(1)}" y="${yy(vals[i]).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, M.t + ph - yy(vals[i])).toFixed(1)}" rx="2" fill="${o.color || CH.skySoft}"/>`).join('')}
       ${trendPath ? `<path${lineAnim(true)} d="${trendPath}" fill="none" stroke="${trendUp ? 'var(--gain)' : 'var(--loss)'}" stroke-width="1.6" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" opacity=".85"/>` : ''}
       ${maPath ? `<path${lineAnim()} d="${maPath}" fill="none" stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity=".8"/>` : ''}
-      <line class="cursor" x1="0" x2="0" y1="${M.t}" y2="${M.t + ph}" stroke="var(--ink)" stroke-width="1" opacity="0"/>
       ${xlab}
     </svg><div class="tip"></div>`;
 
@@ -2354,7 +2403,10 @@ function hookTip(el, pts, rows, W, M, pw) {
     let i = Math.round(((x - M.l) / pw) * (pts.length - 1));
     i = Math.max(0, Math.min(pts.length - 1, i));
     const px = M.l + (pts.length === 1 ? pw / 2 : (i * pw) / (pts.length - 1));
-    cur.setAttribute('x1', px); cur.setAttribute('x2', px); cur.setAttribute('opacity', '.28');
+    // 折线图有准星线、柱状图有色带，两者只会存在一个
+    if (cur) { cur.setAttribute('x1', px); cur.setAttribute('x2', px); cur.setAttribute('opacity', '.28'); }
+    focusCol(svg, i);
+    moveBand(svg, px - (pw / pts.length) / 2, pw / pts.length);
     tip.innerHTML = `<div class="tip-date">${tipDate(pts[i].date)}</div>${rows(i)}`;
     tip.style.opacity = '1';
     const left = (px / W) * r.width;
@@ -2363,7 +2415,11 @@ function hookTip(el, pts, rows, W, M, pw) {
   };
   svg.addEventListener('mousemove', move);
   svg.addEventListener('touchmove', (e) => { move(e); }, { passive: true });
-  svg.addEventListener('mouseleave', () => { tip.style.opacity = '0'; cur.setAttribute('opacity', '0'); });
+  svg.addEventListener('mouseleave', () => {
+    tip.style.opacity = '0';
+    if (cur) cur.setAttribute('opacity', '0');
+    blurCols(svg); hideBand(svg);
+  });
 }
 
 // --- 店铺趋势 --------------------------------------------------------------
@@ -2878,20 +2934,22 @@ function stackedChart(el, items, series, opts) {
         <line x1="0" y1="0" x2="0" y2="7" stroke="#fff" stroke-width="3" opacity=".6"/>
       </pattern></defs>
       ${grid.join('')}
+      <rect class="col-band" x="0" y="${M.t}" width="0" height="${ph}" rx="3"/>
       ${bars}
       ${o.overlay ? o.overlay({ cx, yy, M, ph, n, max }) : ''}
-      <line class="cursor" x1="0" x2="0" y1="${M.t}" y2="${M.t + ph}" stroke="var(--ink)" stroke-width="1" opacity="0"/>
       ${xlab}
     </svg><div class="tip"></div>`;
 
-  const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), cur = el.querySelector('.cursor');
+  const svg = el.querySelector('svg'), tip = el.querySelector('.tip');
   const move = (ev) => {
     const r = svg.getBoundingClientRect();
     const x = ((ev.clientX ?? ev.touches?.[0]?.clientX) - r.left) / r.width * W;
     let i = Math.floor((x - M.l) / slot);
     i = Math.max(0, Math.min(n - 1, i));
     const px = cx(i);
-    cur.setAttribute('x1', px); cur.setAttribute('x2', px); cur.setAttribute('opacity', '.28');
+    // 色带按整格宽度画，覆盖的正是这一天的地盘；柱子比格子窄，两侧留白也一起点亮
+    focusCol(svg, i);
+    moveBand(svg, px - slot / 2, slot);
     tip.innerHTML = o.tip(i, totals[i]);
     tip.style.opacity = '1';
     const left = (px / W) * r.width;
@@ -2900,7 +2958,7 @@ function stackedChart(el, items, series, opts) {
   };
   svg.addEventListener('mousemove', move);
   svg.addEventListener('touchmove', move, { passive: true });
-  svg.addEventListener('mouseleave', () => { tip.style.opacity = '0'; cur.setAttribute('opacity', '0'); });
+  svg.addEventListener('mouseleave', () => { tip.style.opacity = '0'; blurCols(svg); hideBand(svg); });
   playIn(el);
 }
 
