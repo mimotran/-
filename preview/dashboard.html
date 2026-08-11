@@ -430,19 +430,16 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
    基线，所以是「从轴上长出来」；堆叠柱整列包一层 <g>，盒底同样是基线，
    一列作为整体长上来，而不是每段各自弹一下。 */
 @keyframes chartBarIn { from { transform: scaleY(0); opacity: .3; } }
-@keyframes chartFadeIn { from { opacity: 0; } }
 @keyframes chartSliceIn { from { transform: scale(.72); opacity: 0; } }
 @keyframes barGrowIn { from { width: 0; } }
 .anim-bar {
   transform-box: fill-box; transform-origin: 50% 100%;
   animation: chartBarIn .4s cubic-bezier(.22, .9, .3, 1) backwards;
 }
-/* 趋势虚线等柱子长完再淡进来，先看见数据本身，再看见对它的概括 */
-.anim-fade { animation: chartFadeIn .4s ease-out .34s backwards; }
 .anim-slice { transform-box: fill-box; transform-origin: center; animation: chartSliceIn .42s cubic-bezier(.22, .9, .3, 1) backwards; }
 .rank-fill, .g-fill { animation: barGrowIn .5s cubic-bezier(.22, .9, .3, 1) backwards; }
 @media (prefers-reduced-motion: reduce) {
-  .anim-bar, .anim-fade, .anim-slice, .rank-fill, .g-fill { animation: none; }
+  .anim-bar, .anim-slice, .rank-fill, .g-fill { animation: none; }
 }
 
 /* --- 悬停聚焦 ------------------------------------------------------------
@@ -1345,13 +1342,9 @@ function hideBand(svg) {
   if (band) band.style.opacity = '0';
 }
 
-/**
- * 线的入场标记。实线交给 playIn() 用 stroke-dashoffset 画出来；
- * 虚线（趋势线）的 dasharray 本身就在表意，不能拿去做动画，改成淡入。
- */
-function lineAnim(dashed = false) {
-  if (!ANIM.live()) return '';
-  return dashed ? ' class="anim-fade"' : ' class="anim-line"';
+/** 线的入场标记。真正的绘制交给 playIn() 用 stroke-dashoffset 完成 */
+function lineAnim() {
+  return ANIM.live() ? ' class="anim-line"' : '';
 }
 
 /** 插入 DOM 之后调用：量出路径长度，再把它从「没画」过渡到「画完」 */
@@ -1848,7 +1841,9 @@ $('goal-apply').addEventListener('click', () => {
   let from = $('goal-from').value, to = $('goal-to').value;
   if (!from || !to) return;
   if (from > to) [from, to] = [to, from];
+  goalIndex = GOAL_CUSTOM;
   goalCustomRange = { from, to };
+  pickCustomBtn('goal-seg', 'goal-custom', GOAL_CUSTOM);
   renderGoals();
 });
 
@@ -2136,6 +2131,19 @@ $('goal-csv').addEventListener('click', () => {
 
 // --- 周期切换 --------------------------------------------------------------
 /** 每个板块一个周期选择器；三档同时也在概览四卡里给了，这里是下钻用的 */
+/**
+ * 点「应用」＝切到自定义。
+ *
+ * 六个区间选择器原来都只把日期记进 custom 变量，没把预设切走 —— 而取区间的
+ * 函数只在选中「自定义」时才看那个变量，于是停在「近 30 天」上点应用是**没反应**的。
+ * 这里统一把对应的按钮设成选中态，并把日期框从淡化状态点亮。
+ */
+function pickCustomBtn(segId, panelId, value) {
+  const el = $(segId);
+  [...el.children].forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.i === String(value))));
+  if (panelId) $(panelId).classList.remove('is-idle');
+}
+
 function periodSeg(segId, onPick) {
   const el = $(segId);
   el.innerHTML = DATA.stats.map((s, i) =>
@@ -2208,7 +2216,9 @@ $('store-apply').addEventListener('click', () => {
   let from = $('store-from').value, to = $('store-to').value;
   if (!from || !to) return;
   if (from > to) [from, to] = [to, from];
+  storePeriod = STORE_PERIODS.length - 1; // 「自定义」排在最后
   storeCustom = { from, to };
+  pickCustomBtn('store-seg2', 'store-custom', storePeriod);
   renderStore();
 });
 
@@ -2404,33 +2414,40 @@ renderAdSummary('offsite');
  * 前面 6 根柱子光秃秃的，看着像数据缺了一截。
  */
 function movingAvg(vals, win = 7) {
-  return vals.map((_, i) => {
-    const lo = Math.max(0, i - win + 1);
-    let s = 0; for (let k = lo; k <= i; k++) s += vals[k];
-    return s / (i - lo + 1);
-  });
+  // 滑动求和而不是每格重扫一遍：窗口现在跟着视窗走，全年档是 222×222，
+  // 缩放补间一秒钟要重算六十次，O(n²) 会把帧率吃掉
+  const out = new Array(vals.length);
+  let sum = 0;
+  for (let i = 0; i < vals.length; i++) {
+    sum += vals[i];
+    if (i >= win) sum -= vals[i - win];
+    out[i] = sum / Math.min(i + 1, win);
+  }
+  return out;
 }
 
 /**
- * 最小二乘拟合的整体趋势直线。
- * 均线跟着数据起伏，看的是「最近怎么样」；这条直线看的是「这段时间整体在涨还是在跌」，
- * 两者回答的不是同一个问题，所以都画。点数不够或退化时返回 null。
+ * 全量日序列，只算一次。
+ *
+ * 均线的窗口跟着视窗长度走，而窗口一长，视窗左端那几天就得往**视窗外**取历史 ——
+ * 只在视窗内算的话左边只能「有几天算几天」，线的头一截会被最近几天的噪声拽着走，
+ * 看着像趋势在那儿拐了个弯，其实是样本不够。
  */
-function leastSquares(vals) {
-  const n = vals.length;
-  if (n < 3) return null;
-  let sx = 0, sy = 0, sxy = 0, sxx = 0;
-  for (let i = 0; i < n; i++) { sx += i; sy += vals[i]; sxy += i * vals[i]; sxx += i * i; }
-  const den = n * sxx - sx * sx;
-  if (den === 0) return null;
-  const slope = (n * sxy - sx * sy) / den;
-  const intercept = (sy - slope * sx) / n;
-  return { at: (i) => intercept + slope * i, up: slope > 0 };
+let FULL_TREND = null;
+const fullTrend = () => (FULL_TREND ||= trendRange(DATA.earliestDate, DATA.latestDate));
+
+/**
+ * 视窗内的移动平均：在全量上算完再切出可见的那一段。
+ * win 默认等于视窗长度 —— 看 7 天就是 7 日均值，看 25 天就是 25 日均值。
+ */
+function windowAvg(pick, lo, hi, win) {
+  return movingAvg(fullTrend().map(pick), win).slice(lo, hi + 1);
 }
 
 // --- 柱状 + 移动平均 -------------------------------------------------------
 function barChart(el, pts, pick, opts) {
-  const o = Object.assign({ format: 'currency', ma: 7, height: 260 }, opts || {});
+  // ma 是均线窗口（天）。不给就取视窗长度：看多少天，就看多少日的均值
+  const o = Object.assign({ format: 'currency', height: 260 }, opts || {});
   const W = 1000, H = o.height, M = { t: 16, r: 16, b: 26, l: 54 };
   const vals = pts.map(pick);
   /**
@@ -2448,18 +2465,10 @@ function barChart(el, pts, pick, opts) {
   const yy = (v) => M.t + ph - (v / max) * ph;
 
   const n = vals.length;
-  const ma = movingAvg(vals, o.ma);
-  const maPath = ma.map((v, i) => `${i ? 'L' : 'M'}${cx(i).toFixed(1)},${yy(v).toFixed(1)}`).join('');
-
-  const fit = leastSquares(vals);
-  let trendPath = '', trendUp = null;
-  if (fit) {
-    trendUp = fit.up;
-    // 拟合线可能超出画布上下沿，夹到绘图区内再画
-    const clamp = (v) => Math.min(M.t + ph, Math.max(M.t, yy(v)));
-    trendPath = `M${cx(0).toFixed(1)},${clamp(fit.at(0)).toFixed(1)}` +
-      `L${cx(n - 1).toFixed(1)},${clamp(fit.at(n - 1)).toFixed(1)}`;
-  }
+  const maWin = o.ma || n;
+  // 只有一天时均值就是它自己，画出来是个看不见的点，不如不画
+  const ma = n > 1 ? (o.maPick ? windowAvg(o.maPick, o.maLo, o.maHi, maWin) : movingAvg(vals, maWin)) : null;
+  const maPath = ma ? ma.map((v, i) => `${i ? 'L' : 'M'}${cx(i).toFixed(1)},${yy(v).toFixed(1)}`).join('') : '';
 
   const gridY = [];
   for (let i = 0; i <= ticks; i++) {
@@ -2475,7 +2484,6 @@ function barChart(el, pts, pick, opts) {
       ${gridY.join('')}
       <rect class="col-band" x="0" y="${M.t}" width="0" height="${ph}" rx="3"/>
       ${pts.map((p, i) => `<rect${barAnim(i, n)} x="${(cx(i) - bw / 2).toFixed(1)}" y="${yy(vals[i]).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, M.t + ph - yy(vals[i])).toFixed(1)}" rx="2" fill="${o.color || CH.skySoft}"/>`).join('')}
-      ${trendPath ? `<path${lineAnim(true)} d="${trendPath}" fill="none" stroke="${trendUp ? 'var(--gain)' : 'var(--loss)'}" stroke-width="1.6" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" opacity=".85"/>` : ''}
       ${maPath ? `<path${lineAnim()} d="${maPath}" fill="none" stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity=".8"/>` : ''}
       ${xlab}
     </svg><div class="tip"></div>`;
@@ -2483,10 +2491,7 @@ function barChart(el, pts, pick, opts) {
   hookTip(el, pts, (i) => {
     const rows = [tipRow(o.color || CH.skySoft, `当日${o.label || '值'}`, vals[i], o.format,
       { extra: tipMom(vals[i], i > 0 ? vals[i - 1] : undefined, o.format) })];
-    rows.push(tipRow('var(--ink)', '7 日均值', ma[i], o.format));
-    if (trendUp !== null) {
-      rows.push(`<div class="tip-row tip-sep"><span class="tip-dot" style="background:${trendUp ? 'var(--gain)' : 'var(--loss)'}"></span><span class="tip-name">整体趋势</span><span class="tip-val" style="color:${trendUp ? 'var(--gain)' : 'var(--loss)'}">${trendUp ? '上行' : '下行'}</span></div>`);
-    }
+    if (ma) rows.push(tipRow('var(--ink)', `${maWin} 日均值`, ma[i], o.format));
     return rows.join('');
   }, W, M, pw);
   playIn(el);
@@ -2620,7 +2625,11 @@ $('trend-apply').addEventListener('click', () => {
   let from = $('trend-from').value, to = $('trend-to').value;
   if (!from || !to) return;
   if (from > to) [from, to] = [to, from];
+  // 光记下自定义区间不够：预设还停在「近 30 天」的话 trendWindow() 根本不看它，
+  // 点「应用」就成了没反应。切到自定义，按钮高亮也跟着走
+  storeRange = 0;
   trendCustom = { from, to };
+  syncCustomUi(trendCustom, { seg: 'store-range', panel: 'trend-custom', from: 'trend-from', to: 'trend-to' });
   drawStore();
 });
 
@@ -2653,18 +2662,22 @@ function drawStore() {
   $('trend-custom').classList.toggle('is-idle', storeRange !== 0);
   $('trend-from').value = w.from; $('trend-to').value = w.to;
 
+  // 均线窗口 = 视窗天数，所以标签也跟着变，不能写死「7 日」
+  const maWin = pts.length;
+  const [lo, hi] = rangeSlice(w.from, w.to);
+
   $('store-trend-sub').textContent =
     `${pts[0].date} 至 ${pts[pts.length - 1].date}（${pts.length} 天）` +
-    `｜最新 ${fmtExact(pts[pts.length - 1][m.k], m.format)}｜虚线上行为绿、下行为红`;
+    `｜最新 ${fmtExact(pts[pts.length - 1][m.k], m.format)}`;
 
   // 图例跟着当前指标换色，不然色块和柱子对不上
   $('store-legend').innerHTML =
     `<span class="legend-item"><span class="legend-swatch" style="background:${m.color}"></span>单日${esc(m.label)}</span>` +
-    `<span class="legend-item"><span style="width:16px;height:2px;background:var(--ink);opacity:.8"></span>7 日移动平均</span>` +
-    `<span class="legend-item"><span style="width:16px;height:0;border-top:2px dashed var(--ink-3)"></span>整体趋势（最小二乘）</span>`;
+    (maWin > 1 ? `<span class="legend-item"><span style="width:16px;height:2px;background:var(--ink);opacity:.8"></span>${maWin} 日移动平均</span>` : '');
 
   barChart($('store-chart'), pts, (p) => p[m.k],
-    { format: m.format, color: m.color, label: m.label, ma: 7, height: 300 });
+    { format: m.format, color: m.color, label: m.label, height: 300,
+      ma: maWin, maPick: (p) => p[m.k], maLo: lo, maHi: hi });
 
   // 图是每次重画的，滑块只挂一次 —— 重复挂会叠加一堆 wheel 监听
   if (!storeBrush) {
@@ -2760,7 +2773,9 @@ function mountTrendCard(host, opts) {
     let a = from.value, b2 = to.value;
     if (!a || !b2) return;
     if (a > b2) [a, b2] = [b2, a];
+    days = 0; // 不切走预设的话 window_() 不看 custom，点「应用」没反应
     custom = { from: a, to: b2 };
+    syncCustomUi(custom, { seg: `${id}-seg`, panel: `${id}-range`, from: `${id}-from`, to: `${id}-to` });
     draw();
   });
 
@@ -2783,13 +2798,15 @@ function mountTrendCard(host, opts) {
       `｜${m.sub ?? opts.sub}`;
 
     if (opts.metrics) {
-      // 柱 + 均线 + 趋势线：单序列才画得下这三层，所以一次只看一个指标
+      // 柱 + 均线：两层信息只有单序列放得下，所以一次只看一个指标
+      const maWin = pts.length;
+      const [lo, hi] = rangeSlice(w.from, w.to);
       barChart($(`${id}-chart`), pts, m.pick,
-        { format: m.format, color: m.color, label: m.label, ma: 7, height: 260 });
+        { format: m.format, color: m.color, label: m.label, height: 260,
+          ma: maWin, maPick: m.pick, maLo: lo, maHi: hi });
       $(`${id}-legend`).innerHTML =
         `<span class="legend-item"><span class="legend-swatch" style="background:${m.color}"></span>单日${esc(m.label)}</span>` +
-        `<span class="legend-item"><span style="width:16px;height:2px;background:var(--ink);opacity:.8"></span>7 日移动平均</span>` +
-        `<span class="legend-item"><span style="width:16px;height:0;border-top:2px dashed var(--ink-3)"></span>整体趋势（最小二乘）</span>`;
+        (maWin > 1 ? `<span class="legend-item"><span style="width:16px;height:2px;background:var(--ink);opacity:.8"></span>${maWin} 日移动平均</span>` : '');
     } else {
       lineChart($(`${id}-chart`), pts, opts.series, { format: opts.format, label: opts.title, height: 230 });
       $(`${id}-legend`).innerHTML = opts.series.map((s) =>
@@ -2821,8 +2838,8 @@ function mountTrendCard(host, opts) {
  * 站内板块里一半篇幅在讲站外。现在各画各的：站内板块只看站内，站外只看站外，
  * 要横向对比看板块顶部的摘要卡（那里本来就有对照行）。
  *
- * 图从折线换成柱 + 7 日均线 + 最小二乘趋势线。三层信息只有单序列放得下，
- * 所以指标做成切换 —— 而且投放费和 ROI 量纲差三个数量级，本来也不该同轴。
+ * 图从折线换成柱 + 均线。两层信息只有单序列放得下，所以指标做成切换 ——
+ * 而且投放费和 ROI 量纲差三个数量级，本来也不该同轴。
  */
 const ADS_TREND_SPECS = {
   insite: {
@@ -3005,9 +3022,9 @@ mountBreakdown('offsite', '渠道');
 /**
  * 堆叠柱：一根柱子 = 一个时间单位，段 = 产品线。
  *
- * 和 barChart 分开写而不是加参数：barChart 的均线、最小二乘趋势线、7 日均值提示
- * 都是**单序列**的概念，堆叠图里它们要么无意义（对哪条线做均线？），要么会盖住
- * 分段边界。两张图回答的问题不同 —— 一个看「涨没涨」，一个看「构成变没变」。
+ * 和 barChart 分开写而不是加参数：barChart 的均线、均值提示都是**单序列**的概念，
+ * 堆叠图里它们要么无意义（对哪条线做均线？），要么会盖住分段边界。
+ * 两张图回答的问题不同 —— 一个看「涨没涨」，一个看「构成变没变」。
  *
  * percent=true 时切成百分比堆叠：柱高一律 100%，只看结构比例。绝对值模式下
  * 淡季的柱子矮，结构变化被身高差压扁；占比模式反过来，看不出体量。所以两个都留。
@@ -3185,7 +3202,9 @@ function prodRollup(from, to, mk) {
     let a = pdFrom.value, b = pdTo.value;
     if (!a || !b) return;
     if (a > b) [a, b] = [b, a];
+    pdDays = 0; // 同上：预设不切走，pdWindow() 就不会看 pdCustom
     pdCustom = { from: a, to: b };
+    syncCustomUi(pdCustom, { seg: 'pd-seg', panel: 'pd-range', from: 'pd-from', to: 'pd-to' });
     drawDaily();
   });
 
@@ -3450,7 +3469,9 @@ const isPaidChannel = (c) => c.startsWith('付费');
     let a = tfFrom.value, b = tfTo.value;
     if (!a || !b) return;
     if (a > b) [a, b] = [b, a];
+    tfIndex = TF_CUSTOM;
     tfCustom = { from: a, to: b };
+    pickCustomBtn('traffic-seg', 'traffic-range', TF_CUSTOM);
     drawAll();
   });
 
@@ -3613,7 +3634,9 @@ const isPaidChannel = (c) => c.startsWith('付费');
     let a = suFrom.value, b = suTo.value;
     if (!a || !b) return;
     if (a > b) [a, b] = [b, a];
+    suDays = 0;
     suCustom = { from: a, to: b };
+    syncCustomUi(suCustom, { seg: 'su-seg', panel: 'su-range', from: 'su-from', to: 'su-to' });
     drawSearchUv();
   });
 
@@ -3657,19 +3680,18 @@ const isPaidChannel = (c) => c.startsWith('付费');
       vals: { search: p.searchUv, other: Math.max(0, p.uv - p.searchUv) },
     }));
     // 叠线跟着模式走：绝对量模式画总 UV 的走势，占比模式画搜索占比的走势
-    const line = pts.map((p) => (pct ? div(p.searchUv, p.uv) : p.uv));
-    const ma = movingAvg(line, 7);
-    const fit = leastSquares(line);
+    const maPick = (p) => (pct ? div(p.searchUv, p.uv) : p.uv);
+    const maWin = pts.length;
+    const [maLo, maHi] = rangeSlice(w.from, w.to);
+    const ma = maWin > 1 ? windowAvg(maPick, maLo, maHi, maWin) : null;
 
     stackedChart($('su-chart'), items, SU_SERIES, {
       format: 'integer', percent: pct, height: 300, barMax: 26, label: '搜索 UV 构成',
-      overlay: ({ cx, yy, M, ph, n }) => {
+      overlay: ({ cx, yy, M, ph }) => {
+        if (!ma) return '';
         const clamp = (v) => Math.min(M.t + ph, Math.max(M.t, yy(v)));
         const maPath = ma.map((v, i) => `${i ? 'L' : 'M'}${cx(i).toFixed(1)},${clamp(v).toFixed(1)}`).join('');
-        const trend = fit
-          ? `<path${lineAnim(true)} d="M${cx(0).toFixed(1)},${clamp(fit.at(0)).toFixed(1)}L${cx(n - 1).toFixed(1)},${clamp(fit.at(n - 1)).toFixed(1)}" fill="none" stroke="${fit.up ? 'var(--gain)' : 'var(--loss)'}" stroke-width="1.6" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" opacity=".85"/>` : '';
-        return trend +
-          `<path${lineAnim()} d="${maPath}" fill="none" stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity=".8"/>`;
+        return `<path${lineAnim()} d="${maPath}" fill="none" stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity=".8"/>`;
       },
       tip: (i, tot) => {
         const p = pts[i], prev = i > 0 ? pts[i - 1] : null;
@@ -3683,15 +3705,13 @@ const isPaidChannel = (c) => c.startsWith('付费');
           tipRow('var(--ink)', '总 UV', tot, 'integer', {
             sep: true, extra: tipMom(p.uv, prev ? prev.uv : undefined, 'integer'),
           }) +
-          tipRow('var(--ink)', pct ? '占比 7 日均值' : '总 UV 7 日均值', ma[i], pct ? 'percent' : 'integer') +
-          (fit ? `<div class="tip-row"><span class="tip-dot" style="background:${fit.up ? 'var(--gain)' : 'var(--loss)'}"></span><span class="tip-name">整体趋势</span><span class="tip-val" style="color:${fit.up ? 'var(--gain)' : 'var(--loss)'}">${fit.up ? '上行' : '下行'}</span></div>` : '');
+          (ma ? tipRow('var(--ink)', `${pct ? '占比' : '总 UV'} ${maWin} 日均值`, ma[i], pct ? 'percent' : 'integer') : '');
       },
     });
 
     $('su-legend').innerHTML =
       SU_SERIES.map((s) => `<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${esc(s.name)}</span>`).join('') +
-      `<span class="legend-item"><span style="width:16px;height:2px;background:var(--ink);opacity:.8"></span>${pct ? '占比' : '总 UV'} 7 日均值</span>` +
-      (fit ? `<span class="legend-item"><span style="width:16px;height:0;border-top:2px dashed var(--${fit.up ? 'gain' : 'loss'})"></span>整体趋势${fit.up ? '上行' : '下行'}</span>` : '');
+      (ma ? `<span class="legend-item"><span style="width:16px;height:2px;background:var(--ink);opacity:.8"></span>${pct ? '占比' : '总 UV'} ${maWin} 日移动平均</span>` : '');
 
     if (suBrush) suBrush.paint();
     $('su-foot').textContent = pct
