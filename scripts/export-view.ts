@@ -11,7 +11,6 @@ import { getSnapshot } from '../lib/data/source';
 import {
   GOAL_METRICS,
   LINE_LABELS,
-  RATE_COMPANIONS,
   STORE_CORE,
   STORE_EXTRA,
   buildView,
@@ -200,13 +199,11 @@ async function main() {
     // 目标定义 + 月度目标：预览页要靠它们算任意自定义区间的达成
     goalMetrics: GOAL_METRICS.map((m) => ({
       key: m.key, label: m.label, group: m.group, format: m.format,
-      higherIsBetter: m.higherIsBetter, rateKey: m.rateKey ?? null,
+      higherIsBetter: m.higherIsBetter,
       weightBy: m.weightBy ?? null, emphasis: m.emphasis === true,
       monthlyOnly: m.monthlyOnly === true,
+      monthlyRatioOf: m.monthlyRatioOf ?? null,
     })),
-    rateCompanions: Object.fromEntries(
-      Object.entries(RATE_COMPANIONS).map(([k, v]) => [k, { higherIsBetter: v.higherIsBetter, weightBy: v.weightBy }]),
-    ),
     targets: snapshot.targets,
     monthlyActuals: snapshot.monthlyActuals,
     source: snapshot.source,

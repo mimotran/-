@@ -301,10 +301,6 @@ export function buildPeriodStats(daily: DailyMetric[], period: Period): PeriodSt
  * 目标达成的指标登记表。
  *
  * 分组顺序即页面上大区块的顺序，组内顺序即卡片顺序 —— 和飞书目标表的排版对齐。
- *
- * `rate: true` 的指标看的是**百分点差**（实际 − 目标），不是达成率。
- * 退款率目标 26%、实际 29.35%，写成「达成率 112.9%」毫无意义，
- * 运营要的是「超了 3.4 个点」。
  */
 export interface GoalMetricDef {
   key: string;
@@ -314,17 +310,12 @@ export interface GoalMetricDef {
   pick: (a: Aggregate) => number;
   higherIsBetter: boolean;
   /**
-   * 这一行的「率」搭档。
-   *
-   * 投放费和费比是同一件事的两种看法，拆成两行会让人来回对照 ——
-   * 合成一行，右边多给「目标% / 实际% / 费率差」三列，
-   * 和飞书 OKR 表的排版一致。
-   */
-  rateKey?: string;
-  /**
    * 跨月合并目标的方式。
    * 绝对量直接按天摊后相加；率和 ROI 不能相加，要按各自的分母加权 ——
    * 把 11 月和 2 月的 ROI 目标简单平均，等于假设两个月投一样多钱。
+   *
+   * 同时也是「这项会不会随时间累加」的标志：填了 weightBy 的都是水平值
+   * （率、ROI），达成度的基准是 100% 而不是计划进度。
    */
   weightBy?: string;
   /** 重点指标，表格里左侧加一道色条 */
@@ -335,47 +326,40 @@ export interface GoalMetricDef {
    * 区间对不齐整月时返回 null，页面显示「—」而不是编一个数。
    */
   monthlyOnly?: boolean;
+  /**
+   * 实际值 =「某个月度指标的合计 ÷ 区间 GMV」。只有利润率用得上 ——
+   * 利润没有日明细，利润率也就没有独立的月度值，只能现算。
+   * 先汇总再相除，和别处的比率口径一致；把各月利润率平均是错的。
+   */
+  monthlyRatioOf?: string;
 }
-
-/** 率搭档的定义：只用来取值和加权，不单独成行 */
-export interface RateCompanion {
-  pick: (a: Aggregate) => number;
-  higherIsBetter: boolean;
-  weightBy: string;
-}
-
-export const RATE_COMPANIONS: Record<string, RateCompanion> = {
-  refundRate: { pick: (a) => a.refundRate, higherIsBetter: false, weightBy: 'gmv' },
-  adCostRateInsite: { pick: (a) => a.adCostRateInsite, higherIsBetter: false, weightBy: 'gmv' },
-  adCostRateOffsite: { pick: (a) => a.adCostRateOffsite, higherIsBetter: false, weightBy: 'gmv' },
-  adCostRate: { pick: (a) => a.adCostRate, higherIsBetter: false, weightBy: 'gmv' },
-  searchConversionRate: { pick: (a) => a.searchConversionRate, higherIsBetter: true, weightBy: 'searchUv' },
-  // 利润率没有日明细，pick 用不上；实际值由「月度利润 ÷ 区间 GMV」现算
-  profitRate: { pick: () => 0, higherIsBetter: true, weightBy: 'gmv' },
-};
 
 /**
  * 指标登记表，顺序和飞书「1.目标达成」里「项目」那一栏完全一致。
  *
- * 绝对量和它的率合成一行：投放费和费比是同一件事的两种看法，拆两行会让人
- * 来回对照。所以「站内投放费」这一行右侧同时给出站内费比的目标 / 实际 / 费率差。
+ * 率单独成行，不再作为绝对量那一行右侧的「目标% / 实际%」附属列 ——
+ * 费比、退款率、利润率、搜索转化率本身就是要盯的指标，跟 GMV、投放费平级。
  */
 export const GOAL_METRICS: GoalMetricDef[] = [
   // --- 销售 ---
   { key: 'gmv', label: 'GMV', group: '销售', format: 'currency', pick: (a) => a.gmv, higherIsBetter: true, emphasis: true },
   { key: 'deviceSales', label: '销量', group: '销售', format: 'integer', pick: (a) => a.deviceSales, higherIsBetter: true },
-  { key: 'refund', label: '退款金额', group: '销售', format: 'currency', pick: (a) => a.refund, higherIsBetter: false, rateKey: 'refundRate' },
-  // --- 费用 ---
-  { key: 'adCostInsite', label: '站内投放费', group: '费用', format: 'currency', pick: (a) => a.adCostInsite, higherIsBetter: false, rateKey: 'adCostRateInsite' },
+  { key: 'refundRate', label: '退款率', group: '销售', format: 'percent', pick: (a) => a.refundRate, higherIsBetter: false, weightBy: 'gmv' },
+  // --- 费用：投放费和它的费比挨着放，一眼看到「花了多少」和「占 GMV 多少」---
+  { key: 'adCostInsite', label: '站内投放费', group: '费用', format: 'currency', pick: (a) => a.adCostInsite, higherIsBetter: false },
   { key: 'roiInsite', label: '站内 ROI', group: '费用', format: 'multiple', pick: (a) => a.roiInsite, higherIsBetter: true, weightBy: 'adCostInsite' },
-  { key: 'adCostOffsite', label: '站外投放费', group: '费用', format: 'currency', pick: (a) => a.adCostOffsite, higherIsBetter: false, rateKey: 'adCostRateOffsite' },
+  { key: 'adCostRateInsite', label: '站内费比', group: '费用', format: 'percent', pick: (a) => a.adCostRateInsite, higherIsBetter: false, weightBy: 'gmv' },
+  { key: 'adCostOffsite', label: '站外投放费', group: '费用', format: 'currency', pick: (a) => a.adCostOffsite, higherIsBetter: false },
   { key: 'roiOffsite', label: '站外 ROI', group: '费用', format: 'multiple', pick: (a) => a.roiOffsite, higherIsBetter: true, weightBy: 'adCostOffsite' },
-  { key: 'adCost', label: '总投放费', group: '费用', format: 'currency', pick: (a) => a.adCost, higherIsBetter: false, rateKey: 'adCostRate', emphasis: true },
+  { key: 'adCostRateOffsite', label: '站外费比', group: '费用', format: 'percent', pick: (a) => a.adCostRateOffsite, higherIsBetter: false, weightBy: 'gmv' },
+  { key: 'adCost', label: '总投放费', group: '费用', format: 'currency', pick: (a) => a.adCost, higherIsBetter: false, emphasis: true },
+  { key: 'adCostRate', label: '总费比', group: '费用', format: 'percent', pick: (a) => a.adCostRate, higherIsBetter: false, weightBy: 'gmv' },
   // --- 利润：表里只给到月，没有日明细 ---
-  { key: 'grossProfit', label: '利润（预估）', group: '利润', format: 'currency', pick: () => 0, higherIsBetter: true, rateKey: 'profitRate', emphasis: true, monthlyOnly: true },
+  { key: 'grossProfit', label: '利润（预估）', group: '利润', format: 'currency', pick: () => 0, higherIsBetter: true, emphasis: true, monthlyOnly: true },
+  { key: 'profitRate', label: '利润率（GMV）', group: '利润', format: 'percent', pick: () => 0, higherIsBetter: true, weightBy: 'gmv', monthlyRatioOf: 'grossProfit' },
   // --- 流量 ---
   { key: 'searchUv', label: '搜索 UV', group: '流量', format: 'integer', pick: (a) => a.searchUv, higherIsBetter: true },
-  { key: 'searchBuyers', label: '搜索支付人数', group: '流量', format: 'integer', pick: (a) => a.searchBuyers, higherIsBetter: true, rateKey: 'searchConversionRate' },
+  { key: 'searchConversionRate', label: '搜索转化率', group: '流量', format: 'percent', pick: (a) => a.searchConversionRate, higherIsBetter: true, weightBy: 'searchUv' },
 ];
 
 const GOAL_GROUP_ORDER: GoalGroup[] = ['销售', '费用', '利润', '流量'];
@@ -426,9 +410,6 @@ export function targetsForRange(targets: Target[], range: DateRange): Record<str
     const entries: Array<{ key: string; weightBy?: string }> = [];
     for (const metric of GOAL_METRICS) {
       entries.push({ key: metric.key, weightBy: metric.weightBy });
-      if (metric.rateKey) {
-        entries.push({ key: metric.rateKey, weightBy: RATE_COMPANIONS[metric.rateKey]?.weightBy });
-      }
     }
 
     for (const entry of entries) {
@@ -513,13 +494,23 @@ function buildGoalRows(
   const target = targetsForRange(targets, range);
 
   const rows: GoalRow[] = GOAL_METRICS.map((metric) => {
-    // 有日明细的从聚合取；只有月度的（利润）从 monthlyActuals 取，对不齐整月就是 null
-    const actualValue = metric.monthlyOnly
-      ? monthlyActualSum(monthlyActuals, metric.key, actualRange, latest)
-      : metric.pick(actual);
-    const prevActual = metric.monthlyOnly
-      ? monthlyActualSum(monthlyActuals, metric.key, compareRange, latest)
-      : hasCompare ? metric.pick(previous) : null;
+    /**
+     * 实际值三条路：
+     *   · 有日明细 → 从区间聚合取
+     *   · 只有月度值（利润）→ 从 monthlyActuals 取，对不齐整月就是 null
+     *   · 月度值派生的率（利润率）→ 月度合计 ÷ 区间 GMV，先汇总再相除
+     */
+    const monthlySum = (r: DateRange | null) =>
+      monthlyActualSum(monthlyActuals, metric.monthlyRatioOf ?? metric.key, r, latest);
+    const ratio = (v: number | null, den: number) => (v === null || den === 0 ? null : v / den);
+
+    const actualValue = metric.monthlyRatioOf
+      ? ratio(monthlySum(actualRange), actual.gmv)
+      : metric.monthlyOnly ? monthlySum(actualRange) : metric.pick(actual);
+    const prevActual = metric.monthlyRatioOf
+      ? ratio(monthlySum(compareRange), previous.gmv)
+      : metric.monthlyOnly ? monthlySum(compareRange)
+        : hasCompare ? metric.pick(previous) : null;
     const targetValue = target[metric.key] ?? null;
 
     let attainment: number | null = null;
@@ -540,19 +531,17 @@ function buildGoalRows(
       good = metric.higherIsBetter ? attainment >= bar - 0.02 : attainment <= bar + 0.02;
     }
 
-    // 率搭档：同一行右侧多给「目标% / 实际% / 费率差」三列
-    const companion = metric.rateKey ? RATE_COMPANIONS[metric.rateKey] : undefined;
     /**
-     * 利润率没有独立的月度值，用「月度利润 ÷ 区间 GMV」现算 ——
-     * 先汇总再相除，和别的比率口径一致；直接把各月利润率平均是错的。
+     * 百分点差：率型指标专有。
+     *
+     * 「退款率达成 108.7%」没人读得懂，运营要的是「超了 2.2 个点」——
+     * 同一个事实，pp 是可加可比的单位，比值不是。绝对量的行没有这一格。
      */
-    const rateActual = metric.monthlyOnly
-      ? (actualValue === null || actual.gmv === 0 ? null : actualValue / actual.gmv)
-      : companion ? companion.pick(actual) : null;
-    const rateTarget = metric.rateKey ? (target[metric.rateKey] ?? null) : null;
-    const ppDiff = rateActual !== null && rateTarget !== null ? rateActual - rateTarget : null;
-    const rateGood =
-      ppDiff === null || !companion ? null : companion.higherIsBetter ? ppDiff >= 0 : ppDiff <= 0;
+    const ppDiff =
+      metric.format === 'percent' && actualValue !== null && targetValue !== null
+        ? actualValue - targetValue
+        : null;
+    const rateGood = ppDiff === null ? null : metric.higherIsBetter ? ppDiff >= 0 : ppDiff <= 0;
 
     return {
       key: metric.key,
@@ -566,8 +555,6 @@ function buildGoalRows(
       actual: actualValue,
       attainment,
       good,
-      rateTarget,
-      rateActual,
       ppDiff,
       rateGood,
       prevActual,

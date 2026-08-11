@@ -301,11 +301,7 @@ export interface GoalRow {
   attainment: number | null;
   /** 这次表现是好是坏；没有目标时为 null */
   good: boolean | null;
-  /** 率搭档的目标值，如「站内费比目标 2.61%」 */
-  rateTarget: number | null;
-  /** 率搭档的实际值 */
-  rateActual: number | null;
-  /** 费率差 = 实际% − 目标%，单位是百分点 */
+  /** 百分点差 = 实际 − 目标，单位是百分点。只有率型指标有 */
   ppDiff: number | null;
   /** 费率差是好是坏 */
   rateGood: boolean | null;
