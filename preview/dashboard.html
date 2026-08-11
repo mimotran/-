@@ -501,7 +501,18 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .chip-val { font-weight: var(--w-md); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
 /* --- 产品：日堆叠 / 月度对比 / 年累计环形 ---------------------------------- */
-.prod-head-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+/**
+ * 卡头右侧的控件栈。
+ *
+ * 竖着堆、统一右对齐，而不是横着排：切到「自定义」时日期输入框会出现，
+ * 横排的话它会把同一行的按钮整体往左挤 —— 滚轮缩放本身就会自动切成自定义，
+ * 于是「滚一下鼠标，按钮就左右跳一下」。竖排之后新出现的一行只往下长，
+ * 上面几行纹丝不动。
+ */
+.prod-head-tools {
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: 8px; flex-shrink: 0;
+}
 
 /* 月度对比 + 年累计环形并排。月度那张要装 8 根柱子，环形那张只有一个圆 ——
    宽度按内容需要分，不是对半砍。窄屏回落成上下两行，柱子挤在半屏里没法读。 */
@@ -696,7 +707,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
             <h3 class="card-title">趋势</h3>
             <p class="card-sub" id="store-trend-sub"></p>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <div class="prod-head-tools">
             <div class="seg" id="store-metric" role="group" aria-label="趋势指标"></div>
             <div class="seg" id="store-range" role="group" aria-label="趋势区间"></div>
             <span id="trend-custom" class="daterange" hidden>
@@ -745,7 +756,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
             <h3 class="card-title">分触点投放</h3>
             <p class="card-sub" id="insite-sub"></p>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <div class="prod-head-tools">
             <div class="seg" id="insite-bd-seg" role="group" aria-label="分触点统计周期"></div>
             <span class="daterange" id="insite-bd-range" hidden>
               <input type="date" id="insite-bd-from" aria-label="开始日期">
@@ -790,7 +801,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
             <h3 class="card-title">分渠道投放</h3>
             <p class="card-sub" id="offsite-sub"></p>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <div class="prod-head-tools">
             <div class="seg" id="offsite-bd-seg" role="group" aria-label="分渠道统计周期"></div>
             <span class="daterange" id="offsite-bd-range" hidden>
               <input type="date" id="offsite-bd-from" aria-label="开始日期">
@@ -2302,7 +2313,7 @@ function mountTrendCard(host, opts) {
         <h3 class="card-title">${esc(opts.title)}</h3>
         <p class="card-sub" id="${id}-sub"></p>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <div class="prod-head-tools">
         <div class="seg" id="${id}-seg" role="group" aria-label="${esc(opts.title)}区间">
           ${TREND_PRESETS.map(([d, l]) => `<button data-d="${d}" aria-pressed="${d === days}">${l}</button>`).join('')}
         </div>
