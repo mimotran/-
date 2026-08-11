@@ -454,7 +454,9 @@ svg .col-band {
   fill: var(--ink); fill-opacity: .07; opacity: 0;
   transition: opacity .14s ease; pointer-events: none;
 }
-svg [data-col] { transition: opacity .16s ease; }
+/* 基点放在自己盒子的底边，也就是坐标轴上 —— 悬停时那一下是「从轴上长起来」，
+   不是整根柱子原地放大 */
+svg [data-col] { transform-box: fill-box; transform-origin: 50% 100%; transition: opacity .16s ease; }
 svg.col-focus [data-col]:not(.on) { opacity: .34; }
 @media (prefers-reduced-motion: reduce) {
   svg .col-band, svg [data-col] { transition: none; }
@@ -1221,13 +1223,31 @@ function barAnim(i, n) {
  * 堆叠柱一天有三段颜色，相邻两天的同色段挨在一起，光靠一根准星线很难确定
  * tooltip 里那三个数属于哪一根柱子。把其余列压下去，读的是哪一天就没有歧义了。
  */
+/**
+ * 命中列再从轴上长一次。
+ *
+ * 起点是 .88 不是 0：鼠标划过去的时候柱子是一根接一根弹的，如果每根都先塌到
+ * 底再长回来，扫过之处会留下一道空档，看着像数据在闪。从八成高起步，读数几乎
+ * 不受影响，弹的那一下又足够明显。
+ *
+ * 用 WAAPI 而不是加 CSS 类：重放一个 CSS 动画得先摘类、强制回流、再挂回去，
+ * 而鼠标一划就是几十次；animate() 每次直接起一个新的，不碰 DOM 也不触发布局。
+ */
+const COL_POP = [{ transform: 'scaleY(.88)' }, { transform: 'none' }];
+
 function focusCol(svg, i) {
+  if (svg.__col === i) return; // 还在同一根柱子上挪，不该反复弹
+  svg.__col = i;
   svg.classList.add('col-focus');
   svg.querySelectorAll('[data-col].on').forEach((e) => e.classList.remove('on'));
-  svg.querySelectorAll(`[data-col="${i}"]`).forEach((e) => e.classList.add('on'));
+  svg.querySelectorAll(`[data-col="${i}"]`).forEach((e) => {
+    e.classList.add('on');
+    if (ANIM.live()) e.animate(COL_POP, { duration: 220, easing: 'cubic-bezier(.22,.9,.3,1)' });
+  });
 }
 
 function blurCols(svg) {
+  svg.__col = undefined; // 移出去再回来，同一根柱子要能再弹一次
   svg.classList.remove('col-focus');
   svg.querySelectorAll('[data-col].on').forEach((e) => e.classList.remove('on'));
 }
