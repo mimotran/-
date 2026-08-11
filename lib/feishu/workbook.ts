@@ -15,6 +15,7 @@ import { col, colIn, findSection, num, parseMonth, parseSheetDate, readGrid } fr
 import { listSheets } from './sheets';
 import type {
   AdMetric,
+  AdTotal,
   DailyMetric,
   DashboardSnapshot,
   ProductMetric,
@@ -195,6 +196,15 @@ export async function readWorkbook(
 
   // ---- 3 / 4：投放明细 ------------------------------------------------------
   const ads: AdMetric[] = [];
+  /**
+   * 两张投放表自己的「汇总」块，按日读一份。
+   *
+   * 为什么不直接把渠道加起来：消耗 / 成交 / 展现 / 点击加起来和汇总列分毫不差，
+   * **成交单数不行**。站外表压根没有成交单数列，只有 CVR，而渠道级 CVR 和汇总
+   * 级 CVR 是两套数 —— 1 月按渠道还原是 4.9%，汇总列写的是 2.8%。哪个对不由
+   * 我们判断，但看板上要展示的是「源表汇总块里的数」，那就照着汇总块读。
+   */
+  const adTotals: AdTotal[] = [];
 
   const insite = await readGrid(cfg, spreadsheetToken, idOf(TAB_TITLES.insite), {
     headerRow: 4, groupRows: [2, 3], lastRow: 460, lastCol: 'CZ',
@@ -224,6 +234,28 @@ export async function readWorkbook(
           clicks: clkC >= 0 ? num(row[clkC]) : 0,
         });
       }
+    }
+  }
+
+  // 站内汇总块：时间 / GMV / 推广消耗 / 成交金额 / 成交单数 / ROI / 转化率 / 展现量 / 点击量 / …
+  if (insiteStart >= 0) {
+    const g = (name: string) => colIn(insite, '站内投放汇总', name);
+    const cShopGmv = g('GMV'), cCost = g('推广消耗'), cGmv = g('成交金额');
+    const cOrders = g('成交单数'), cImp = g('展现量'), cClk = g('点击量');
+    for (let r = insiteStart + 1; r < insite.rows.length; r++) {
+      const row = insite.rows[r];
+      const date = parseSheetDate(row[0], year);
+      if (!date) continue;
+      const cost = cCost >= 0 ? num(row[cCost]) : 0;
+      const gmv = cGmv >= 0 ? num(row[cGmv]) : 0;
+      if (cost === 0 && gmv === 0) continue;
+      adTotals.push({
+        date, scope: 'insite', cost, gmv,
+        orders: cOrders >= 0 ? num(row[cOrders]) : 0,
+        impressions: cImp >= 0 ? num(row[cImp]) : 0,
+        clicks: cClk >= 0 ? num(row[cClk]) : 0,
+        shopGmv: cShopGmv >= 0 ? num(row[cShopGmv]) : 0,
+      });
     }
   }
 
@@ -257,6 +289,30 @@ export async function readWorkbook(
           clicks,
         });
       }
+    }
+  }
+
+  // 站外汇总块：时间 / 推广消耗 / 成交金额 / ROI / 展现量 / 点击量 / CPM / CVR / CPC
+  if (offsiteStart >= 0) {
+    const g = (name: string) => colIn(offsite, '站外汇总', name);
+    const cCost = g('推广消耗'), cGmv = g('成交金额');
+    const cImp = g('展现量'), cClk = g('点击量'), cCvr = g('CVR');
+    for (let r = offsiteStart + 1; r < offsite.rows.length; r++) {
+      const row = offsite.rows[r];
+      const date = parseSheetDate(row[0], year);
+      if (!date) continue;
+      const cost = cCost >= 0 ? num(row[cCost]) : 0;
+      const gmv = cGmv >= 0 ? num(row[cGmv]) : 0;
+      if (cost === 0 && gmv === 0) continue;
+      const clicks = cClk >= 0 ? num(row[cClk]) : 0;
+      adTotals.push({
+        date, scope: 'offsite', cost, gmv,
+        // 站外汇总块没有成交单数列，用它自己的 CVR × 点击量还原，跨区间才好加总
+        orders: cCvr >= 0 ? num(row[cCvr]) * clicks : 0,
+        impressions: cImp >= 0 ? num(row[cImp]) : 0,
+        clicks,
+        shopGmv: 0,
+      });
     }
   }
 
@@ -406,6 +462,7 @@ export async function readWorkbook(
     targets,
     monthlyActuals,
     excludedProductGmv,
+    adTotals: adTotals.sort((a, b) => (a.date === b.date ? a.scope.localeCompare(b.scope) : a.date < b.date ? -1 : 1)),
     // 搜索词长表由 sync 单独接进来（在另一份工作簿里）
     searchTerms: [],
     warnings,

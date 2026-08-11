@@ -166,6 +166,36 @@ async function main() {
     };
   });
 
-  console.log(JSON.stringify({ aggregates: out, goals, trends, breakdowns, products, trafficChannels, searchTerms }));
+  /**
+   * 投放汇总块：页面从导出的列数组里按区间求和，这里直接对 snapshot.adTotals
+   * 逐行加。两条路独立 —— 导出时列没对齐日期、或聚合把比率也加了起来，都会露馅。
+   */
+  const adTotalRanges = [
+    { from: '2026-08-10', to: '2026-08-10' },
+    { from: '2026-07-01', to: '2026-07-31' },
+    { from: '2026-01-01', to: '2026-08-10' },
+    { from: '2026-05-14', to: '2026-06-03' },
+  ];
+  const adTotals = adTotalRanges.flatMap((r) =>
+    (['insite', 'offsite'] as const).map((scope) => {
+      const rows = snap.adTotals.filter((x) => x.scope === scope && x.date >= r.from && x.date <= r.to);
+      const sum = (k: 'cost' | 'gmv' | 'orders' | 'impressions' | 'clicks' | 'shopGmv') =>
+        rows.reduce((a, x) => a + x[k], 0);
+      const cost = sum('cost'), gmv = sum('gmv'), orders = sum('orders');
+      const impressions = sum('impressions'), clicks = sum('clicks'), shopGmv = sum('shopGmv');
+      return {
+        key: `${scope}:${r.from}~${r.to}`,
+        cost: Math.round(cost), gmv: Math.round(gmv), orders: Math.round(orders),
+        impressions: Math.round(impressions), clicks: Math.round(clicks), shopGmv: Math.round(shopGmv),
+        // 比率一律最后再除，和页面同一套口径
+        roi: +(cost === 0 ? 0 : gmv / cost).toFixed(6),
+        cvr: +(clicks === 0 ? 0 : orders / clicks).toFixed(8),
+        cpm: +(impressions === 0 ? 0 : (cost / impressions) * 1000).toFixed(6),
+        cpc: +(clicks === 0 ? 0 : cost / clicks).toFixed(6),
+      };
+    }),
+  );
+
+  console.log(JSON.stringify({ aggregates: out, goals, trends, breakdowns, products, trafficChannels, searchTerms, adTotals }));
 }
 main();

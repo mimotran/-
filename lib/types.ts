@@ -164,6 +164,14 @@ export interface DashboardSnapshot {
    */
   excludedProductGmv: Record<string, number>;
   /**
+   * 两张投放表**自己的汇总块**，按日。
+   *
+   * 和 ads 按渠道加总不是一回事：消耗 / 成交 / 展现 / 点击两边分毫不差，但成交
+   * 单数不行 —— 站外表没有这一列，只有 CVR，而渠道级 CVR 和汇总级 CVR 是两套数。
+   * 投放板块的「投放汇总」卡展示的就是源表汇总块里的数，所以单独存一份。
+   */
+  adTotals: AdTotal[];
+  /**
    * 天猫搜索词长表（搜索 + 付费已按日合并）。
    *
    * 和 daily.searchUv 不是同一个口径：这里只有被平台收录进 Top 长表的词，
@@ -345,4 +353,22 @@ export interface SearchTermRow {
   buyers: number;
   /** 支付金额（元） */
   gmv: number;
+}
+
+/** 投放表汇总块的一天。字段名和源表列一一对应 */
+export interface AdTotal {
+  date: DateStr;
+  scope: AdScope;
+  /** 推广消耗（元） */
+  cost: number;
+  /** 成交金额（元） */
+  gmv: number;
+  /** 成交单数。站外表没有这一列，由它自己的 CVR × 点击量还原 */
+  orders: number;
+  /** 展现量 */
+  impressions: number;
+  /** 点击量 */
+  clicks: number;
+  /** 当天店铺 GMV。只有站内表给，用来算费比 */
+  shopGmv: number;
 }

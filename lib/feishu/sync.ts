@@ -176,6 +176,7 @@ export async function syncFromFeishu(
     products: products.rows,
     trafficChannels: [],
     targets: targets.rows,
+    adTotals: [],
     // 多维表格这条路暂时不接搜索词长表
     searchTerms: [],
     monthlyActuals: {},

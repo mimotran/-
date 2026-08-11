@@ -182,6 +182,29 @@ async function main() {
     };
   }
 
+  /**
+   * 投放表自己的汇总块，按列存并对齐到 daily.dates。
+   *
+   * 投放板块的「投放汇总」卡直接读它，不再把渠道明细加起来 —— 成交单数在
+   * 站外表里加不出来（源表只有 CVR，且渠道级和汇总级是两套数）。
+   */
+  function adTotalColumns(scope: 'insite' | 'offsite') {
+    const keys = ['cost', 'gmv', 'orders', 'impressions', 'clicks', 'shopGmv'] as const;
+    const cols = Object.fromEntries(
+      keys.map((k) => [k, new Array<number>(daily.dates.length).fill(0)]),
+    ) as Record<(typeof keys)[number], number[]>;
+    for (const r of snapshot.adTotals) {
+      if (r.scope !== scope) continue;
+      const i = dateIndex.get(r.date);
+      if (i === undefined) continue;
+      for (const k of keys) cols[k][i] += r[k];
+    }
+    // 成交单数在站外是 CVR × 点击还原出来的，留两位小数；跨区间加总后再取整
+    return Object.fromEntries(
+      keys.map((k) => [k, cols[k].map((v) => (k === 'orders' ? Math.round(v * 100) / 100 : Math.round(v)))]),
+    );
+  }
+
   /** 指标定义随数据一起导出：预览页只按 key 取值，不重复维护一份标签表 */
   const spec = (list: typeof STORE_CORE) =>
     list.map((m) => ({ key: m.key, label: m.label, format: m.format, higherIsBetter: m.higherIsBetter }));
@@ -192,6 +215,7 @@ async function main() {
     productDaily: productColumns(),
     trafficDaily: trafficColumns(),
     kw: keywordBlock(),
+    adTotalDaily: { insite: adTotalColumns('insite'), offsite: adTotalColumns('offsite') },
     productLabels: Object.fromEntries(
       [...new Set(snapshot.products.map((r) => r.line))].map((l) => [l, LINE_LABELS[l]]),
     ),

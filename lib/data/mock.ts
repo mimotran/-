@@ -342,6 +342,8 @@ export function buildMockSnapshot(): DashboardSnapshot {
     targets: buildTargets(daily, seeded(77001)),
     // mock 里没有测试商品，明细天然和大盘对得上
     excludedProductGmv: {},
+    // 演示数据不造投放汇总块
+    adTotals: [],
     // 演示数据不造搜索词长表：编几千个假词只会让人以为是真的
     searchTerms: [],
     /**
