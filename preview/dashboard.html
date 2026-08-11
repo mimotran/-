@@ -514,6 +514,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .prod-head-tools {
   display: flex; flex-direction: column; align-items: flex-end;
   gap: 8px; flex-shrink: 0;
+  /* 副标题长到把控件挤到第二行时，控件会从行首开始排 —— 靠 auto 外边距把它
+     顶回右边，不管卡头有没有换行，按钮都在同一个位置 */
+  margin-left: auto;
 }
 /** 一组控件：区间按钮和日期框并排 */
 .head-row { display: flex; align-items: center; gap: 8px; }
@@ -962,6 +965,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <div class="card-head">
           <div><h3 class="card-title">搜索 UV</h3><p class="card-sub" id="su-sub"></p></div>
           <div class="prod-head-tools">
+            <div class="seg" id="su-mode" role="group" aria-label="搜索 UV 显示方式">
+              <button data-m="abs" aria-pressed="true">访客数</button>
+              <button data-m="pct" aria-pressed="false">占比</button>
+            </div>
             <div class="head-row">
               <div class="seg" id="su-seg" role="group" aria-label="搜索 UV 区间"></div>
               <span class="daterange" id="su-range">
@@ -975,7 +982,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         </div>
         <div class="chart" id="su-chart"></div>
         <div class="legend" id="su-legend"></div>
-        <div class="chart" id="su-share-chart" style="margin-top:18px"></div>
         <div class="brush" id="su-brush"></div>
         <div class="prod-month-foot" id="su-foot"></div>
       </div>
@@ -2107,6 +2113,36 @@ renderAdSummary('insite');
 renderAdSummary('offsite');
 
 
+/**
+ * 渐进窗口移动平均：日数据噪声太大，趋势要靠平滑线读。
+ * 头几天用「有几天算几天」，不留空白 —— 固定窗口会让线从第 7 天才开始，
+ * 前面 6 根柱子光秃秃的，看着像数据缺了一截。
+ */
+function movingAvg(vals, win = 7) {
+  return vals.map((_, i) => {
+    const lo = Math.max(0, i - win + 1);
+    let s = 0; for (let k = lo; k <= i; k++) s += vals[k];
+    return s / (i - lo + 1);
+  });
+}
+
+/**
+ * 最小二乘拟合的整体趋势直线。
+ * 均线跟着数据起伏，看的是「最近怎么样」；这条直线看的是「这段时间整体在涨还是在跌」，
+ * 两者回答的不是同一个问题，所以都画。点数不够或退化时返回 null。
+ */
+function leastSquares(vals) {
+  const n = vals.length;
+  if (n < 3) return null;
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++) { sx += i; sy += vals[i]; sxy += i * vals[i]; sxx += i * i; }
+  const den = n * sxx - sx * sx;
+  if (den === 0) return null;
+  const slope = (n * sxy - sx * sy) / den;
+  const intercept = (sy - slope * sx) / n;
+  return { at: (i) => intercept + slope * i, up: slope > 0 };
+}
+
 // --- 柱状 + 移动平均 -------------------------------------------------------
 function barChart(el, pts, pick, opts) {
   const o = Object.assign({ format: 'currency', ma: 7, height: 260 }, opts || {});
@@ -2126,38 +2162,18 @@ function barChart(el, pts, pick, opts) {
   const cx = (i) => M.l + (i + 0.5) * (pw / pts.length);
   const yy = (v) => M.t + ph - (v / max) * ph;
 
-  /**
-   * 7 日移动平均：日数据噪声太大，趋势要靠平滑线读。
-   * 头几天用**渐进窗口**（有几天算几天），不留空白 —— 固定窗口会让线从第 7 天
-   * 才开始，前面 6 根柱子光秃秃的，看着像数据缺了一截。
-   */
-  const ma = vals.map((_, i) => {
-    const lo = Math.max(0, i - o.ma + 1);
-    let s = 0; for (let k = lo; k <= i; k++) s += vals[k];
-    return s / (i - lo + 1);
-  });
+  const n = vals.length;
+  const ma = movingAvg(vals, o.ma);
   const maPath = ma.map((v, i) => `${i ? 'L' : 'M'}${cx(i).toFixed(1)},${yy(v).toFixed(1)}`).join('');
 
-  /**
-   * 整体趋势线：对全部数据做最小二乘拟合，画成一条直线。
-   * 均线跟着数据起伏，看的是「最近怎么样」；这条直线看的是「这段时间整体在涨还是在跌」，
-   * 两者回答的不是同一个问题，所以都画。
-   */
-  const n = vals.length;
+  const fit = leastSquares(vals);
   let trendPath = '', trendUp = null;
-  if (n >= 3) {
-    let sx = 0, sy = 0, sxy = 0, sxx = 0;
-    for (let i = 0; i < n; i++) { sx += i; sy += vals[i]; sxy += i * vals[i]; sxx += i * i; }
-    const den = n * sxx - sx * sx;
-    if (den !== 0) {
-      const slope = (n * sxy - sx * sy) / den;
-      const intercept = (sy - slope * sx) / n;
-      trendUp = slope > 0;
-      // 拟合线可能超出画布上下沿，夹到绘图区内再画
-      const clamp = (v) => Math.min(M.t + ph, Math.max(M.t, yy(v)));
-      trendPath = `M${cx(0).toFixed(1)},${clamp(intercept).toFixed(1)}` +
-        `L${cx(n - 1).toFixed(1)},${clamp(intercept + slope * (n - 1)).toFixed(1)}`;
-    }
+  if (fit) {
+    trendUp = fit.up;
+    // 拟合线可能超出画布上下沿，夹到绘图区内再画
+    const clamp = (v) => Math.min(M.t + ph, Math.max(M.t, yy(v)));
+    trendPath = `M${cx(0).toFixed(1)},${clamp(fit.at(0)).toFixed(1)}` +
+      `L${cx(n - 1).toFixed(1)},${clamp(fit.at(n - 1)).toFixed(1)}`;
   }
 
   const gridY = [];
@@ -2771,6 +2787,7 @@ function stackedChart(el, items, series, opts) {
       </pattern></defs>
       ${grid.join('')}
       ${bars}
+      ${o.overlay ? o.overlay({ cx, yy, M, ph, n, max }) : ''}
       <line class="cursor" x1="0" x2="0" y1="${M.t}" y2="${M.t + ph}" stroke="var(--ink)" stroke-width="1" opacity="0"/>
       ${xlab}
     </svg><div class="tip"></div>`;
@@ -3271,7 +3288,14 @@ const isPaidChannel = (c) => c.startsWith('付费');
 
   // --- 二：搜索 UV（自带区间，和上面的周期无关）-----------------------------
   const SU_PRESETS = RANGE_PRESETS;
-  let suDays = 30, suCustom = null, suBrush = null;
+  let suDays = 30, suCustom = null, suBrush = null, suMode = 'abs';
+
+  $('su-mode').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-m]'); if (!b) return;
+    suMode = b.dataset.m;
+    [...$('su-mode').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+    drawSearchUv();
+  });
 
   $('su-seg').innerHTML = SU_PRESETS.map(([d, l]) =>
     `<button data-d="${d}" aria-pressed="${d === suDays}">${l}</button>`).join('');
@@ -3295,43 +3319,86 @@ const isPaidChannel = (c) => c.startsWith('付费');
     drawSearchUv();
   });
 
+  /**
+   * 一张图，两种看法。
+   *
+   * 原来是上下两张：上面「总 UV 柱 + 搜索 UV 线」，下面「搜索占比柱」。两张的
+   * 形状高度相似（占比的分子就是上图那条线），并排放着分不清谁是谁，读者得
+   * 先看纵轴才知道自己在看什么。
+   *
+   * 现在合成一张堆叠柱：搜索在下、其他来源在上，柱高就是总 UV —— 绝对量和
+   * 构成同时在里面了。要看结构变化就切到「占比」，柱高一律拉满 100%，只剩
+   * 绿色那段的比例在动。同一根轴、同一种图形，切换的是问题不是图表类型。
+   */
+  const SU_SERIES = [
+    { line: 'search', name: '搜索 UV', color: CH.brand },
+    { line: 'other', name: '其他来源', color: CH.skySoft },
+  ];
+
   function drawSearchUv() {
     const w = presetWindow(suDays, suCustom);
     const pts = trendRange(w.from, w.to);
     if (pts.length === 0) {
       $('su-chart').innerHTML = '<div style="padding:28px;text-align:center;color:var(--ink-3)">所选区间没有数据</div>';
-      $('su-share-chart').innerHTML = '';
+      $('su-legend').innerHTML = '';
       $('su-sub').textContent = `${w.from} 至 ${w.to}｜无数据`;
       $('su-foot').textContent = '';
       return;
     }
     $('su-range').classList.toggle('is-idle', suDays !== 0);
     suFrom.value = w.from; suTo.value = w.to;
+    const pct = suMode === 'pct';
     const a = aggregate(w.from, w.to);
     $('su-sub').textContent =
       `${pts[0].date} 至 ${pts[pts.length - 1].date}（${pts.length} 天）｜搜索 UV ${fmtInt(a.searchUv)}` +
-      `，占总 UV ${fmtPct(a.searchUvShare, 1)}｜与总 UV 同轴可比，都是访客数`;
+      `，占总 UV ${fmtPct(a.searchUvShare, 1)}｜` +
+      (pct ? '柱高一律 100%，只看搜索在流量里的占比' : '柱高是当天总 UV，绿色那段是搜索');
 
-    // 总 UV 画成柱、搜索 UV 画成线：柱子读「当天来了多少人」，线读「其中搜索来了多少」，
-    // 两者同轴（都是访客数），线永远在柱子里面，包含关系一眼可见
-    lineChart($('su-chart'), pts, [
-      { name: '总 UV', color: CH.skySoft, pick: (p) => p.uv, bar: true },
-      { name: '搜索 UV', color: CH.brand, pick: (p) => p.searchUv },
-    ], { format: 'integer', label: '搜索 UV', height: 240 });
-    $('su-legend').innerHTML =
-      `<span class="legend-item"><span class="legend-swatch" style="background:${CH.skySoft}"></span>总 UV</span>` +
-      `<span class="legend-item"><span style="width:16px;height:2px;background:${CH.brand}"></span>搜索 UV</span>`;
+    const items = pts.map((p) => ({
+      label: mdShort(p.date), date: p.date,
+      vals: { search: p.searchUv, other: Math.max(0, p.uv - p.searchUv) },
+    }));
+    // 叠线跟着模式走：绝对量模式画总 UV 的走势，占比模式画搜索占比的走势
+    const line = pts.map((p) => (pct ? div(p.searchUv, p.uv) : p.uv));
+    const ma = movingAvg(line, 7);
+    const fit = leastSquares(line);
 
-    /**
-     * 占比单画一张。
-     * 绝对量和占比不能塞进同一张图 —— 量纲不同，共用一根轴就是双轴，
-     * 而两条轴怎么对齐是任意的，会凭空造出并不存在的相关性。
-     */
-    barChart($('su-share-chart'), pts, (p) => div(p.searchUv, p.uv), {
-      format: 'percent', label: '搜索 UV 占比', color: CH.skySoft, height: 190,
+    stackedChart($('su-chart'), items, SU_SERIES, {
+      format: 'integer', percent: pct, height: 300, barMax: 26, label: '搜索 UV 构成',
+      overlay: ({ cx, yy, M, ph, n }) => {
+        const clamp = (v) => Math.min(M.t + ph, Math.max(M.t, yy(v)));
+        const maPath = ma.map((v, i) => `${i ? 'L' : 'M'}${cx(i).toFixed(1)},${clamp(v).toFixed(1)}`).join('');
+        const trend = fit
+          ? `<path d="M${cx(0).toFixed(1)},${clamp(fit.at(0)).toFixed(1)}L${cx(n - 1).toFixed(1)},${clamp(fit.at(n - 1)).toFixed(1)}" fill="none" stroke="${fit.up ? 'var(--gain)' : 'var(--loss)'}" stroke-width="1.6" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" opacity=".85"/>` : '';
+        return trend +
+          `<path d="${maPath}" fill="none" stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity=".8"/>`;
+      },
+      tip: (i, tot) => {
+        const p = pts[i], prev = i > 0 ? pts[i - 1] : null;
+        const share = div(p.searchUv, p.uv);
+        return `<div class="tip-date">${tipDate(p.date)}</div>` +
+          tipRow(CH.brand, '搜索 UV', p.searchUv, 'integer', {
+            extra: `<span class="tip-exact">· 占 ${fmtPct(share, 1)}</span>` +
+              tipMom(p.searchUv, prev ? prev.searchUv : undefined, 'integer'),
+          }) +
+          tipRow(CH.skySoft, '其他来源', Math.max(0, p.uv - p.searchUv), 'integer') +
+          tipRow('var(--ink)', '总 UV', tot, 'integer', {
+            sep: true, extra: tipMom(p.uv, prev ? prev.uv : undefined, 'integer'),
+          }) +
+          tipRow('var(--ink)', pct ? '占比 7 日均值' : '总 UV 7 日均值', ma[i], pct ? 'percent' : 'integer') +
+          (fit ? `<div class="tip-row"><span class="tip-dot" style="background:${fit.up ? 'var(--gain)' : 'var(--loss)'}"></span><span class="tip-name">整体趋势</span><span class="tip-val" style="color:${fit.up ? 'var(--gain)' : 'var(--loss)'}">${fit.up ? '上行' : '下行'}</span></div>` : '');
+      },
     });
+
+    $('su-legend').innerHTML =
+      SU_SERIES.map((s) => `<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${esc(s.name)}</span>`).join('') +
+      `<span class="legend-item"><span style="width:16px;height:2px;background:var(--ink);opacity:.8"></span>${pct ? '占比' : '总 UV'} 7 日均值</span>` +
+      (fit ? `<span class="legend-item"><span style="width:16px;height:0;border-top:2px dashed var(--${fit.up ? 'gain' : 'loss'})"></span>整体趋势${fit.up ? '上行' : '下行'}</span>` : '');
+
     if (suBrush) suBrush.paint();
-    $('su-foot').textContent = '下图为搜索 UV 占总 UV 的比例（黑线为 7 日均值，虚线为整体趋势）。大促期间推荐流量涌入，占比会被稀释，这是结构变化不是搜索变差。';
+    $('su-foot').textContent = pct
+      ? '大促期间推荐流量涌入，搜索占比会被稀释 —— 这是结构变化，不等于搜索本身变差，绝对量要切回「访客数」看。'
+      : '搜索是唯一能靠商品和内容长期攒起来的入口，所以单独拎出来看。切到「占比」可以看它在总流量里的份额有没有掉。';
   }
 
   // --- 三：流量来源，自然与付费分开 -----------------------------------------
