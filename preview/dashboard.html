@@ -470,11 +470,13 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
 
 /* --- 排行 --------------------------------------------------------------- */
 .rank { display: flex; flex-direction: column; gap: 9px; }
-/* 名称给到 320px、条形封顶 620px：商品名前十几个字才是有区分度的部分
-   （前缀都是「Plaud Note Pro …」），名字截太短整列看起来一模一样。
-   条形本来就只用来读相对大小，不需要占满整行宽度。 */
-.rank-row { display: grid; grid-template-columns: 320px minmax(0, 620px) auto; align-items: center; gap: 14px; }
-.rank-name { font-size: 12.5px; color: var(--ink-2); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 名称固定 320px 左对齐，条形吃掉剩下的全部宽度直到数值列。
+   给条形封顶会在它和数值之间留一段空白，读起来像是「条形到这里就没了」；
+   而且名字右对齐时每行起点都不一样，扫一列名字得来回找行首。
+   商品名前十几个字都是「Plaud Note Pro …」，截太短整列看起来一模一样，
+   所以宁可给名字留够宽度，也不让条形占满。 */
+.rank-row { display: grid; grid-template-columns: 320px minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+.rank-name { font-size: 12.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rank-bar { height: 20px; background: var(--line-soft); border-radius: 5px; overflow: hidden; }
 .rank-fill { height: 100%; border-radius: 5px; }
 .rank-val { font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 78px; text-align: right; }
