@@ -1846,6 +1846,7 @@ $('goal-apply').addEventListener('click', () => {
   pickCustomBtn('goal-seg', 'goal-custom', GOAL_CUSTOM);
   renderGoals();
 });
+autoApply('goal-from', 'goal-to', 'goal-apply');
 
 /**
  * 把月度目标合并到任意区间上。和 lib/metrics.ts 的 targetsForRange 一一对应：
@@ -2138,6 +2139,19 @@ $('goal-csv').addEventListener('click', () => {
  * 函数只在选中「自定义」时才看那个变量，于是停在「近 30 天」上点应用是**没反应**的。
  * 这里统一把对应的按钮设成选中态，并把日期框从淡化状态点亮。
  */
+/**
+ * 日期选完就生效，不必再点一次「应用」。
+ *
+ * 原来非选即点：日期框已经显示 07-05 ~ 08-10（37 天），图上却还是 30 天的
+ * 均线和标签 —— 两处对不上，最容易被当成算错了。原生日期控件在值**确定**时才
+ * 发 change（选完收起、或整串日期敲完），敲一半不会触发，所以不会拿半截日期重画。
+ * 「应用」按钮留着：键盘改日期后不失焦的话仍然要靠它。
+ */
+function autoApply(fromId, toId, applyId) {
+  const go = () => $(applyId).click();
+  [$(fromId), $(toId)].forEach((el) => el && el.addEventListener('change', go));
+}
+
 function pickCustomBtn(segId, panelId, value) {
   const el = $(segId);
   [...el.children].forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.i === String(value))));
@@ -2221,6 +2235,7 @@ $('store-apply').addEventListener('click', () => {
   pickCustomBtn('store-seg2', 'store-custom', storePeriod);
   renderStore();
 });
+autoApply('store-from', 'store-to', 'store-apply');
 
 /** 当前口径：{range, compareRange, compareLabel, core[], extra[]} */
 function currentStore() {
@@ -2632,6 +2647,7 @@ $('trend-apply').addEventListener('click', () => {
   syncCustomUi(trendCustom, { seg: 'store-range', panel: 'trend-custom', from: 'trend-from', to: 'trend-to' });
   drawStore();
 });
+autoApply('trend-from', 'trend-to', 'trend-apply');
 
 /** 当前趋势区间：预设按天数往回推，自定义直接用选的日期 */
 function trendWindow() { return presetWindow(storeRange, trendCustom); }
@@ -2778,6 +2794,7 @@ function mountTrendCard(host, opts) {
     syncCustomUi(custom, { seg: `${id}-seg`, panel: `${id}-range`, from: `${id}-from`, to: `${id}-to` });
     draw();
   });
+  autoApply(`${id}-from`, `${id}-to`, `${id}-apply`);
 
   function window_() { return presetWindow(days, custom); }
 
@@ -2984,9 +3001,12 @@ function mountBreakdown(scope, dim) {
     let a = from.value, b2 = to.value;
     if (!a || !b2) return;
     if (a > b2) [a, b2] = [b2, a];
+    BD_STATE[scope].index = DATA.stats.length; // 「自定义」排在预置口径之后
     BD_STATE[scope].custom = { from: a, to: b2 };
+    pickCustomBtn(scope + '-bd-seg', scope + '-bd-range', DATA.stats.length);
     renderBreakdown(scope, dim);
   });
+  autoApply(scope + '-bd-from', scope + '-bd-to', scope + '-bd-apply');
 
   renderBreakdown(scope, dim);
 }
@@ -3207,6 +3227,7 @@ function prodRollup(from, to, mk) {
     syncCustomUi(pdCustom, { seg: 'pd-seg', panel: 'pd-range', from: 'pd-from', to: 'pd-to' });
     drawDaily();
   });
+  autoApply('pd-from', 'pd-to', 'pd-apply');
 
   function pdWindow() { return presetWindow(pdDays, pdCustom); }
 
@@ -3474,6 +3495,7 @@ const isPaidChannel = (c) => c.startsWith('付费');
     pickCustomBtn('traffic-seg', 'traffic-range', TF_CUSTOM);
     drawAll();
   });
+  autoApply('traffic-from', 'traffic-to', 'traffic-apply');
 
   function period() {
     if (tfIndex < DATA.stats.length) {
@@ -3639,6 +3661,7 @@ const isPaidChannel = (c) => c.startsWith('付费');
     syncCustomUi(suCustom, { seg: 'su-seg', panel: 'su-range', from: 'su-from', to: 'su-to' });
     drawSearchUv();
   });
+  autoApply('su-from', 'su-to', 'su-apply');
 
   /**
    * 一张图，两种看法。
@@ -4009,6 +4032,7 @@ function twBase(lo, hi) {
     syncCustomUi(twCustom, { seg: 'tw-seg', panel: 'tw-range', from: 'tw-from', to: 'tw-to' });
     draw();
   });
+  autoApply('tw-from', 'tw-to', 'tw-apply');
 
   /** 输入防抖：5,829 个词每敲一下全扫一遍没必要，手停下来再算 */
   let qTimer = 0;
