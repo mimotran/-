@@ -1486,6 +1486,46 @@ function mountRangeZoom(opts) {
     paint();
   };
 
+  /**
+   * 缩放补间：滚轮只负责定「要去哪」，窗口自己滑过去。
+   *
+   * 这里动的是**时间窗口**，不是柱子。滚轮一格一重绘，元素每次都是新的，
+   * 给它们挂入场动画只会互相打断（所以 apply 里一直按着 ANIM）；但把窗口边界
+   * 做成补间，中间那十几帧本身就是画面在连续变化 —— 看到的是区间在展开或收拢，
+   * 而不是「咔、咔」跳几下。
+   *
+   * 按时间算进度而不是按帧：全年 222 根柱子时一次重绘要 10ms 上下，慢机器上
+   * 掉帧只会让中间帧变少，补间时长和落点都不变。
+   */
+  const ZOOM_MS = 240;
+  let tw = null;
+
+  const stopTween = () => { if (tw) { cancelAnimationFrame(tw.raf); tw = null; } };
+
+  /** 滚轮要从「最终目标」往下算，不能读补间途中的窗口 —— 否则连滚几下会越缩越少 */
+  const aimed = () => (tw ? tw.to : rangeSlice(get().from, get().to));
+
+  function stepTween(now) {
+    if (!tw) return;
+    const cur = rangeSlice(get().from, get().to);
+    // 补间途中窗口被别人改了（点了预设按钮、改了日期框）：立刻让位，不跟人抢
+    if (tw.last && (cur[0] !== tw.last[0] || cur[1] !== tw.last[1])) { tw = null; return; }
+    const k = Math.min(1, (now - tw.t0) / ZOOM_MS);
+    const e = 1 - (1 - k) ** 3; // easeOutCubic：起步快、收尾稳，连滚时不拖沓
+    apply(tw.from[0] + (tw.to[0] - tw.from[0]) * e, tw.from[1] + (tw.to[1] - tw.from[1]) * e);
+    tw.last = rangeSlice(get().from, get().to);
+    if (k < 1) tw.raf = requestAnimationFrame(stepTween);
+    else tw = null;
+  }
+
+  /** 起点永远取当前实际窗口：连滚时从上一段补间停在的地方接着走，不会闪回 */
+  function tweenTo(lo, hi) {
+    if (REDUCED.matches) { stopTween(); apply(lo, hi); return; }
+    const raf = tw ? tw.raf : 0;
+    tw = { from: rangeSlice(get().from, get().to), to: [clampIdx(lo), clampIdx(hi)], t0: performance.now(), last: null, raf };
+    if (!raf) tw.raf = requestAnimationFrame(stepTween);
+  }
+
   // --- 滑块拖拽：左右手柄改边界，中间整体平移 ---
   let drag = null;
   const fracAt = (ev) => {
@@ -1498,11 +1538,12 @@ function mountRangeZoom(opts) {
     const mode = ev.target.classList.contains('brush-h-l') ? 'l'
       : ev.target.classList.contains('brush-h-r') ? 'r'
         : ev.target === sel ? 'move' : 'jump';
+    stopTween(); // 手一碰滑块，补间就让位给手
     if (mode === 'jump') {
       // 点空白处：把当前长度的窗口挪到点击位置，比强迫用户拖过去快
       const span = hi - lo;
       const c = fracAt(ev) * (N - 1);
-      apply(c - span / 2, c - span / 2 + span);
+      tweenTo(c - span / 2, c - span / 2 + span);
       return;
     }
     drag = { mode, lo, hi, startFrac: fracAt(ev) };
@@ -1540,7 +1581,7 @@ function mountRangeZoom(opts) {
    * 否则鼠标停在图上时页面就滚不动了，用户会以为页面卡住。
    */
   chartHost.addEventListener('wheel', (ev) => {
-    const [lo, hi] = rangeSlice(get().from, get().to);
+    const [lo, hi] = aimed();
     const span = hi - lo + 1;
     const out = ev.deltaY > 0;
     if (out && span >= N) return;
@@ -1553,7 +1594,7 @@ function mountRangeZoom(opts) {
     const next = Math.max(MIN_SPAN, Math.min(N, Math.round(span * (out ? 1.25 : 0.8))));
     let nlo = Math.round(anchor - t * (next - 1));
     nlo = Math.max(0, Math.min(N - next, nlo));
-    apply(nlo, nlo + next - 1);
+    tweenTo(nlo, nlo + next - 1);
   }, { passive: false });
 
   paint();
