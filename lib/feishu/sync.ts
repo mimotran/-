@@ -1,4 +1,4 @@
-import type { DashboardSnapshot } from '@/lib/types';
+import type { DashboardSnapshot, SearchTermRow } from '@/lib/types';
 import { readBitableTable } from './bitable';
 import {
   TABLE_LABELS,
@@ -12,6 +12,7 @@ import {
 import { parseAds, parseDaily, parseProducts, parseTargets } from './normalize';
 import { readSheetRange } from './sheets';
 import { resolveWikiNode } from './wiki';
+import { readSearchTerms } from './keywords';
 import { readWorkbook } from './workbook';
 
 /**
@@ -103,6 +104,24 @@ export async function syncFromFeishu(
   }
 
   /**
+   * 搜索词长表在另一份工作簿里，没配 FEISHU_WIKI_TOKEN_KEYWORDS 就整块跳过。
+   * 它是**可选**数据源：读失败只记 warning，不能因为一张长表把整个看板拖垮。
+   */
+  async function readKeywords(): Promise<{ rows: SearchTermRow[]; warnings: string[] }> {
+    if (!cfg.keywordsWikiToken) {
+      return { rows: [], warnings: ['未配置搜索词工作簿（FEISHU_WIKI_TOKEN_KEYWORDS），搜索词排行为空'] };
+    }
+    if (keywordsSource.docType !== 'sheets') {
+      return { rows: [], warnings: ['搜索词工作簿不是电子表格，暂不支持'] };
+    }
+    try {
+      return await readSearchTerms(cfg, keywordsSource.token);
+    } catch (err) {
+      return { rows: [], warnings: [`搜索词长表读取失败：${err instanceof Error ? err.message : String(err)}`] };
+    }
+  }
+
+  /**
    * 电子表格走 workbook 解析。
    *
    * 真实的天猫日报是人肉排版的多页签工作簿（合并表头、月/周/日混在一张表里、
@@ -111,8 +130,15 @@ export async function syncFromFeishu(
    */
   if (main.docType === 'sheets') {
     const year = Number(process.env.FEISHU_DATA_YEAR) || new Date().getUTCFullYear();
-    const snapshot = await readWorkbook(cfg, main.token, year);
-    return { ...snapshot, warnings: [...warnings, ...snapshot.warnings].slice(0, 20) };
+    const [snapshot, keywords] = await Promise.all([
+      readWorkbook(cfg, main.token, year),
+      readKeywords(),
+    ]);
+    return {
+      ...snapshot,
+      searchTerms: keywords.rows,
+      warnings: [...warnings, ...snapshot.warnings, ...keywords.warnings].slice(0, 20),
+    };
   }
 
   const [rawDaily, rawInsite, rawOffsite, rawProducts, rawTargets] = await Promise.all([
@@ -150,6 +176,8 @@ export async function syncFromFeishu(
     products: products.rows,
     trafficChannels: [],
     targets: targets.rows,
+    // 多维表格这条路暂时不接搜索词长表
+    searchTerms: [],
     monthlyActuals: {},
     excludedProductGmv: {},
     // warning 太多时只留前 20 条，页面上放不下也没人看

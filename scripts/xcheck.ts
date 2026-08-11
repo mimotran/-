@@ -140,6 +140,32 @@ async function main() {
     })),
   }));
 
-  console.log(JSON.stringify({ aggregates: out, goals, trends, breakdowns, products, trafficChannels }));
+  /**
+   * 搜索词排行：预览页拿的是 CSR 压缩过的稀疏数组，在浏览器里重新解码 + 排名。
+   * 这里直接对 snapshot.searchTerms 逐行求和 —— 两条路完全独立，编码写错
+   * （偏移串位、日期没对齐）会立刻暴露成排名或访客数不一致。
+   */
+  const kwRanges = [
+    { from: '2026-07-12', to: '2026-08-10' },
+    { from: '2026-08-04', to: '2026-08-10' },
+    { from: '2026-01-01', to: '2026-08-10' },
+    { from: '2026-03-17', to: '2026-04-02' },
+  ];
+  const searchTerms = kwRanges.map((r) => {
+    const inRange = snap.searchTerms.filter((x) => x.date >= r.from && x.date <= r.to);
+    const byTerm = new Map<string, number>();
+    for (const x of inRange) byTerm.set(x.term, (byTerm.get(x.term) ?? 0) + x.uv);
+    const ranked = [...byTerm.entries()]
+      .filter(([, uv]) => uv > 0)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    return {
+      range: `${r.from}~${r.to}`,
+      base: Math.round(inRange.reduce((sum, x) => sum + x.uv, 0)),
+      matched: ranked.length,
+      top: ranked.slice(0, 25).map(([term, uv], i) => ({ rank: i + 1, term, uv: Math.round(uv) })),
+    };
+  });
+
+  console.log(JSON.stringify({ aggregates: out, goals, trends, breakdowns, products, trafficChannels, searchTerms }));
 }
 main();

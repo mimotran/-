@@ -163,6 +163,14 @@ export interface DashboardSnapshot {
    * 而那正是我们故意造成的。宁可多存一个字段，也不要把校验的容差调松。
    */
   excludedProductGmv: Record<string, number>;
+  /**
+   * 天猫搜索词长表（搜索 + 付费已按日合并）。
+   *
+   * 和 daily.searchUv 不是同一个口径：这里只有被平台收录进 Top 长表的词，
+   * 加起来只覆盖进店搜索的一部分，两者**不可直接相加**。看板上的注脚会把
+   * 实际覆盖率算出来写明。数据源是另一份工作簿，没配就是空数组。
+   */
+  searchTerms: SearchTermRow[];
   /** 同步过程中的告警，展示在看板顶部 */
   warnings: string[];
 }
@@ -324,4 +332,21 @@ export interface GoalPeriod {
   timeProgress: number;
   finished: boolean;
   groups: Array<{ name: GoalGroup; rows: GoalRow[] }>;
+}
+
+/** 词性：品牌 / 品类 / 其他，和搜索 UV 堆叠图同一套分档 */
+export type TermKind = 'brand' | 'category' | 'other';
+
+/** 搜索词长表的一行：某天某个词的表现 */
+export interface SearchTermRow {
+  date: DateStr;
+  /** 展示用词形（拉丁词首字母已大写） */
+  term: string;
+  kind: TermKind;
+  /** 访客数 */
+  uv: number;
+  /** 支付买家数 */
+  buyers: number;
+  /** 支付金额（元） */
+  gmv: number;
 }

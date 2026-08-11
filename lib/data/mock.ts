@@ -342,6 +342,8 @@ export function buildMockSnapshot(): DashboardSnapshot {
     targets: buildTargets(daily, seeded(77001)),
     // mock 里没有测试商品，明细天然和大盘对得上
     excludedProductGmv: {},
+    // 演示数据不造搜索词长表：编几千个假词只会让人以为是真的
+    searchTerms: [],
     /**
      * 利润只给月度值，故意不给日明细 —— 真实数据源就是这样，
      * mock 也照着来，免得开发时一切正常、接上真表才发现页面处理不了 null。

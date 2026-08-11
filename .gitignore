@@ -18,3 +18,4 @@ data/snapshots/*.json
 next-env.d.ts
 .DS_Store
 npm-debug.log*
+data/snapshots/*.json.tmp

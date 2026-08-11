@@ -126,6 +126,63 @@ async function main() {
     });
   }
 
+  /**
+   * 搜索词长表：CSR（压缩稀疏行）编码。
+   *
+   * 5,829 个词 × 222 天，按稠密矩阵存是 129 万个格子，其中 98% 是 0 ——
+   * 绝大多数长尾词一年只出现过几天。改成「每个词只存它出现过的日子」：
+   * `d`/`v` 是所有词的 (日索引, 访客数) 首尾相接，`off` 记第 t 个词在里面的
+   * 起止，`d.slice(off[t], off[t+1])` 就是那个词的日序列。
+   *
+   * 为什么不只导出 Top 100：区间是可变的（近 7 天 / 自定义都行），某个词在
+   * 某一周冲进前 100、在全年榜上却排到几百名是常事。而且页面上有搜索框，
+   * 搜的是全量词表。截断会让「匹配 N 条」和占比分母都变成假的。
+   */
+  function keywordBlock() {
+    const rows = snapshot.searchTerms;
+    const order = new Map<string, number>();
+    const kinds: number[] = [];
+    const KIND_CODE: Record<string, number> = { brand: 0, category: 1, other: 2 };
+
+    // 先按全年访客降序给词编号：页面默认按访客排，编号有序时不用再排一遍全表
+    const totals = new Map<string, { uv: number; kind: string }>();
+    for (const r of rows) {
+      const prev = totals.get(r.term);
+      if (prev) prev.uv += r.uv;
+      else totals.set(r.term, { uv: r.uv, kind: r.kind });
+    }
+    const terms = [...totals.entries()].sort((a, b) => b[1].uv - a[1].uv || a[0].localeCompare(b[0]));
+    terms.forEach(([term, meta], i) => { order.set(term, i); kinds.push(KIND_CODE[meta.kind] ?? 2); });
+
+    const buckets: Array<Array<[number, number]>> = terms.map(() => []);
+    const base = new Array<number>(daily.dates.length).fill(0);
+    for (const r of rows) {
+      const di = dateIndex.get(r.date);
+      const ti = order.get(r.term);
+      if (di === undefined || ti === undefined) continue; // 长表有、日报没有的日期
+      buckets[ti].push([di, Math.round(r.uv)]);
+      base[di] += r.uv;
+    }
+
+    const off: number[] = [0];
+    const d: number[] = [];
+    const v: number[] = [];
+    for (const bucket of buckets) {
+      bucket.sort((a, b) => a[0] - b[0]);
+      for (const [di, uv] of bucket) { d.push(di); v.push(uv); }
+      off.push(d.length);
+    }
+
+    return {
+      terms: terms.map(([t]) => t),
+      kind: kinds,
+      off, d, v,
+      base: base.map((x) => Math.round(x)),
+      /** 日报口径的搜索 UV，用来在注脚里算长表的覆盖率 */
+      searchUv: snapshot.daily.map((row) => Math.round(row.searchUv)),
+    };
+  }
+
   /** 指标定义随数据一起导出：预览页只按 key 取值，不重复维护一份标签表 */
   const spec = (list: typeof STORE_CORE) =>
     list.map((m) => ({ key: m.key, label: m.label, format: m.format, higherIsBetter: m.higherIsBetter }));
@@ -135,6 +192,7 @@ async function main() {
     adDaily: { insite: adColumns('insite'), offsite: adColumns('offsite') },
     productDaily: productColumns(),
     trafficDaily: trafficColumns(),
+    kw: keywordBlock(),
     productLabels: Object.fromEntries(
       [...new Set(snapshot.products.map((r) => r.line))].map((l) => [l, LINE_LABELS[l]]),
     ),

@@ -406,6 +406,8 @@ export async function readWorkbook(
     targets,
     monthlyActuals,
     excludedProductGmv,
+    // 搜索词长表由 sync 单独接进来（在另一份工作簿里）
+    searchTerms: [],
     warnings,
   };
 }
