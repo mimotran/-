@@ -697,6 +697,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
             <p class="card-sub" id="store-trend-sub"></p>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <div class="seg" id="store-metric" role="group" aria-label="趋势指标"></div>
             <div class="seg" id="store-range" role="group" aria-label="趋势区间"></div>
             <span id="trend-custom" class="daterange" hidden>
               <input type="date" id="trend-from" aria-label="趋势开始日期">
@@ -706,13 +707,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
             </span>
           </div>
         </div>
-        <div class="legend" style="margin:0 0 12px">
-          <span class="legend-item"><span class="legend-swatch" style="background:var(--sky-soft)"></span>单日值</span>
-          <span class="legend-item"><span style="width:16px;height:2px;background:var(--ink);opacity:.8"></span>7 日移动平均</span>
-          <span class="legend-item"><span style="width:16px;height:0;border-top:2px dashed var(--ink-3)"></span>整体趋势（最小二乘）</span>
-        </div>
-        <!-- 四个指标各一张图：量纲不同，叠在一张图上要么看不见小的，要么得上双轴 -->
-        <div class="chartgrid" id="store-charts"></div>
+        <div class="legend" id="store-legend" style="margin:0 0 12px"></div>
+        <!-- 一次只画一个指标：三者量纲不同（元 / 台 / %），叠一张图要么看不见小的，要么得上双轴 -->
+        <div class="chart" id="store-chart"></div>
         <div class="brush" id="store-brush"></div>
         <p class="brush-hint">拖动滑块或在图上滚动鼠标可改变时间范围</p>
       </div>
@@ -2178,11 +2175,28 @@ function hookTip(el, pts, rows, W, M, pw) {
  * 会被压成贴着零线的一条直线；要让它们都看得见就只能上双轴，而双轴的对齐方式
  * 是任意的，会凭空造出并不存在的相关性。分开画每张图都能用满整个高度。
  */
+/**
+ * 趋势图一次只画一个指标，右上角切换。
+ *
+ * 三者量纲完全不同（元 / 台 / %），叠在一张图上只有两条路：
+ * 共用一根轴 —— 退款率被 GMV 压成贴底的一条直线；或者上双轴 ——
+ * 两条轴怎么对齐是任意的，会凭空造出并不存在的相关性。所以切换而不是叠加。
+ */
 const STORE_CHARTS = [
   { k: 'gmv', label: 'GMV', format: 'currency', color: CH.skySoft },
-  { k: 'deviceSales', label: '主机销量', format: 'integer', color: CH.brand },
+  { k: 'deviceSales', label: '销量', format: 'integer', color: CH.brand },
   { k: 'refundRate', label: '退款率', format: 'percent', color: CH.violet },
 ];
+let storeMetric = 0;
+
+$('store-metric').innerHTML = STORE_CHARTS.map((m, i) =>
+  `<button data-i="${i}" aria-pressed="${i === 0}">${esc(m.label)}</button>`).join('');
+$('store-metric').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-i]'); if (!b) return;
+  storeMetric = +b.dataset.i;
+  [...$('store-metric').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+  drawStore();
+});
 
 const RANGES = RANGE_PRESETS;
 let storeRange = 30;
@@ -2225,38 +2239,35 @@ function syncCustomUi(w, ids) {
 let storeBrush = null;
 
 function drawStore() {
+  const m = STORE_CHARTS[storeMetric];
   const w = trendWindow();
   const pts = trendRange(w.from, w.to);
   if (pts.length === 0) {
-    $('store-charts').innerHTML = '<div style="padding:28px;text-align:center;color:var(--ink-3)">所选区间没有数据</div>';
+    $('store-chart').innerHTML = '<div style="padding:28px;text-align:center;color:var(--ink-3)">所选区间没有数据</div>';
     $('store-trend-sub').textContent = `${w.from} 至 ${w.to}｜无数据`;
     return;
   }
   $('store-trend-sub').textContent =
-    `${pts[0].date} 至 ${pts[pts.length - 1].date}（${pts.length} 天）｜虚线上行为绿、下行为红`;
+    `${pts[0].date} 至 ${pts[pts.length - 1].date}（${pts.length} 天）` +
+    `｜最新 ${fmtExact(pts[pts.length - 1][m.k], m.format)}｜虚线上行为绿、下行为红`;
 
-  $('store-charts').innerHTML = STORE_CHARTS.map((m) => `
-    <div>
-      <div class="chartcell-head">
-        <span class="chartcell-name">${esc(m.label)}</span>
-        <span class="chartcell-now">最新 ${fmtExact(pts[pts.length - 1][m.k], m.format)}</span>
-      </div>
-      <div class="chart" id="sc-${m.k}"></div>
-    </div>`).join('');
+  // 图例跟着当前指标换色，不然色块和柱子对不上
+  $('store-legend').innerHTML =
+    `<span class="legend-item"><span class="legend-swatch" style="background:${m.color}"></span>单日${esc(m.label)}</span>` +
+    `<span class="legend-item"><span style="width:16px;height:2px;background:var(--ink);opacity:.8"></span>7 日移动平均</span>` +
+    `<span class="legend-item"><span style="width:16px;height:0;border-top:2px dashed var(--ink-3)"></span>整体趋势（最小二乘）</span>`;
 
-  for (const m of STORE_CHARTS) {
-    barChart($(`sc-${m.k}`), pts, (p) => p[m.k],
-      { format: m.format, color: m.color, label: m.label, ma: 7, height: 210 });
-  }
+  barChart($('store-chart'), pts, (p) => p[m.k],
+    { format: m.format, color: m.color, label: m.label, ma: 7, height: 300 });
 
   // 图是每次重画的，滑块只挂一次 —— 重复挂会叠加一堆 wheel 监听
   if (!storeBrush) {
     storeBrush = mountRangeZoom({
-      chartHost: $('store-charts'), brushHost: $('store-brush'), values: D.cols.gmv,
+      chartHost: $('store-chart'), brushHost: $('store-brush'), values: D.cols.gmv,
       get: trendWindow,
-      set: (w) => {
-        storeRange = 0; trendCustom = w;
-        syncCustomUi(w, { seg: 'store-range', panel: 'trend-custom', from: 'trend-from', to: 'trend-to' });
+      set: (w2) => {
+        storeRange = 0; trendCustom = w2;
+        syncCustomUi(w2, { seg: 'store-range', panel: 'trend-custom', from: 'trend-from', to: 'trend-to' });
         drawStore();
       },
     });
