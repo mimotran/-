@@ -298,8 +298,8 @@ b, strong { font-weight: var(--w-md); }
 .kpi-num { font-size: 19px; font-weight: var(--w-md); letter-spacing: -.015em; line-height: 1.15; }
 .kpi-unit { font-size: 11.5px; color: var(--ink-3); }
 .kpi-foot { margin-top: 9px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.kpi-spark { margin-top: 8px; height: 26px; }
-.kpi-cmp { font-size: 11px; color: var(--ink-3); }
+/* 基准值：压在大数字下面一档，是参照不是结论 */
+.kpi-cmp { margin-top: 6px; font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
 /* --- 目标达成 ------------------------------------------------------------
    一行一个指标，大区块用合并单元格；绝对值和费率并排 ——
@@ -332,6 +332,8 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
   padding: 9px 12px; border-bottom: 1px solid var(--line-soft);
   text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums;
 }
+/* 「实际」是这张表最常被读的一列，加粗压过左右两列 —— 目标是参照，实际才是结论 */
+.gtable td.g-actual { font-weight: var(--w-bold); color: var(--ink); }
 .gtable tbody tr:last-child td { border-bottom: 0; }
 .gtable tbody tr:hover td { background: var(--line-soft); }
 
@@ -828,7 +830,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     <div class="stack">
       <div id="store-kpis" class="kpis"></div>
       <div style="display:flex;justify-content:flex-start">
-        <button class="navtab" id="store-more" aria-expanded="false" style="border:1px solid var(--line)">展开其他 8 项指标</button>
+        <button class="navtab" id="store-more" aria-expanded="false" style="border:1px solid var(--line)"></button>
       </div>
       <div id="store-extra" class="kpis" hidden></div>
 
@@ -2084,7 +2086,7 @@ function renderGoals() {
       ${i === 0 ? `<td class="g-group" rowspan="${grp.rows.length}">${esc(grp.name)}<span>${esc(GROUP_NOTES[grp.name] || '')}</span></td>` : ''}
       <td class="g-name ${r.emphasis ? 'g-emph' : ''}">${esc(r.label)}</td>
       <td>${gval(r.target, r.format)}</td>
-      <td>${gval(r.actual, r.format)}</td>
+      <td class="g-actual">${gval(r.actual, r.format)}</td>
       <td>${att}</td>
       <td>${pp}</td>
       <td>${mom}</td>
@@ -2168,12 +2170,24 @@ function periodSeg(segId, onPick) {
   });
 }
 
-function kpiCard(k, cmpLabel, spark) {
+/**
+ * KPI 卡。
+ *
+ * base 是对比区间的聚合，用来在胶囊上方补一行基准值 —— 只有一个「▼ 17.8%」
+ * 的话，读的人没法自己核对这是从多少掉到多少的，而那个数往往比百分比更有用
+ * （「昨天 6.6 万今天 5.5 万」比「跌了 17.8%」更能直接判断）。
+ */
+function kpiCard(k, cmpLabel, base) {
   const [n, u] = fmtBy(k.value, k.format);
+  // 胶囊上写「环比前日」，这里就只留「前日」，同一个词不重复两遍
+  const baseLabel = cmpLabel.replace(/^环比/, '');
+  const prev = base ? base[k.key] : null;
+  const baseLine = prev === null || prev === undefined || !isFinite(prev)
+    ? '' : `<div class="kpi-cmp">${esc(baseLabel)} ${fmtBy(prev, k.format).join('')}${k.format === 'currency' ? '元' : ''}</div>`;
   return `<div class="card kpi">
     <div class="kpi-label">${esc(k.label)}</div>
     <div class="kpi-val"><span class="kpi-num tnum">${n}</span><span class="kpi-unit">${u}${k.format === 'currency' ? '元' : ''}</span></div>
-    ${spark ? `<div class="kpi-spark">${spark}</div>` : ''}
+    ${baseLine}
     <div class="kpi-foot">${pill(cmpLabel, k.delta, k.higherIsBetter !== false)}</div>
   </div>`;
 }
@@ -2276,29 +2290,29 @@ function currentStore() {
   };
 }
 
-const SPARKS = { gmv: 'gmv', deviceSales: 'deviceSales', refund: 'refund', refundRate: 'refundRate', adCost: 'adCost', adCostRate: 'adCostRate', uv: 'uv', searchUv: 'searchUv' };
-const last14 = trendRange(shiftDays(DATA.latestDate, -13), DATA.latestDate);
-
 function renderStore() {
   const s = currentStore();
-  // sparkline 只给「昨日」用：单看一天的数字没有上下文，其它口径本身就是区间
-  const showSpark = storePeriod === 0;
+  // 基准值现算：预置口径导出的 stat 里只有 delta，没有对比区间的绝对值
+  const base = s.compareRange ? aggregate(s.compareRange.from, s.compareRange.to) : null;
 
   $('store-scope').innerHTML =
     `${s.range.from} 至 ${s.range.to}　对比 <b>${esc(s.compareLabel)}</b>` +
     (s.compareRange ? `（${s.compareRange.from} 至 ${s.compareRange.to}）` : '（无可比数据）');
 
-  $('store-kpis').innerHTML = s.core.map((k) =>
-    kpiCard(k, s.compareLabel, showSpark && SPARKS[k.key] ? spark(last14.map((p) => p[SPARKS[k.key]])) : '')).join('');
-  $('store-extra').innerHTML = s.extra.map((k) => kpiCard(k, s.compareLabel, '')).join('');
+  $('store-kpis').innerHTML = s.core.map((k) => kpiCard(k, s.compareLabel, base)).join('');
+  $('store-extra').innerHTML = s.extra.map((k) => kpiCard(k, s.compareLabel, base)).join('');
 }
 renderStore();
+
+// 数字从指标表现算，别写死 —— 原来写的 8 是核心区的项数，其它区只有 7 项
+const MORE_LABEL = `展开其他 ${DATA.storeMetrics.extra.length} 项指标`;
+$('store-more').textContent = MORE_LABEL;
 
 $('store-more').addEventListener('click', () => {
   const box = $('store-extra'), open = box.hidden;
   box.hidden = !open;
   $('store-more').setAttribute('aria-expanded', String(open));
-  $('store-more').textContent = open ? '收起其他指标' : '展开其他 8 项指标';
+  $('store-more').textContent = open ? '收起其他指标' : MORE_LABEL;
 });
 
 /**
@@ -2316,7 +2330,7 @@ function renderAds(scope, i) {
   const own = scope === 'insite' ? ['adCostInsite', 'roiInsite'] : ['adCostOffsite', 'roiOffsite'];
   $(scope + '-kpis').innerHTML = s.ads
     .filter((k) => !own.includes(k.key))
-    .map((k) => kpiCard(k, s.compareLabel, '')).join('');
+    .map((k) => kpiCard(k, s.compareLabel, s.compareRange ? aggregate(s.compareRange.from, s.compareRange.to) : null)).join('');
 }
 periodSeg('insite-seg', (i) => renderAds('insite', i));
 periodSeg('offsite-seg', (i) => renderAds('offsite', i));
