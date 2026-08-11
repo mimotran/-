@@ -48,6 +48,13 @@
   --shadow: 0 1px 2px rgb(26 28 30 / .03), 0 6px 20px -14px rgb(26 28 30 / .16);
   --radius: 16px;
 
+  /* 字重统一从这里调。原来到处硬写 600，整页偏重；
+     参考稿的观感是「靠字号拉层级、不靠加粗」，所以正文强调降到 500，
+     只有极少数需要压住的地方用 600。PingFang / 系统字体只有 400/500/600
+     三档实体字重，写 550 会被渲染器随机取整，所以不用中间值。 */
+  --w-md: 500;
+  --w-bold: 600;
+
   --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
           "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
 }
@@ -148,6 +155,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* <b> 默认是 700，比正文重两档，夹在句子里显得突兀 */
+b, strong { font-weight: var(--w-md); }
+
 .tnum { font-variant-numeric: tabular-nums; }
 
 :focus-visible {
@@ -176,9 +186,9 @@ body {
   width: 26px; height: 26px; border-radius: 7px;
   background: var(--ink); color: var(--card);
   display: grid; place-items: center;
-  font-weight: 700; font-size: 14px; letter-spacing: -.03em;
+  font-weight: var(--w-bold); font-size: 14px; letter-spacing: -.03em;
 }
-.brand-name { font-size: 14px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+.brand-name { font-size: 14px; font-weight: var(--w-md); letter-spacing: -.01em; white-space: nowrap; }
 
 .navtabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
 .navtabs::-webkit-scrollbar { display: none; }
@@ -190,7 +200,7 @@ body {
 }
 .navtab:hover { color: var(--ink); background: var(--line-soft); }
 .navtab[aria-selected="true"] {
-  color: var(--ink); font-weight: 600; background: none;
+  color: var(--ink); font-weight: var(--w-md); background: none;
 }
 .navtab[aria-selected="true"]::after {
   content: ""; display: block; height: 2px; border-radius: 2px;
@@ -220,7 +230,7 @@ body {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
 }
-.card-title { font-size: 14px; font-weight: 600; margin: 0; }
+.card-title { font-size: 14px; font-weight: var(--w-md); margin: 0; }
 .card-sub { font-size: 12px; color: var(--ink-3); margin: 2px 0 0; }
 
 /* --- 速览 --------------------------------------------------------------- */
@@ -229,7 +239,7 @@ body {
   padding: 14px 20px; margin-bottom: 16px;
 }
 .glance-tag {
-  flex-shrink: 0; font-size: 11px; font-weight: 600; letter-spacing: .04em;
+  flex-shrink: 0; font-size: 11px; font-weight: var(--w-md); letter-spacing: .04em;
   background: var(--line-soft); color: var(--ink-2);
   padding: 3px 9px; border-radius: 6px;
 }
@@ -242,7 +252,7 @@ body {
 .pill-good { background: var(--gain-bg); color: var(--gain); }
 .pill-bad  { background: var(--loss-bg); color: var(--loss); }
 .pill-flat { background: var(--flat-bg); color: var(--flat); }
-.pill b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.pill b { font-weight: var(--w-md); font-variant-numeric: tabular-nums; }
 
 /* --- 分区 --------------------------------------------------------------- */
 .section { margin-top: 30px; }
@@ -252,10 +262,10 @@ body {
   gap: 16px; flex-wrap: wrap; margin-bottom: 8px;
 }
 .section-no {
-  font-size: 11px; font-weight: 600; color: var(--ink-3);
+  font-size: 11px; font-weight: var(--w-md); color: var(--ink-3);
   letter-spacing: .12em; display: block; margin-bottom: 2px;
 }
-.section-title { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -.015em; }
+.section-title { font-size: 18px; font-weight: var(--w-md); margin: 0; letter-spacing: -.015em; }
 /* 说明独占一行、占满宽度。
    原来它和右侧的周期选择器挤在同一行的左半边，还带 max-width:66ch，
    一句话被折成三四行，比句子本身还占地方。 */
@@ -274,7 +284,7 @@ body {
 }
 .seg button:hover { color: var(--ink); }
 .seg button[aria-pressed="true"] {
-  background: var(--pill-on); color: var(--pill-on-ink); font-weight: 600;
+  background: var(--pill-on); color: var(--pill-on-ink); font-weight: var(--w-md);
 }
 
 /* --- KPI 网格 ------------------------------------------------------------ */
@@ -285,7 +295,7 @@ body {
 .kpi { padding: 14px 16px; }
 .kpi-label { font-size: 12px; color: var(--ink-2); }
 .kpi-val { margin-top: 5px; display: flex; align-items: baseline; gap: 3px; }
-.kpi-num { font-size: 19px; font-weight: 600; letter-spacing: -.015em; line-height: 1.15; }
+.kpi-num { font-size: 19px; font-weight: var(--w-md); letter-spacing: -.015em; line-height: 1.15; }
 .kpi-unit { font-size: 11.5px; color: var(--ink-3); }
 .kpi-foot { margin-top: 9px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .kpi-spark { margin-top: 8px; height: 26px; }
@@ -301,7 +311,7 @@ body {
 }
 .timebar-label { font-size: 12px; color: var(--ink-3); }
 .timebar-scope { font-size: 12px; color: var(--ink-2); margin-left: auto; }
-.timebar-scope b { color: var(--ink); font-weight: 600; }
+.timebar-scope b { color: var(--ink); font-weight: var(--w-md); }
 
 .glance-inline {
   display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
@@ -328,14 +338,14 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
 /* 大区块：合并单元格，靠上对齐 */
 .g-group {
   text-align: left !important; vertical-align: top; font-variant-numeric: normal;
-  font-weight: 600; font-size: 13px; color: var(--ink);
+  font-weight: var(--w-md); font-size: 13px; color: var(--ink);
   border-right: 1px solid var(--line); background: var(--card-2);
   width: 84px;
 }
 .g-group span { display: block; font-size: 10.5px; font-weight: 400; color: var(--ink-3); margin-top: 3px; line-height: 1.5; }
 
 .g-name { text-align: left !important; font-variant-numeric: normal; color: var(--ink); }
-.g-emph { position: relative; font-weight: 600; }
+.g-emph { position: relative; font-weight: var(--w-md); }
 .g-emph::before {
   content: ""; position: absolute; left: 0; top: 6px; bottom: 6px;
   width: 3px; border-radius: 2px; background: var(--brand);
@@ -347,7 +357,7 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
 .g-bar { position: relative; width: 116px; height: 8px; border-radius: 99px; background: var(--line-soft); overflow: hidden; flex-shrink: 0; }
 .g-fill { height: 100%; border-radius: 99px; }
 .g-pace { position: absolute; top: -2px; width: 2px; height: 12px; background: var(--ink); border-radius: 2px; box-shadow: 0 0 0 1.5px var(--card); }
-.g-pct { min-width: 52px; font-weight: 600; }
+.g-pct { min-width: 52px; font-weight: var(--w-md); }
 
 /* 一张图占一行：并排时每张只有半个宽度，30 根柱子挤在一起看不出形状 */
 /* --- 投放板块顶部总结 ------------------------------------------------------ */
@@ -365,10 +375,10 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
 
 .adsum-card { padding: 16px 18px 17px; display: flex; flex-direction: column; }
 .adsum-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.adsum-label { font-size: 13px; font-weight: 600; }
+.adsum-label { font-size: 13px; font-weight: var(--w-md); }
 .adsum-scope { font-size: 11.5px; color: var(--ink-3); }
 .adsum-fig { margin-top: 12px; display: flex; align-items: baseline; gap: 3px; }
-.adsum-num { font-size: 27px; font-weight: 600; letter-spacing: -.02em; line-height: 1.05; }
+.adsum-num { font-size: 27px; font-weight: var(--w-md); letter-spacing: -.02em; line-height: 1.05; }
 .adsum-unit { font-size: 12.5px; color: var(--ink-3); font-weight: 500; }
 .adsum-sub { margin-top: 7px; font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .adsum-chips { margin-top: 11px; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -377,13 +387,13 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
   font-size: 11.5px; padding: 4px 9px; border-radius: 7px; white-space: nowrap;
   background: var(--line-soft); color: var(--ink-2); font-variant-numeric: tabular-nums;
 }
-.chip-plain b { color: var(--ink); font-weight: 600; }
+.chip-plain b { color: var(--ink); font-weight: var(--w-md); }
 .adsum-delta { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 6px; }
 .adsum-note { margin-top: auto; padding-top: 10px; font-size: 11.5px; color: var(--ink-3); }
 
 .chartgrid { display: flex; flex-direction: column; gap: 22px; }
 .chartcell-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.chartcell-name { font-size: 12.5px; font-weight: 600; }
+.chartcell-name { font-size: 12.5px; font-weight: var(--w-md); }
 .chartcell-now { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
 .daterange {
@@ -417,13 +427,13 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
   box-shadow: var(--shadow); padding: 10px 12px; font-size: 12px;
   min-width: 168px; transition: opacity .12s;
 }
-.tip-date { font-weight: 600; margin-bottom: 7px; }
+.tip-date { font-weight: var(--w-md); margin-bottom: 7px; }
 /* 值不右对齐、跟着标签走：一行读下来是「谁 · 多少 · 变了多少」，
    右对齐会把标签和数字拉开一大截，单行 tooltip 里反而更难对上。 */
 .tip-row { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; white-space: nowrap; }
 .tip-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; align-self: center; }
 .tip-name { color: var(--ink-2); }
-.tip-val { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
+.tip-val { font-variant-numeric: tabular-nums; font-weight: var(--w-md); color: var(--ink); }
 /* 精确值压一档：紧凑值负责一眼读出量级，精确值负责能抄进 Excel，主次要分开 */
 .tip-exact { font-weight: 400; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .tip-mom { color: var(--ink-3); font-variant-numeric: tabular-nums; }
@@ -488,7 +498,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; font-size: 12.5px;
 }
 .chip-name { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chip-val { font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.chip-val { font-weight: var(--w-md); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
 /* --- 产品：日堆叠 / 月度对比 / 年累计环形 ---------------------------------- */
 .prod-head-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -510,8 +520,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   padding: 11px 4px; border-bottom: 1px solid var(--line-soft);
 }
 .prod-ring-row:last-child { border-bottom: 0; }
-.prod-ring-row .nm { font-size: 13px; font-weight: 600; }
-.prod-ring-row .vl { font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.prod-ring-row .nm { font-size: 13px; font-weight: var(--w-md); }
+.prod-ring-row .vl { font-size: 13.5px; font-weight: var(--w-md); font-variant-numeric: tabular-nums; }
 .prod-ring-row .sh { text-align: right; font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .prod-ring-row .bar { grid-column: 2 / -1; height: 4px; border-radius: 99px; background: var(--line-soft); overflow: hidden; }
 .prod-ring-row .bar span { display: block; height: 100%; border-radius: 99px; }
@@ -529,14 +539,14 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tf-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
 .tf-group { border: 1px solid var(--line); border-radius: 12px; padding: 13px 15px; }
 .tf-group-name {
-  font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--ink-3);
+  font-size: 11px; font-weight: var(--w-md); letter-spacing: .06em; color: var(--ink-3);
   text-transform: uppercase; margin-bottom: 10px;
 }
 .tf-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
 .tf-metric-name { font-size: 11.5px; color: var(--ink-2); }
-.tf-metric-val { font-size: 17px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tf-metric-val { font-size: 17px; font-weight: var(--w-md); letter-spacing: -.01em; font-variant-numeric: tabular-nums; margin-top: 2px; }
 .tf-metric-unit { font-size: 11px; font-weight: 500; color: var(--ink-3); margin-left: 1px; }
-.tf-metric-cmp { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 3px; }
+.tf-metric-cmp { font-size: 11px; font-weight: var(--w-md); font-variant-numeric: tabular-nums; margin-top: 3px; }
 
 /* 分组表头：第一行是组名跨列，第二行是具体列 */
 .tf-table thead tr:first-child th { text-align: center; border-bottom: 1px solid var(--line); }
@@ -544,20 +554,20 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tf-table thead th.grp-paid { background: var(--violet-bg); }
 .tf-table td.grp-search, .tf-table th.grp-search { background: var(--sky-bg); }
 .tf-table td.grp-paid, .tf-table th.grp-paid { background: var(--violet-bg); }
-.tf-table tbody tr:last-child td { font-weight: 600; border-top: 1px solid var(--line); }
+.tf-table tbody tr:last-child td { font-weight: var(--w-md); border-top: 1px solid var(--line); }
 
 /* 关键词表：格子里带条形，长度编码 UV —— 数字读准确值，条形读相对大小 */
 /* 品牌词 / 品类词两张表结构完全一样，等宽平分 —— 不等宽会暗示其中一边更重要 */
 .kw-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
 @media (max-width: 1080px) { .kw-row { grid-template-columns: 1fr; } }
-.kw-ttl { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kw-ttl { font-size: 13px; font-weight: var(--w-md); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .kw-table td.kw-bar-cell { position: relative; }
 .kw-bar {
   position: absolute; left: 0; top: 50%; transform: translateY(-50%);
   height: 18px; border-radius: 3px; opacity: .28; pointer-events: none;
 }
 .kw-name { font-weight: 500; }
-.kw-table tbody tr.kw-total td { font-weight: 600; border-top: 1px solid var(--line); }
+.kw-table tbody tr.kw-total td { font-weight: var(--w-md); border-top: 1px solid var(--line); }
 
 /* --- 响应式 --------------------------------------------------------------
    flex / grid 子项默认 min-width:auto，宽表格会把整个 body 撑出横向滚动条，
@@ -588,14 +598,14 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line);
   font-size: 11.5px; color: var(--ink-2); line-height: 1.8;
 }
-.footnote b { color: var(--ink); font-weight: 600; }
+.footnote b { color: var(--ink); font-weight: var(--w-md); }
 .banner {
   display: flex; gap: 9px; align-items: flex-start;
   padding: 10px 16px; border-radius: 10px; margin-bottom: 14px;
   background: var(--card); border: 1px solid var(--line);
   font-size: 12px; color: var(--ink-2); line-height: 1.6;
 }
-.banner b { color: var(--ink); font-weight: 600; }
+.banner b { color: var(--ink); font-weight: var(--w-md); }
 .banner-dot {
   width: 6px; height: 6px; border-radius: 50%; background: var(--amber);
   flex-shrink: 0; margin-top: 7px;
@@ -1708,12 +1718,12 @@ function renderGoals() {
 
     const ppColor = r.rateGood === null ? 'var(--flat)' : r.rateGood ? 'var(--gain)' : 'var(--loss)';
     const pp = r.ppDiff === null ? '<span class="g-muted">—</span>'
-      : `<span style="color:${ppColor};font-weight:600">${r.ppDiff > 0 ? '+' : ''}${(r.ppDiff * 100).toFixed(1)}pp</span>`;
+      : `<span style="color:${ppColor};font-weight:var(--w-md)">${r.ppDiff > 0 ? '+' : ''}${(r.ppDiff * 100).toFixed(1)}pp</span>`;
 
     const dColor = r.prevDelta === null || Math.abs(r.prevDelta) < 0.0005 ? 'var(--flat)'
       : (r.higherIsBetter ? r.prevDelta > 0 : r.prevDelta < 0) ? 'var(--gain)' : 'var(--loss)';
     const mom = r.prevDelta === null ? '<span class="g-muted">—</span>'
-      : `<span style="color:${dColor};font-weight:600">${r.prevDelta > 0 ? '▲' : '▼'} ${(Math.abs(r.prevDelta) * 100).toFixed(1)}%</span>`;
+      : `<span style="color:${dColor};font-weight:var(--w-md)">${r.prevDelta > 0 ? '▲' : '▼'} ${(Math.abs(r.prevDelta) * 100).toFixed(1)}%</span>`;
 
     return `<tr>
       ${i === 0 ? `<td class="g-group" rowspan="${grp.rows.length}">${esc(grp.name)}<span>${esc(GROUP_NOTES[grp.name] || '')}</span></td>` : ''}
@@ -3194,7 +3204,7 @@ const isPaidChannel = (c) => c.startsWith('付费');
         : 0;
       const dTag = prevUv > 0 ? (() => {
         const d = (uv - prevUv) / prevUv;
-        return `<span style="color:var(--${d >= 0 ? 'gain' : 'loss'});font-weight:600"> ${d >= 0 ? '▲' : '▼'}${(Math.abs(d) * 100).toFixed(1)}%</span>`;
+        return `<span style="color:var(--${d >= 0 ? 'gain' : 'loss'});font-weight:var(--w-md)"> ${d >= 0 ? '▲' : '▼'}${(Math.abs(d) * 100).toFixed(1)}%</span>`;
       })() : '';
 
       $(`kw-${card.id}-sub`).textContent =
