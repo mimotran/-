@@ -155,6 +155,14 @@ export interface DashboardSnapshot {
    * 跨月中间截断的自定义区间则老实显示「—」。
    */
   monthlyActuals: Record<string, Record<string, number>>;
+  /**
+   * 解析时被剔掉的商品 GMV，按日期。
+   *
+   * 目前只有测试链接（「请不要拍」那种）。这笔钱仍然算在日报的 GMV 里，
+   * 所以一致性校验必须把它加回来再比 —— 否则每天都会报「商品明细比日报少」，
+   * 而那正是我们故意造成的。宁可多存一个字段，也不要把校验的容差调松。
+   */
+  excludedProductGmv: Record<string, number>;
   /** 同步过程中的告警，展示在看板顶部 */
   warnings: string[];
 }

@@ -45,6 +45,15 @@ const TRAFFIC_CHANNELS = [
   '搜索', '推荐', '付费-店铺直达（品专）', '付费-关键词推广', '付费-淘宝客', '付费-短视频',
 ];
 
+/**
+ * 测试商品不进数据。
+ *
+ * 店铺里挂着「"测试商品，请不要拍，拍下无效" Plaud 会员」这种链接，金额只有几十块，
+ * 但它会占掉单链接排行的一整行，还把「会员」这条产品线撑出一个没意义的数。
+ * 在解析阶段剔掉，比在每个展示处各过滤一遍可靠。
+ */
+const TEST_ITEM = /测试商品|请不要拍|拍下无效|勿拍|test\s*item/i;
+
 /** 商品名里的转义引号是从别处复制粘贴带进来的，展示前清掉，不然表格里全是 \" */
 const cleanTitle = (t: string) => t.replace(/\\(["'])/g, '$1').trim();
 
@@ -265,6 +274,9 @@ export async function readWorkbook(
   const pRefund = col(prodGrid, '成功退款金额');
 
   const products: ProductMetric[] = [];
+  let skippedTest = 0;
+  let skippedGmv = 0;
+  const excludedProductGmv: Record<string, number> = {};
   for (let r = 1; r < prodGrid.rows.length; r++) {
     const row = prodGrid.rows[r];
     const date = parseSheetDate(row[pDate], year);
@@ -272,11 +284,17 @@ export async function readWorkbook(
     const gmv = num(row[pGmv]);
     const uv = num(row[pUv]);
     if (gmv === 0 && uv === 0) continue;
+    const title = cleanTitle(row[pTitle] ?? '') || cleanTitle(row[pSpu] ?? '');
+    if (TEST_ITEM.test(title)) {
+      skippedTest += 1; skippedGmv += gmv;
+      excludedProductGmv[date] = (excludedProductGmv[date] ?? 0) + gmv;
+      continue;
+    }
     products.push({
       date,
       line: resolveLine(row[pSpu] ?? ''),
       itemId: (row[pId] ?? '').trim() || (row[pTitle] ?? '').trim(),
-      title: cleanTitle(row[pTitle] ?? '') || cleanTitle(row[pSpu] ?? ''),
+      title,
       gmv,
       quantity: num(row[pQty]),
       uv,
@@ -284,6 +302,10 @@ export async function readWorkbook(
     });
   }
   if (products.length === 0) warnings.push('「附-产品」一行都没解析出来，产品板块会是空的');
+  // 把剔掉的金额也报出来 —— 商品明细之和会因此比日报少这么多，是预期内的
+  if (skippedTest > 0) {
+    warnings.push(`已剔除 ${skippedTest} 行测试商品（合计 ¥${Math.round(skippedGmv).toLocaleString('zh-CN')}）`);
+  }
 
   // ---- 1.目标达成：右侧「项目」区块给出每月的目标和实际 ---------------------
   /**
@@ -383,6 +405,7 @@ export async function readWorkbook(
     trafficChannels,
     targets,
     monthlyActuals,
+    excludedProductGmv,
     warnings,
   };
 }

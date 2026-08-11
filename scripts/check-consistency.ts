@@ -47,12 +47,23 @@ function compare(
   return issues;
 }
 
+/** 把解析阶段故意剔掉的金额加回明细合计，让对账回到精确比较 */
+function addBack(sums: Map<string, number>, extra: Record<string, number>): Map<string, number> {
+  const out = new Map(sums);
+  for (const [date, v] of Object.entries(extra)) out.set(date, (out.get(date) ?? 0) + v);
+  return out;
+}
+
 function check(snapshot: DashboardSnapshot): Issue[] {
   const dailyGmv = sumByDate(snapshot.daily, (row) => row.gmv);
   const dailyAdCost = sumByDate(snapshot.daily, (row) => row.adCostInsite + row.adCostOffsite);
 
   return [
-    ...compare('商品 GMV', sumByDate(snapshot.products, (row) => row.gmv), dailyGmv, 1),
+    /**
+     * 比之前把被剔掉的测试商品加回来，而不是把容差调松。
+     * 调松容差等于让这条校验对「少了一整条产品线」也睁一只眼；加回来则是精确的。
+     */
+    ...compare('商品 GMV', addBack(sumByDate(snapshot.products, (row) => row.gmv), snapshot.excludedProductGmv), dailyGmv, 1),
     ...compare('投放消耗', sumByDate(snapshot.ads, (row) => row.cost), dailyAdCost, 1),
     /**
      * 流量来源不参与对账。

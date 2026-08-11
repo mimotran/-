@@ -151,6 +151,7 @@ export async function syncFromFeishu(
     trafficChannels: [],
     targets: targets.rows,
     monthlyActuals: {},
+    excludedProductGmv: {},
     // warning 太多时只留前 20 条，页面上放不下也没人看
     warnings: warnings.slice(0, 20),
   };
