@@ -502,17 +502,25 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* --- 产品：日堆叠 / 月度对比 / 年累计环形 ---------------------------------- */
 /**
- * 卡头右侧的控件栈。
- *
- * 竖着堆、统一右对齐，而不是横着排：切到「自定义」时日期输入框会出现，
- * 横排的话它会把同一行的按钮整体往左挤 —— 滚轮缩放本身就会自动切成自定义，
- * 于是「滚一下鼠标，按钮就左右跳一下」。竖排之后新出现的一行只往下长，
- * 上面几行纹丝不动。
+ * 卡头右侧的控件栈：整体右对齐，多组控件竖向排（指标在上、区间在下）。
+ * 每一组内部横排。
  */
 .prod-head-tools {
   display: flex; flex-direction: column; align-items: flex-end;
   gap: 8px; flex-shrink: 0;
 }
+/** 一组控件：区间按钮和日期框并排 */
+.head-row { display: flex; align-items: center; gap: 8px; }
+
+/**
+ * 日期框常驻，不再用 hidden 切换。
+ *
+ * 原来非自定义时 display:none，一切到自定义它就冒出来、把同一行的按钮整体
+ * 往左挤；而滚轮缩放本身就会自动切成自定义 —— 于是「滚一下鼠标按钮跳一下」。
+ * 常驻之后布局是死的，谁都不会动，顺带任何时候都能直接改日期，少点一次按钮。
+ * 非自定义时压低对比度，表示它只是在跟随显示当前区间。
+ */
+.daterange.is-idle { opacity: .55; }
 
 /* 月度对比 + 年累计环形并排。月度那张要装 8 根柱子，环形那张只有一个圆 ——
    宽度按内容需要分，不是对半砍。窄屏回落成上下两行，柱子挤在半屏里没法读。 */
@@ -658,7 +666,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     <div class="card timebar">
       <span class="timebar-label">时间</span>
       <div class="seg" id="goal-seg" role="group" aria-label="达成口径"></div>
-      <span id="goal-custom" class="daterange" hidden>
+      <span id="goal-custom" class="daterange">
         <input type="date" id="goal-from" aria-label="开始日期">
         <span aria-hidden="true">至</span>
         <input type="date" id="goal-to" aria-label="结束日期">
@@ -685,7 +693,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     <div class="card timebar" id="store-timebar">
       <span class="timebar-label">时间</span>
       <div class="seg" id="store-seg2" role="group" aria-label="统计周期"></div>
-      <span id="store-custom" class="daterange" hidden>
+      <span id="store-custom" class="daterange">
         <input type="date" id="store-from" aria-label="开始日期">
         <span aria-hidden="true">至</span>
         <input type="date" id="store-to" aria-label="结束日期">
@@ -709,13 +717,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
           </div>
           <div class="prod-head-tools">
             <div class="seg" id="store-metric" role="group" aria-label="趋势指标"></div>
-            <div class="seg" id="store-range" role="group" aria-label="趋势区间"></div>
-            <span id="trend-custom" class="daterange" hidden>
+            <div class="head-row">
+              <div class="seg" id="store-range" role="group" aria-label="趋势区间"></div>
+              <span id="trend-custom" class="daterange">
               <input type="date" id="trend-from" aria-label="趋势开始日期">
               <span aria-hidden="true">至</span>
               <input type="date" id="trend-to" aria-label="趋势结束日期">
               <button class="csvbtn" id="trend-apply">应用</button>
             </span>
+            </div>
           </div>
         </div>
         <div class="legend" id="store-legend" style="margin:0 0 12px"></div>
@@ -757,13 +767,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
             <p class="card-sub" id="insite-sub"></p>
           </div>
           <div class="prod-head-tools">
-            <div class="seg" id="insite-bd-seg" role="group" aria-label="分触点统计周期"></div>
-            <span class="daterange" id="insite-bd-range" hidden>
+            <div class="head-row">
+              <div class="seg" id="insite-bd-seg" role="group" aria-label="分触点统计周期"></div>
+              <span class="daterange" id="insite-bd-range">
               <input type="date" id="insite-bd-from" aria-label="开始日期">
               <span aria-hidden="true">至</span>
               <input type="date" id="insite-bd-to" aria-label="结束日期">
               <button class="csvbtn" id="insite-bd-apply">应用</button>
             </span>
+            </div>
           </div>
         </div>
         <div class="tablewrap"><table id="insite-table"></table></div>
@@ -802,13 +814,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
             <p class="card-sub" id="offsite-sub"></p>
           </div>
           <div class="prod-head-tools">
-            <div class="seg" id="offsite-bd-seg" role="group" aria-label="分渠道统计周期"></div>
-            <span class="daterange" id="offsite-bd-range" hidden>
+            <div class="head-row">
+              <div class="seg" id="offsite-bd-seg" role="group" aria-label="分渠道统计周期"></div>
+              <span class="daterange" id="offsite-bd-range">
               <input type="date" id="offsite-bd-from" aria-label="开始日期">
               <span aria-hidden="true">至</span>
               <input type="date" id="offsite-bd-to" aria-label="结束日期">
               <button class="csvbtn" id="offsite-bd-apply">应用</button>
             </span>
+            </div>
           </div>
         </div>
         <div class="tablewrap"><table id="offsite-table"></table></div>
@@ -832,13 +846,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <div class="card-head">
           <div><h3 class="card-title" id="pd-title">分产品每日 GMV</h3><p class="card-sub" id="pd-sub"></p></div>
           <div class="prod-head-tools">
-            <div class="seg" id="pd-seg" role="group" aria-label="每日构成区间"></div>
-            <span class="daterange" id="pd-range" hidden>
+            <div class="head-row">
+              <div class="seg" id="pd-seg" role="group" aria-label="每日构成区间"></div>
+              <span class="daterange" id="pd-range">
               <input type="date" id="pd-from" aria-label="开始日期">
               <span aria-hidden="true">至</span>
               <input type="date" id="pd-to" aria-label="结束日期">
               <button class="csvbtn" id="pd-apply">应用</button>
             </span>
+            </div>
           </div>
         </div>
         <div class="chart" id="pd-chart"></div>
@@ -885,13 +901,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <h2 class="section-title">流量</h2>
       </div>
       <div class="prod-head-tools">
-        <div class="seg" id="traffic-seg" role="group" aria-label="统计周期"></div>
-        <span class="daterange" id="traffic-range" hidden>
+        <div class="head-row">
+          <div class="seg" id="traffic-seg" role="group" aria-label="统计周期"></div>
+          <span class="daterange" id="traffic-range">
           <input type="date" id="traffic-from" aria-label="开始日期">
           <span aria-hidden="true">至</span>
           <input type="date" id="traffic-to" aria-label="结束日期">
           <button class="csvbtn" id="traffic-apply">应用</button>
         </span>
+        </div>
       </div>
     </div>
     <p class="section-desc">总览 → 搜索 UV → 流量来源。来源拆到「搜索 / 推荐 / 四路付费」，这是数据源能给到的最细粒度。</p>
@@ -911,13 +929,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <div class="card-head">
           <div><h3 class="card-title">搜索 UV</h3><p class="card-sub" id="su-sub"></p></div>
           <div class="prod-head-tools">
-            <div class="seg" id="su-seg" role="group" aria-label="搜索 UV 区间"></div>
-            <span class="daterange" id="su-range" hidden>
+            <div class="head-row">
+              <div class="seg" id="su-seg" role="group" aria-label="搜索 UV 区间"></div>
+              <span class="daterange" id="su-range">
               <input type="date" id="su-from" aria-label="开始日期">
               <span aria-hidden="true">至</span>
               <input type="date" id="su-to" aria-label="结束日期">
               <button class="csvbtn" id="su-apply">应用</button>
             </span>
+            </div>
           </div>
         </div>
         <div class="chart" id="su-chart"></div>
@@ -1475,7 +1495,7 @@ $('goal-seg').addEventListener('click', (e) => {
   const b = e.target.closest('[data-i]'); if (!b) return;
   goalIndex = +b.dataset.i;
   [...$('goal-seg').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
-  $('goal-custom').hidden = goalIndex !== GOAL_CUSTOM;
+  $('goal-custom').classList.toggle('is-idle', goalIndex !== GOAL_CUSTOM);
   renderGoals();
 });
 
@@ -1836,7 +1856,7 @@ $('store-seg2').addEventListener('click', (e) => {
   const b = e.target.closest('[data-i]'); if (!b) return;
   storePeriod = +b.dataset.i;
   [...$('store-seg2').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
-  $('store-custom').hidden = !STORE_PERIODS[storePeriod].custom;
+  $('store-custom').classList.toggle('is-idle', !STORE_PERIODS[storePeriod].custom);
   renderStore();
 });
 
@@ -2218,7 +2238,7 @@ $('store-range').addEventListener('click', (e) => {
   const b = e.target.closest('[data-d]'); if (!b) return;
   storeRange = +b.dataset.d;
   [...$('store-range').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
-  $('trend-custom').hidden = storeRange !== 0;
+
   drawStore();
 });
 
@@ -2244,7 +2264,7 @@ function syncCustomUi(w, ids) {
   $(ids.from).value = w.from;
   $(ids.to).value = w.to;
   [...$(ids.seg).children].forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.d === '0')));
-  $(ids.panel).hidden = false;
+  $(ids.panel).classList.remove('is-idle');
 }
 
 let storeBrush = null;
@@ -2258,6 +2278,10 @@ function drawStore() {
     $('store-trend-sub').textContent = `${w.from} 至 ${w.to}｜无数据`;
     return;
   }
+  // 日期框常驻，任何时候都显示当前区间；非自定义时淡化，表示它只是在跟随
+  $('trend-custom').classList.toggle('is-idle', storeRange !== 0);
+  $('trend-from').value = w.from; $('trend-to').value = w.to;
+
   $('store-trend-sub').textContent =
     `${pts[0].date} 至 ${pts[pts.length - 1].date}（${pts.length} 天）` +
     `｜最新 ${fmtExact(pts[pts.length - 1][m.k], m.format)}｜虚线上行为绿、下行为红`;
@@ -2314,15 +2338,17 @@ function mountTrendCard(host, opts) {
         <p class="card-sub" id="${id}-sub"></p>
       </div>
       <div class="prod-head-tools">
+        <div class="head-row">
         <div class="seg" id="${id}-seg" role="group" aria-label="${esc(opts.title)}区间">
           ${TREND_PRESETS.map(([d, l]) => `<button data-d="${d}" aria-pressed="${d === days}">${l}</button>`).join('')}
         </div>
-        <span class="daterange" id="${id}-range" hidden>
+        <span class="daterange" id="${id}-range">
           <input type="date" id="${id}-from" aria-label="开始日期">
           <span aria-hidden="true">至</span>
           <input type="date" id="${id}-to" aria-label="结束日期">
           <button class="csvbtn" id="${id}-apply">应用</button>
         </span>
+        </div>
       </div>
     </div>
     <div class="chart" id="${id}-chart"></div>
@@ -2340,7 +2366,7 @@ function mountTrendCard(host, opts) {
     const b = e.target.closest('[data-d]'); if (!b) return;
     days = +b.dataset.d;
     [...$(`${id}-seg`).children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
-    $(`${id}-range`).hidden = days !== 0;
+
     draw();
   });
 
@@ -2362,6 +2388,8 @@ function mountTrendCard(host, opts) {
       $(`${id}-sub`).textContent = `${w.from} 至 ${w.to}｜无数据`;
       return;
     }
+    $(`${id}-range`).classList.toggle('is-idle', days !== 0);
+    from.value = w.from; to.value = w.to;
     $(`${id}-sub`).textContent = `${pts[0].date} 至 ${pts[pts.length - 1].date}（${pts.length} 天）｜${opts.sub}`;
     lineChart($(`${id}-chart`), pts, opts.series, { format: opts.format, label: opts.title, height: 230 });
     $(`${id}-legend`).innerHTML = opts.series.map((s) =>
@@ -2526,7 +2554,7 @@ function mountBreakdown(scope, dim) {
     const b = e.target.closest('[data-i]'); if (!b) return;
     BD_STATE[scope].index = +b.dataset.i;
     [...seg.children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
-    $(scope + '-bd-range').hidden = BD_STATE[scope].index !== DATA.stats.length;
+    $(scope + '-bd-range').classList.toggle('is-idle', BD_STATE[scope].index !== DATA.stats.length);
     renderBreakdown(scope, dim);
   });
 
@@ -2740,7 +2768,7 @@ function prodRollup(from, to, mk) {
     const b = e.target.closest('[data-d]'); if (!b) return;
     pdDays = +b.dataset.d;
     [...$('pd-seg').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
-    $('pd-range').hidden = pdDays !== 0;
+
     drawDaily();
   });
   $('pd-apply').addEventListener('click', () => {
@@ -2764,6 +2792,8 @@ function prodRollup(from, to, mk) {
       items.push({ label: mdShort(D.dates[i]), date: D.dates[i], vals });
     }
 
+    $('pd-range').classList.toggle('is-idle', pdDays !== 0);
+    pdFrom.value = w.from; pdTo.value = w.to;
     $('pd-title').textContent = `分产品每日 ${m.label}`;
     if (items.length === 0) {
       $('pd-sub').textContent = `${w.from} 至 ${w.to}｜无数据`;
@@ -3003,7 +3033,7 @@ const isPaidChannel = (c) => c.startsWith('付费');
     const b = e.target.closest('[data-i]'); if (!b) return;
     tfIndex = +b.dataset.i;
     [...$('traffic-seg').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
-    $('traffic-range').hidden = tfIndex !== TF_CUSTOM;
+
     drawAll();
   });
   $('traffic-apply').addEventListener('click', () => {
@@ -3074,6 +3104,8 @@ const isPaidChannel = (c) => c.startsWith('付费');
     const cur = aggregate(p.range.from, p.range.to);
     const prev = p.compareRange ? aggregate(p.compareRange.from, p.compareRange.to) : null;
 
+    $('traffic-range').classList.toggle('is-idle', tfIndex !== TF_CUSTOM);
+    tfFrom.value = p.range.from; tfTo.value = p.range.to;
     $('tf-sub').textContent =
       `${p.label}｜${p.range.from} 至 ${p.range.to}（${cur.days} 天）｜搜索与付费各算各的占比，两者会重叠，相加超过 100% 是正常的`;
 
@@ -3150,7 +3182,7 @@ const isPaidChannel = (c) => c.startsWith('付费');
     const b = e.target.closest('[data-d]'); if (!b) return;
     suDays = +b.dataset.d;
     [...$('su-seg').children].forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
-    $('su-range').hidden = suDays !== 0;
+
     drawSearchUv();
   });
   $('su-apply').addEventListener('click', () => {
@@ -3171,6 +3203,8 @@ const isPaidChannel = (c) => c.startsWith('付费');
       $('su-foot').textContent = '';
       return;
     }
+    $('su-range').classList.toggle('is-idle', suDays !== 0);
+    suFrom.value = w.from; suTo.value = w.to;
     const a = aggregate(w.from, w.to);
     $('su-sub').textContent =
       `${pts[0].date} 至 ${pts[pts.length - 1].date}（${pts.length} 天）｜搜索 UV ${fmtInt(a.searchUv)}` +
