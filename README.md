@@ -154,6 +154,7 @@ curl -X POST -H "Authorization: Bearer $SYNC_TOKEN" https://你的域名/api/syn
 两种定时方式，任选：
 
 **Vercel Cron** — `vercel.json` 里已配好，每天 UTC 01:30（北京时间 09:30）触发。
+只在部署到 Vercel 时生效；走 GitHub Pages 的话看下面那节，时间是**北京时间 10:30**。
 
 ## 对外发布（GitHub Pages）
 

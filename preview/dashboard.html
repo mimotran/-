@@ -781,7 +781,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     <nav class="navtabs" id="navtabs" aria-label="板块导航"></nav>
     <div class="freshness">
       <span id="asof"></span>
-      <span class="live"><span class="live-dot" aria-hidden="true"></span>每日 09:30 自动同步</span>
+      <!-- 时间写死在这里，改发布计划时记得跟 .github/workflows/pages.yml 的 cron 对上 -->
+      <span class="live"><span class="live-dot" aria-hidden="true"></span>每日 10:30 自动同步</span>
     </div>
   </div>
 </header>
