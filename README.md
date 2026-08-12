@@ -161,7 +161,7 @@ curl -X POST -H "Authorization: Bearer $SYNC_TOKEN" https://你的域名/api/syn
 内联在里面，不依赖任何后端。`npm run build:static` 会把里面的数据换成当前数据源
 导出的结果，产物写到 `dist/index.html`，可以丢给任何静态托管。
 
-仓库里已配好 `.github/workflows/pages.yml`：改动看板会发一次、每天北京时间 09:40
+仓库里已配好 `.github/workflows/pages.yml`：改动看板会发一次、每天北京时间 10:30
 重新拉一次数、也可以手动触发。**开启只需要一步** —— 仓库 Settings → Pages →
 Source 选 **GitHub Actions**。地址是 `https://<用户名>.github.io/<仓库名>/`。
 

@@ -13,8 +13,8 @@ on:
       - 'scripts/**'
       - '.github/workflows/pages.yml'
   schedule:
-    # 北京时间 09:40（UTC 01:40）—— 比飞书那边出数晚十分钟
-    - cron: '40 1 * * *'
+    # 北京时间 10:30（UTC 02:30）
+    - cron: '30 2 * * *'
   workflow_dispatch:
 
 # 同一时间只跑一个部署，后来的把排队中的顶掉
