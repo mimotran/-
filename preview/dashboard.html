@@ -434,10 +434,26 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
   transform-box: fill-box; transform-origin: 50% 100%;
   animation: chartBarIn .4s cubic-bezier(.22, .9, .3, 1) backwards;
 }
-.anim-slice { transform-box: fill-box; transform-origin: center; animation: chartSliceIn .42s cubic-bezier(.22, .9, .3, 1) backwards; }
+/* 基点统一到圆心（viewBox 里的 56,56），入场和悬停用同一套 —— 各用各的基点
+   会在动画交接的那一帧跳一下。绕自己的重心缩放则会往圆心方向也长，看着像变厚。 */
+.anim-slice { animation: chartSliceIn .42s cubic-bezier(.22, .9, .3, 1) backwards; }
 .rank-fill, .g-fill { animation: barGrowIn .5s cubic-bezier(.22, .9, .3, 1) backwards; }
 @media (prefers-reduced-motion: reduce) {
   .anim-bar, .anim-slice, .rank-fill, .g-fill { animation: none; }
+}
+
+/* --- 环形图悬停 ----------------------------------------------------------
+   指到哪一段，哪一段往外长一点、其余压下去。只放大 5%：环本身就是靠角度编码
+   大小的，放太多会让人以为那一段的占比也跟着变了。 */
+svg .ring-seg {
+  transform-box: view-box; transform-origin: 56px 56px;
+  transition: transform .16s ease, opacity .16s ease;
+}
+svg.ring-focus .ring-seg { opacity: .34; }  /* 和柱状图悬停压暗的那档一致 */
+svg.ring-focus .ring-seg.on { opacity: 1; transform: scale(1.05); }
+@media (prefers-reduced-motion: reduce) {
+  svg .ring-seg { transition: none; }
+  svg.ring-focus .ring-seg.on { transform: none; }
 }
 
 /* --- 板块切换 ------------------------------------------------------------
@@ -1847,8 +1863,8 @@ function donut(el, segs, fmt, opts) {
     const p = (rad, ang) => [C + rad * Math.cos(ang), C + rad * Math.sin(ang)];
     const [x0, y0] = p(R, a0), [x1, y1] = p(R, a1), [x2, y2] = p(r, a1), [x3, y3] = p(r, a0);
     const big = a1 - a0 > Math.PI ? 1 : 0;
-    const anim = ANIM.live() ? ` class="anim-slice" style="animation-delay:${i * 70}ms"` : '';
-    return `<path${anim} d="M${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${big} 1 ${x1.toFixed(2)},${y1.toFixed(2)} L${x2.toFixed(2)},${y2.toFixed(2)} A${r},${r} 0 ${big} 0 ${x3.toFixed(2)},${y3.toFixed(2)} Z" fill="${s.color}"><title>${esc(s.name)} ${fmt(s.value)}（${fmtPct(s.value / total, 1)}）</title></path>`;
+    const anim = ANIM.live() ? ` anim-slice" style="animation-delay:${i * 70}ms` : '"';
+    return `<path class="ring-seg${anim}" d="M${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${big} 1 ${x1.toFixed(2)},${y1.toFixed(2)} L${x2.toFixed(2)},${y2.toFixed(2)} A${r},${r} 0 ${big} 0 ${x3.toFixed(2)},${y3.toFixed(2)} Z" fill="${s.color}"><title>${esc(s.name)} ${fmt(s.value)}（${fmtPct(s.value / total, 1)}）</title></path>`;
   }).join('');
   /**
    * 圆心默认放最大一段的占比 —— 环形图最常被问的就是「谁最大、多大」。
@@ -1871,6 +1887,28 @@ function donut(el, segs, fmt, opts) {
     <text x="56" y="${o.center ? 52 : 53}" text-anchor="middle" font-size="${fit(main, r * 1.78, 17).toFixed(1)}" font-weight="600" fill="var(--ink)" style="font-variant-numeric:tabular-nums">${esc(main)}</text>
     <text x="56" y="${o.center ? 66 : 68}" text-anchor="middle" font-size="${fit(sub, r * 1.78, 10).toFixed(1)}" fill="var(--ink-3)">${esc(sub)}</text>
   </svg>`;
+
+  /**
+   * 悬停高亮。事件委托挂在 svg 上，不给每段单独绑 —— 重绘（换指标、换时间）
+   * 会把所有 path 换掉，逐段绑定得跟着重绑。
+   *
+   * 用 mouseover 而不是 mouseenter：事件真正的 target 常常是段里那个 <title>，
+   * closest('.ring-seg') 才能捞回段本身。离开则听 svg 的 mouseleave —— 段与段
+   * 之间有 GAP 缝隙，听每段的 mouseout 会在扫过缝隙时闪一下。
+   */
+  const svg = el.querySelector('svg');
+  const clear = () => {
+    svg.classList.remove('ring-focus');
+    svg.querySelectorAll('.ring-seg.on').forEach((x) => x.classList.remove('on'));
+  };
+  svg.addEventListener('mouseover', (e) => {
+    const seg = e.target.closest('.ring-seg');
+    if (!seg || seg.classList.contains('on')) return;
+    svg.querySelectorAll('.ring-seg.on').forEach((x) => x.classList.remove('on'));
+    svg.classList.add('ring-focus');
+    seg.classList.add('on');
+  });
+  svg.addEventListener('mouseleave', clear);
 }
 
 // --- 目标达成 --------------------------------------------------------------
