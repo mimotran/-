@@ -514,6 +514,21 @@ svg.col-focus [data-col]:not(.on) { opacity: .34; }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
 .legend-swatch { width: 9px; height: 9px; border-radius: 2px; }
 
+/**
+ * 可点击的图例：点一个＝只看这一个，再点一下＝看回全部。
+ * 只有产品那两张图用得上 —— 三条产品线是**可以单独成立**的对象；
+ * 别处图例里的「7 日移动平均」「其他来源」不是同一层级的东西，单拎出来没有意义。
+ */
+.legend-item.pick {
+  appearance: none; border: 0; background: none; font: inherit; font-size: 12px;
+  color: var(--ink-2); cursor: pointer; padding: 3px 8px; margin: -3px -2px;
+  border-radius: 7px; transition: background .15s, opacity .15s;
+}
+.legend-item.pick:hover { background: var(--line-soft); color: var(--ink); }
+/* 选中的那个加深，其余压下去 —— 和柱状图悬停聚焦是同一套语言 */
+.legend-item.pick[aria-pressed="true"] { color: var(--ink); font-weight: var(--w-md); background: var(--line-soft); }
+.legend.has-solo .legend-item.pick:not([aria-pressed="true"]) { opacity: .38; }
+
 /* --- 排行 --------------------------------------------------------------- */
 .rank { display: flex; flex-direction: column; gap: 9px; }
 /* 名称固定 320px 左对齐，条形吃掉剩下的全部宽度直到数值列。
@@ -3359,6 +3374,35 @@ function prodRollup(from, to, mk) {
   let mi = 0;
   const M_ = () => METRICS[mi];
 
+  /**
+   * 单看某条产品线。null = 全都看。
+   *
+   * 堆叠图看的是「构成」，但构成只回答「谁占得多」；想看某条线自己**涨没涨**，
+   * 得把它从堆叠里拆出来单独画 —— 叠在别人上面时，它的起点每天都在动，
+   * 形状根本读不出来。两张图共用一个状态：在每日图上点了 Note Pro，
+   * 月度图跟着一起切，省得两张图各说各的。
+   */
+  let solo = null;
+  const shown = () => (solo ? SERIES.filter((s) => s.line === solo) : SERIES);
+
+  /** 图例即筛选器：点一个只看一个，再点一下看回全部 */
+  function paintLegend(id) {
+    const el = $(id);
+    el.classList.toggle('has-solo', solo !== null);
+    el.innerHTML = SERIES.map((s) =>
+      `<button class="legend-item pick" data-line="${s.line}" aria-pressed="${solo === s.line}">
+         <span class="legend-swatch" style="background:${s.color}"></span>${esc(s.name)}
+       </button>`).join('');
+  }
+
+  for (const id of ['pd-legend', 'pm-legend']) {
+    $(id).addEventListener('click', (e) => {
+      const b = e.target.closest('[data-line]'); if (!b) return;
+      solo = solo === b.dataset.line ? null : b.dataset.line;
+      drawDaily(); drawMonth();
+    });
+  }
+
   const YEAR = DATA.latestDate.slice(0, 4);
   const YEAR_START = `${YEAR}-01-01`;
   const lastOfMonth = (ym) => {
@@ -3418,30 +3462,33 @@ function prodRollup(from, to, mk) {
       $('pd-legend').innerHTML = '';
       return;
     }
-    const sum = items.reduce((s, it) => s + SERIES.reduce((t, sr) => t + it.vals[sr.line], 0), 0);
+    const view = shown();
+    const sum = items.reduce((s, it) => s + view.reduce((t, sr) => t + it.vals[sr.line], 0), 0);
     $('pd-sub').textContent =
-      `堆叠柱 = 当日各产品构成｜${items[0].date} 至 ${items[items.length - 1].date}（${items.length} 天）` +
+      (solo ? `只看 ${view[0].name}` : '堆叠柱 = 当日各产品构成') +
+      `｜${items[0].date} 至 ${items[items.length - 1].date}（${items.length} 天）` +
       `｜合计 ${m.fmt(sum)}｜口径不含会员与配件`;
 
-    stackedChart($('pd-chart'), items, SERIES, {
+    stackedChart($('pd-chart'), items, view, {
       format: m.format, height: 280, label: `分产品每日${m.label}`,
       tip: (i) => {
         const it = items[i];
-        const tot = SERIES.reduce((s, sr) => s + it.vals[sr.line], 0);
+        // 占比的分母始终是三条线的合计，单看一条时也一样 —— 否则「占 100%」是句废话
+        const all = SERIES.reduce((s, sr) => s + it.vals[sr.line], 0);
+        const tot = view.reduce((s, sr) => s + it.vals[sr.line], 0);
         const prev = i > 0 ? items[i - 1] : null;
         return `<div class="tip-date">${tipDate(it.date)}</div>` +
-          SERIES.map((sr) => tipRow(sr.color, sr.name, it.vals[sr.line], m.format, {
-            extra: `<span class="tip-exact">· ${fmtPct(div(it.vals[sr.line], tot), 1)}</span>` +
+          view.map((sr) => tipRow(sr.color, sr.name, it.vals[sr.line], m.format, {
+            extra: `<span class="tip-exact">· ${fmtPct(div(it.vals[sr.line], all), 1)}</span>` +
               tipMom(it.vals[sr.line], prev ? prev.vals[sr.line] : undefined, m.format),
           })).join('') +
-          tipRow('var(--ink)', '合计', tot, m.format, {
+          (solo ? '' : tipRow('var(--ink)', '合计', tot, m.format, {
             sep: true,
-            extra: tipMom(tot, prev ? SERIES.reduce((s2, sr) => s2 + prev.vals[sr.line], 0) : undefined, m.format),
-          });
+            extra: tipMom(tot, prev ? view.reduce((s2, sr) => s2 + prev.vals[sr.line], 0) : undefined, m.format),
+          }));
       },
     });
-    $('pd-legend').innerHTML = SERIES.map((s) =>
-      `<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${esc(s.name)}</span>`).join('');
+    paintLegend('pd-legend');
     if (pdBrush) pdBrush.paint();
   }
 
@@ -3482,42 +3529,45 @@ function prodRollup(from, to, mk) {
 
   function drawMonth() {
     const m = M_();
+    const view = shown();
     const items = monthItems(m.key);
-    const totals = items.map((it) => SERIES.reduce((s, sr) => s + it.vals[sr.line], 0));
+    const totals = items.map((it) => view.reduce((s, sr) => s + it.vals[sr.line], 0));
     const part = items.find((it) => it.partial);
 
     $('pm-title').textContent = `月度 ${m.label} 对比`;
     $('pm-sub').textContent =
+      (solo ? `只看 ${view[0].name}｜` : '') +
       (part ? `${+part.ym.slice(5, 7)}月为 1–${+part.last.slice(8, 10)} 日累计（MTD），不可与完整月直接比较｜` : '') +
-      `${YEAR} 年${pmPercent ? '｜占比模式：柱高一律 100%，只看结构' : ''}`;
+      `${YEAR} 年${pmPercent && !solo ? '｜占比模式：柱高一律 100%，只看结构' : ''}`;
 
-    stackedChart($('pm-chart'), items, SERIES, {
-      format: m.format, percent: pmPercent, height: 300, barMax: 54, label: `月度${m.label}对比`,
+    stackedChart($('pm-chart'), items, view, {
+      // 只剩一条线时占比模式必然是一排 100% 的柱子，没有信息量，强制走绝对值
+      format: m.format, percent: pmPercent && !solo, height: 300, barMax: 54, label: `月度${m.label}对比`,
       tip: (i) => {
         const it = items[i], tot = totals[i], prev = i > 0 ? totals[i - 1] : null;
         return `<div class="tip-date">${+it.ym.slice(5, 7)} 月${it.partial ? `（1–${+it.last.slice(8, 10)} 日 MTD）` : ''}</div>` +
-          SERIES.map((sr) => {
+          view.map((sr) => {
             const v = it.vals[sr.line];
             const pv = i > 0 ? items[i - 1].vals[sr.line] : null;
             const mom = pv !== null && pv > 0 ? (v - pv) / pv : null;
-            const col = mom === null ? 'var(--ink-3)' : mom >= 0 ? 'var(--gain)' : 'var(--loss)';
-            void col;
+            // 占比分母始终是三条线的合计，和每日图一致
+            const all = SERIES.reduce((s2, sr2) => s2 + it.vals[sr2.line], 0);
             return tipRow(sr.color, sr.name, v, m.format, {
-              extra: `<span class="tip-exact">· ${fmtPct(div(v, tot), 1)}</span>` +
+              extra: `<span class="tip-exact">· ${fmtPct(div(v, all), 1)}</span>` +
                 (mom === null ? '' : `<span class="tip-mom">· 环比 ${mom >= 0 ? '+' : ''}${(mom * 100).toFixed(1)}%</span>`),
             });
           }).join('') +
-          tipRow('var(--ink)', '合计', tot, m.format, { sep: true, extra: tipMom(tot, prev, m.format) }) +
+          (solo ? '' : tipRow('var(--ink)', '合计', tot, m.format, { sep: true, extra: tipMom(tot, prev, m.format) })) +
           (it.partial ? `<div class="tip-row" style="color:var(--ink-3)">未完整月份，环比仅供参考</div>` : '');
       },
     });
-    $('pm-legend').innerHTML = SERIES.map((s) =>
-      `<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${esc(s.name)}</span>`).join('');
+    paintLegend('pm-legend');
 
     const best = items.reduce((a, b, i) => (totals[i] > totals[a.i] ? { i, it: b } : a), { i: 0, it: items[0] });
     $('pm-foot').textContent = items.length === 0 ? '' :
-      `${YEAR} 年至今 ${items.length} 个月，最高 ${+best.it.ym.slice(5, 7)} 月 ${m.fmt(totals[best.i])}` +
-      `｜斜纹柱表示该月尚未结束`;
+      `${YEAR} 年至今 ${items.length} 个月，${solo ? view[0].name + ' ' : ''}最高 ${+best.it.ym.slice(5, 7)} 月 ${m.fmt(totals[best.i])}` +
+      `｜斜纹柱表示该月尚未结束` +
+      (solo ? '｜点图例上已选中的那项可看回全部' : '｜点图例里的产品可单独看某一条');
   }
 
   // --- 三：年累计占比 -------------------------------------------------------
