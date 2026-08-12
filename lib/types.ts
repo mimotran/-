@@ -100,6 +100,8 @@ export interface ProductMetric {
   gmv: number;
   /** 销量（件） */
   quantity: number;
+  /** 支付买家数。转化率 = 它 ÷ uv */
+  buyers: number;
   uv: number;
   refund: number;
 }

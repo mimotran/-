@@ -195,6 +195,8 @@ export function buildMockSnapshot(): DashboardSnapshot {
         (0.85 + rand() * 0.3);
       const skuRefund = Math.round(skuGmv * refundRate);
       const skuUv = Math.round((skuGmv / 1300) * (28 + rand() * 22));
+      // 一个买家平均买 1.05 件左右，件数略多于人数
+      const skuBuyers = Math.max(1, Math.round(quantity / 1.05));
 
       products.push({
         date,
@@ -203,6 +205,7 @@ export function buildMockSnapshot(): DashboardSnapshot {
         title: sku.title,
         gmv: skuGmv,
         quantity,
+        buyers: skuBuyers,
         uv: skuUv,
         refund: skuRefund,
       });

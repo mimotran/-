@@ -326,6 +326,7 @@ export async function readWorkbook(
   const pTitle = col(prodGrid, '商品名称');
   const pUv = col(prodGrid, '商品访客数');
   const pQty = col(prodGrid, '支付件数');
+  const pBuyers = col(prodGrid, '支付买家数');
   const pGmv = col(prodGrid, '支付金额');
   const pRefund = col(prodGrid, '成功退款金额');
 
@@ -353,6 +354,7 @@ export async function readWorkbook(
       title,
       gmv,
       quantity: num(row[pQty]),
+      buyers: pBuyers >= 0 ? num(row[pBuyers]) : 0,
       uv,
       refund: num(row[pRefund]),
     });

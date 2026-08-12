@@ -105,6 +105,7 @@ export const AD_ALIASES: AliasMap = {
 };
 
 export const PRODUCT_ALIASES: AliasMap = {
+  buyers: ['支付买家数', '支付人数', 'buyers'],
   date: ['日期', '时间', '统计日期', 'date'],
   itemId: ['商品ID', '宝贝ID', '链接ID', '商品 ID', 'itemId'],
   title: ['商品名称', '宝贝标题', '商品标题', '链接名称', 'title'],

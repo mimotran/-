@@ -238,6 +238,7 @@ export function parseProducts(
       title: title || itemId,
       line: resolveLine(toText(pick(row, PRODUCT_ALIASES.line)), title),
       gmv: toNumber(pick(row, PRODUCT_ALIASES.gmv)),
+      buyers: toNumber(pick(row, PRODUCT_ALIASES.buyers)),
       quantity: toNumber(pick(row, PRODUCT_ALIASES.quantity)),
       uv: toNumber(pick(row, PRODUCT_ALIASES.uv)),
       refund: toNumber(pick(row, PRODUCT_ALIASES.refund)),

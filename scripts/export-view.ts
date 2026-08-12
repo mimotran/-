@@ -88,18 +88,19 @@ async function main() {
    */
   function productColumns() {
     const lines = [...new Set(snapshot.products.map((r) => r.line))];
+    const keys = ['gmv', 'quantity', 'buyers', 'uv', 'refund'] as const;
     return lines.map((line) => {
-      const gmv = new Array<number>(daily.dates.length).fill(0);
-      const quantity = new Array<number>(daily.dates.length).fill(0);
+      const cols = Object.fromEntries(
+        keys.map((k) => [k, new Array<number>(daily.dates.length).fill(0)]),
+      ) as Record<(typeof keys)[number], number[]>;
       for (const r of snapshot.products) {
         if (r.line !== line) continue;
         const i = dateIndex.get(r.date);
         if (i === undefined) continue;
         // 先累加原值再取整：逐条四舍五入会把同一天多个 SKU 的误差叠起来
-        gmv[i] += r.gmv;
-        quantity[i] += r.quantity;
+        for (const k of keys) cols[k][i] += r[k];
       }
-      return { line, gmv: gmv.map((v) => Math.round(v)), quantity: quantity.map((v) => Math.round(v)) };
+      return { line, ...Object.fromEntries(keys.map((k) => [k, cols[k].map((v) => Math.round(v))])) };
     });
   }
 

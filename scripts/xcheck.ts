@@ -120,6 +120,38 @@ async function main() {
     })),
   }));
 
+  /**
+   * 分产品明细表：预览页从导出的列数组按区间求和再算比率，这里直接对
+   * snapshot.products 逐行加。比率的分子分母各自加完再除，两边必须一致 ——
+   * 页面上但凡把三行比率平均一下当汇总，这里就会报出来。
+   */
+  const productDetail = prodRanges.map((r) => {
+    const lines = ['pro', 'pins', 'note'];
+    const rows = lines.map((line) => {
+      const rs = snap.products.filter((x) => x.line === line && x.date >= r.from && x.date <= r.to);
+      const sum = (k: 'gmv' | 'quantity' | 'buyers' | 'uv' | 'refund') => rs.reduce((a, x) => a + x[k], 0);
+      return { line, gmv: sum('gmv'), quantity: sum('quantity'), buyers: sum('buyers'), uv: sum('uv'), refund: sum('refund') };
+    });
+    const tot = (k: 'gmv' | 'quantity' | 'buyers' | 'uv' | 'refund') => rows.reduce((a, x) => a + x[k], 0);
+    const totalQty = tot('quantity');
+    const shape = (x: { line: string; gmv: number; quantity: number; buyers: number; uv: number; refund: number }) => ({
+      line: x.line,
+      gmv: Math.round(x.gmv), quantity: Math.round(x.quantity),
+      buyers: Math.round(x.buyers), uv: Math.round(x.uv),
+      cvr: +(x.uv === 0 ? 0 : x.buyers / x.uv).toFixed(8),
+      price: +(x.quantity === 0 ? 0 : x.gmv / x.quantity).toFixed(6),
+      refundRate: +(x.gmv === 0 ? 0 : x.refund / x.gmv).toFixed(8),
+      qtyShare: +(totalQty === 0 ? 0 : x.quantity / totalQty).toFixed(8),
+    });
+    return {
+      range: `${r.from}~${r.to}`,
+      rows: [
+        ...rows.map(shape),
+        shape({ line: '汇总', gmv: tot('gmv'), quantity: totalQty, buyers: tot('buyers'), uv: tot('uv'), refund: tot('refund') }),
+      ],
+    };
+  });
+
   /** 流量来源拆解：预览页从 trafficDaily 重新求和，要和 trafficChannelBreakdown 对上 */
   const tcRanges = [
     { from: '2026-08-09', to: '2026-08-09' },
@@ -196,6 +228,6 @@ async function main() {
     }),
   );
 
-  console.log(JSON.stringify({ aggregates: out, goals, trends, breakdowns, products, trafficChannels, searchTerms, adTotals }));
+  console.log(JSON.stringify({ aggregates: out, goals, trends, breakdowns, products, trafficChannels, searchTerms, adTotals, productDetail }));
 }
 main();
