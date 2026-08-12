@@ -34,15 +34,31 @@ async function main() {
   if (end < 0) throw new Error('找不到 DATA 的结尾，页面结构变了');
 
   const { payload, source, latestDate } = await buildPayload();
-  const next = html.slice(0, from) + JSON.stringify(payload) + html.slice(end + 1);
+
+  /**
+   * 取不到真实数据时**不换**，保留 preview/dashboard.html 里已经烤好的那份。
+   *
+   * 演示数据是照着真实量级编的（客单价 ~1,300、退款率 ~29%），摆在一个对外的
+   * 网址上根本看不出是假的 —— 页面顶部那条黄色提示一滚就没了。「旧但真」永远
+   * 好过「新但编」，所以这里宁可发一份停在上次提交时点的数据。
+   *
+   * CI 上没有 data/snapshots/latest.json（它在 .gitignore 里），所以只要没配
+   * FEISHU_* secrets，getSnapshot() 必然回落到 mock —— 这条分支不是防御性代码，
+   * 是默认路径。
+   */
+  const useFresh = source !== 'mock';
+  const next = useFresh ? html.slice(0, from) + JSON.stringify(payload) + html.slice(end + 1) : html;
 
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, next, 'utf8');
 
   const kb = Math.round(next.length / 1024);
-  console.log(`✓ 生成 ${out}（${kb} KB，来源 ${source}，截至 ${latestDate}）`);
-  if (source === 'mock') {
-    console.log('⚠ 当前是演示数据。要出真实数据，请配好 FEISHU_* 环境变量再跑一次。');
+  if (useFresh) {
+    console.log(`✓ 生成 ${out}（${kb} KB，来源 ${source}，截至 ${latestDate}）`);
+  } else {
+    console.log(`✓ 生成 ${out}（${kb} KB，沿用 preview/dashboard.html 里已有的数据）`);
+    console.log('⚠ 没有可用的真实数据源，已跳过数据替换 —— 不会把演示数据发到线上。');
+    console.log('  要让线上数据每天自动更新，请配好 FEISHU_* 环境变量 / Actions secrets。');
   }
 }
 
