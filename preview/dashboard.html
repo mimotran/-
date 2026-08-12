@@ -266,10 +266,6 @@ b, strong { font-weight: var(--w-md); }
   letter-spacing: .12em; display: block; margin-bottom: 2px;
 }
 .section-title { font-size: 18px; font-weight: var(--w-md); margin: 0; letter-spacing: -.015em; }
-/* 说明独占一行、占满宽度。
-   原来它和右侧的周期选择器挤在同一行的左半边，还带 max-width:66ch，
-   一句话被折成三四行，比句子本身还占地方。 */
-.section-desc { font-size: 12.5px; color: var(--ink-2); margin: 0 0 14px; }
 
 /* --- 分段控件 ------------------------------------------------------------ */
 .seg {
@@ -803,7 +799,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
       </div>
       <button class="csvbtn" id="goal-csv">↓ 下载 CSV</button>
     </div>
-    <p class="section-desc"><b>达成率 = 实际 ÷ 目标</b>；费比、退款率这类率型再给一列<b>与目标差</b>（百分点）—— 「超了 2.2 个点」比「达成 108.7%」好读。目标取自飞书表「1.目标达成」的渠道目标列，表里给到几项就只做几项。</p>
 
     <div class="card timebar">
       <span class="timebar-label">时间</span>
@@ -831,7 +826,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <h2 class="section-title">店铺整体</h2>
       </div>
     </div>
-    <p class="section-desc">核心 8 项直接展示，其余收在展开里。所有比率都是区间内<b>先汇总再相除</b>，不是每日比率的平均。</p>
     <div class="card timebar" id="store-timebar">
       <span class="timebar-label">时间</span>
       <div class="seg" id="store-seg2" role="group" aria-label="统计周期"></div>
@@ -886,7 +880,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <h2 class="section-title">站内投放</h2>
       </div>
     </div>
-    <p class="section-desc">摘要给站内自身的消耗、成交与 ROI；下面的对照行给总盘和站外，用来判断预算该往哪边挪。</p>
     <div class="alertbar" id="insite-alert" hidden></div>
     <div class="card glance-inline" id="insite-glance"></div>
     <div class="adsum" id="insite-sum"></div>
@@ -943,7 +936,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <h2 class="section-title">站外投放</h2>
       </div>
     </div>
-    <p class="section-desc">站外以拉新为主，ROI 天然低于站内，但带来的是新客 —— 不要拿两者的 ROI 直接比高低。</p>
     <div class="alertbar" id="offsite-alert" hidden></div>
     <div class="card glance-inline" id="offsite-glance"></div>
     <div class="adsum" id="offsite-sum"></div>
@@ -1001,7 +993,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
       </div>
       <div class="seg" id="product-metric-seg" role="group" aria-label="产品口径"></div>
     </div>
-    <p class="section-desc" id="product-desc"></p>
     <div class="stack">
       <!-- 一：分产品每日堆叠 -->
       <div class="card card-pad">
@@ -1097,7 +1088,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         </div>
       </div>
     </div>
-    <p class="section-desc">总览 → 搜索 UV → 流量来源。来源拆到「搜索 / 推荐 / 四路付费」，这是数据源能给到的最细粒度。</p>
     <div class="stack">
       <!-- 一：总览 -->
       <div class="card card-pad">
@@ -1190,6 +1180,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     <b>口径</b>　昨日比前一天；本月 MTD 比<b>上月同期</b>（1 号到同一个日号），不是整个上月；全年累计比去年同期。没有可比数据时显示「无数据」，不显示 0%。<br>
     <b>比率</b>　全部先汇总再相除。先算每日退款率再取平均是错的 —— 那等于给成交 3 万和 300 万的日子同样的权重。<br>
     <b>涨跌色</b>　颜色表达<b>好坏</b>，箭头表达<b>方向</b>：GMV ▲ 绿、退款率 ▲ 红、投放费 ▲ 红。「▲ 红」读作「涨了，而且这是坏事」。<br>
+    <b>站内 vs 站外</b>　站外以拉新为主，ROI 天然低于站内，但带来的是新客 —— 两者的 ROI 不能直接比高低。<br>
     <b>拆解口径</b>　投放 / 产品 / 流量的明细按本月 MTD 统计 —— 一天的样本太小，排出来的触点榜每天都在抖。<br>
     <b>图表</b>　绝不用双轴：量纲不同的指标不塞进一张图，两条轴的对齐方式是任意的，会凭空造出并不存在的相关性。
   </div>
@@ -3579,8 +3570,6 @@ function prodRollup(from, to, mk) {
   });
 
   function drawAll() {
-    $('product-desc').textContent =
-      `每日 → 月度 → 年累计，三个尺度看 ${M_().label} 在主机三线之间怎么分；会员与配件单列在最下方。`;
     drawDaily(); drawMonth(); drawYear();
   }
   drawAll();
