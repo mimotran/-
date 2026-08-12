@@ -176,9 +176,6 @@ Actions secrets（Settings → Secrets and variables → Actions）：
 > Deployment Protection），或者只把 `dist/index.html` 发给指定的人。
 在 Vercel 项目里配好 `SYNC_TOKEN` 环境变量即可。
 
-**GitHub Actions** — `.github/workflows/daily-sync.yml`，同样的时间。
-在仓库 Settings → Secrets 里加 `DASHBOARD_URL` 和 `SYNC_TOKEN`。失败会退避重试三次。
-
 同步结果落盘成 JSON 快照，飞书临时不可用时页面还能展示上一次的数据，
 并在顶部标明「当前展示 X 月 X 日的存量数据」。
 Vercel 等只读文件系统上把 `SNAPSHOT_DIR` 指到 `/tmp`。
