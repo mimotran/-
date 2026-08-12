@@ -190,9 +190,10 @@ b, strong { font-weight: var(--w-md); }
 }
 .brand-name { font-size: 14px; font-weight: var(--w-md); letter-spacing: -.01em; white-space: nowrap; }
 
-.navtabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.navtabs { position: relative; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
 .navtabs::-webkit-scrollbar { display: none; }
 .navtab {
+  position: relative;
   appearance: none; background: none; border: 0; cursor: pointer;
   font: inherit; font-size: 13px; color: var(--ink-2);
   padding: 6px 10px; border-radius: 8px; white-space: nowrap;
@@ -202,11 +203,19 @@ b, strong { font-weight: var(--w-md); }
 .navtab[aria-selected="true"] {
   color: var(--ink); font-weight: var(--w-md); background: none;
 }
-.navtab[aria-selected="true"]::after {
-  content: ""; display: block; height: 2px; border-radius: 2px;
-  background: var(--ink); margin: 5px -2px -8px;
+/**
+ * 选中下划线是**一条**滑动的线，不是每个标签各画一条。
+ * 各画一条的话切换时是「这边灭、那边亮」，读者的眼睛得自己把两处连起来；
+ * 一条线滑过去，方向和距离都摆在那儿，不用想。
+ */
+.nav-ink {
+  position: absolute; bottom: 0; left: 0; width: 0; height: 2px;
+  background: var(--ink); border-radius: 2px; pointer-events: none;
+  opacity: 0; transition: transform .3s cubic-bezier(.22, .9, .3, 1), width .3s cubic-bezier(.22, .9, .3, 1), opacity .2s;
 }
-.navtab { position: relative; }
+/* 首次定位不该从左边滑过来：那一下是「初始化」，不是「切换」 */
+.nav-ink.ready { opacity: 1; }
+.nav-ink.jump { transition: none; }
 
 .freshness {
   margin-left: auto; display: flex; align-items: center; gap: 12px;
@@ -442,6 +451,17 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
 .rank-fill, .g-fill { animation: barGrowIn .5s cubic-bezier(.22, .9, .3, 1) backwards; }
 @media (prefers-reduced-motion: reduce) {
   .anim-bar, .anim-slice, .rank-fill, .g-fill { animation: none; }
+}
+
+/* --- 板块切换 ------------------------------------------------------------
+   板块靠 display 显隐，元素从 none 变回来时 CSS 动画会自己重放 —— 正好拿来当
+   切换动效，不用在 JS 里加类再删类。位移只有 6px：这是「换了一屏」的提示，
+   不是「飞进来一块内容」，幅度一大反而会让人等它停。 */
+@keyframes sectionIn { from { opacity: 0; transform: translateY(6px); } }
+.section:not([hidden]) { animation: sectionIn .26s cubic-bezier(.22, .9, .3, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .section:not([hidden]) { animation: none; }
+  .nav-ink { transition: none; }
 }
 
 /* --- 悬停聚焦 ------------------------------------------------------------
@@ -1739,7 +1759,33 @@ const nav = $('navtabs');
 nav.setAttribute('role', 'tablist');
 nav.innerHTML = SECTIONS.map(([id, name], i) =>
   `<button class="navtab" role="tab" id="tab-${id}" aria-controls="${id}"
-     aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-target="${id}">${name}</button>`).join('');
+     aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-target="${id}">${name}</button>`).join('')
+  + '<span class="nav-ink" aria-hidden="true"></span>';
+
+const navInk = nav.querySelector('.nav-ink');
+
+/**
+ * 把下划线挪到选中的标签底下。
+ *
+ * 用 transform 而不是 left：left 会触发布局，切换时整条标签栏跟着重排；
+ * transform 只在合成层里动，60fps 稳得住。
+ * jump=true 时不带过渡 —— 首次定位、窗口缩放这类不是「切换」，
+ * 让它从上一个位置滑过去只会让人以为自己点了什么。
+ */
+function moveNavInk(jump = false) {
+  const on = nav.querySelector('.navtab[aria-selected="true"]');
+  if (!on) return;
+  if (jump) navInk.classList.add('jump');
+  navInk.style.width = `${on.offsetWidth}px`;
+  navInk.style.transform = `translateX(${on.offsetLeft}px)`;
+  navInk.classList.add('ready');
+  if (jump) {
+    // 强制回流后再放开过渡，否则「取消过渡」和「重新打开」会被合并成一次
+    void navInk.offsetWidth;
+    navInk.classList.remove('jump');
+  }
+}
+addEventListener('resize', () => moveNavInk(true));
 
 SECTIONS.forEach(([id], i) => {
   const sec = document.getElementById(id);
@@ -1758,6 +1804,7 @@ function showSection(id, { focusTab = false, scroll = true } = {}) {
     b.tabIndex = on ? 0 : -1;
     if (on && focusTab) b.focus();
   });
+  moveNavInk();
   /**
    * 板块靠 hidden 切换，重新显示时 CSS 动画会自己重放，但线是一次性过渡，
    * 放完就停在那儿了 —— 不补一次的话，同一张图里柱子在长、线是死的。
@@ -1789,6 +1836,10 @@ nav.addEventListener('keydown', (e) => {
 // 支持带 #sec-xxx 的链接直接打开对应板块
 const initial = location.hash.replace('#', '');
 if (initial) showSection(initial, { scroll: false });
+
+// 选中态是 500 字重，字体没加载完时标签宽度会变，等它就位再校一次下划线
+moveNavInk(true);
+document.fonts?.ready.then(() => moveNavInk(true));
 
 const wk = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(DATA.latestDate + 'T00:00:00Z').getUTCDay()];
 $('asof').textContent = `数据截至 ${DATA.latestDate}（${wk}）`;
