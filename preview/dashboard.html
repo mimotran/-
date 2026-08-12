@@ -455,6 +455,10 @@ svg.ring-focus .ring-seg.on { opacity: 1; transform: scale(1.05); }
   svg .ring-seg { transition: none; }
   svg.ring-focus .ring-seg.on { transform: none; }
 }
+/* 图例行和环上那一段是同一个东西：指哪边，两边一起亮 */
+.prod-ring-legend .prod-ring-row { transition: opacity .16s ease; }
+.prod-ring-legend.ring-focus .prod-ring-row { opacity: .42; }
+.prod-ring-legend.ring-focus .prod-ring-row.on { opacity: 1; }
 
 /* --- 板块切换 ------------------------------------------------------------
    只淡入，不做位移。板块本来就靠 display 显隐，元素从 none 变回来时 CSS 动画
@@ -1897,18 +1901,52 @@ function donut(el, segs, fmt, opts) {
    * 之间有 GAP 缝隙，听每段的 mouseout 会在扫过缝隙时闪一下。
    */
   const svg = el.querySelector('svg');
+  const segEls = [...svg.querySelectorAll('.ring-seg')];
+  /** 联动的外部容器（图例），它的直接子元素按顺序和切片一一对应 */
+  const link = o.link || null;
+  const rowsOf = () => (link ? [...link.children] : []);
+
   const clear = () => {
     svg.classList.remove('ring-focus');
-    svg.querySelectorAll('.ring-seg.on').forEach((x) => x.classList.remove('on'));
+    segEls.forEach((x) => x.classList.remove('on'));
+    if (link) { link.classList.remove('ring-focus'); rowsOf().forEach((x) => x.classList.remove('on')); }
   };
+  /** i < 0 表示取消聚焦 */
+  const focus = (i) => {
+    if (i < 0 || !segEls[i]) { clear(); return; }
+    segEls.forEach((x, k) => x.classList.toggle('on', k === i));
+    svg.classList.add('ring-focus');
+    if (link) { link.classList.add('ring-focus'); rowsOf().forEach((x, k) => x.classList.toggle('on', k === i)); }
+  };
+
   svg.addEventListener('mouseover', (e) => {
     const seg = e.target.closest('.ring-seg');
-    if (!seg || seg.classList.contains('on')) return;
-    svg.querySelectorAll('.ring-seg.on').forEach((x) => x.classList.remove('on'));
-    svg.classList.add('ring-focus');
-    seg.classList.add('on');
+    if (seg) focus(segEls.indexOf(seg));
   });
   svg.addEventListener('mouseleave', clear);
+
+  /**
+   * 图例也算「指到这个颜色」。
+   *
+   * 图例行里那块色块和环上的那一段是同一个东西，鼠标扫过图例时环上没反应，
+   * 就得自己在两边找对应关系。反向也一样：指着环，图例里对应那行跟着亮。
+   *
+   * 只连**画出来的**切片：值为 0 的产品不占角度、没有 path，但图例照样列它，
+   * 所以按 segEls 的下标对，不是按图例行数。
+   */
+  if (link) {
+    // 图例是常驻元素，每次重绘都绑一次会越积越多；只绑一次，转发给最新一版的 focus
+    link.__ringFocus = focus;
+    link.__ringClear = clear;
+    if (!link.__ringBound) {
+      link.__ringBound = true;
+      link.addEventListener('mouseover', (e) => {
+        const i = [...link.children].findIndex((x) => x.contains(e.target));
+        if (i >= 0) link.__ringFocus(i);
+      });
+      link.addEventListener('mouseleave', () => link.__ringClear());
+    }
+  }
 }
 
 // --- 目标达成 --------------------------------------------------------------
@@ -2728,7 +2766,8 @@ function barChart(el, pts, pick, opts) {
       { extra: tipMom(vals[i], i > 0 ? vals[i - 1] : undefined, o.format) })];
     if (ma) rows.push(tipRow('var(--ink)', `${maWin} 日均值`, ma[i], o.format));
     return rows.join('');
-  }, W, M, pw);
+    // 柱子是一格一根、柱心在格心，所以命中判定和色带都得按格子来，不能按折线那套
+  }, W, M, pw, { cx, hit: (x) => Math.floor((x - M.l) / (pw / pts.length)) });
   playIn(el);
 }
 
@@ -2781,19 +2820,30 @@ function lineChart(el, pts, series, opts) {
   playIn(el);
 }
 
-/** 竖直准星找 X，一个 tooltip 列出该 X 上所有系列 —— 读者瞄的是日期，不是那条 2px 的线 */
-function hookTip(el, pts, rows, W, M, pw) {
+/**
+ * 竖直准星找 X，一个 tooltip 列出该 X 上所有系列 —— 读者瞄的是日期，不是那条 2px 的线。
+ *
+ * geo 是图自己的横向排布，必须由调用方给，不能在这里猜：
+ *   · 折线（默认）：首尾点压在绘图区左右边界上，间距 pw/(n-1)
+ *   · 纯柱状：每根柱子各占一格，柱心在格子中央，间距 pw/n
+ * 两套排布相差半格，用错了色带和柱子就会错开 —— 中间对得上、越往两头偏得越多。
+ */
+function hookTip(el, pts, rows, W, M, pw, geo) {
+  const n = pts.length, slot = pw / n;
+  const g = geo || {};
+  const cx = g.cx || ((i) => M.l + (n === 1 ? pw / 2 : (i * pw) / (n - 1)));
+  const hit = g.hit || ((x) => Math.round(((x - M.l) / pw) * (n - 1)));
   const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), cur = el.querySelector('.cursor');
   const move = (ev) => {
     const r = svg.getBoundingClientRect();
     const x = ((ev.clientX ?? ev.touches?.[0]?.clientX) - r.left) / r.width * W;
-    let i = Math.round(((x - M.l) / pw) * (pts.length - 1));
-    i = Math.max(0, Math.min(pts.length - 1, i));
-    const px = M.l + (pts.length === 1 ? pw / 2 : (i * pw) / (pts.length - 1));
+    let i = hit(x);
+    i = Math.max(0, Math.min(n - 1, i));
+    const px = cx(i);
     // 折线图有准星线、柱状图有色带，两者只会存在一个
     if (cur) { cur.setAttribute('x1', px); cur.setAttribute('x2', px); cur.setAttribute('opacity', '.28'); }
     focusCol(svg, i);
-    moveBand(svg, px - (pw / pts.length) / 2, pw / pts.length);
+    moveBand(svg, px - slot / 2, slot);
     tip.innerHTML = `<div class="tip-date">${tipDate(pts[i].date)}</div>${rows(i)}`;
     tip.style.opacity = '1';
     const left = (px / W) * r.width;
@@ -3623,7 +3673,7 @@ function prodRollup(from, to, mk) {
 
     donut($('py-donut'), rows.map((r) => ({ name: r.name, value: r.value, color: r.color })), m.fmt, {
       center: m.format === 'currency' ? compact(total).join('') + '元' : fmtInt(total) + ' 台',
-      centerSub: `年累计 ${m.label}`, hole: 36,
+      centerSub: `年累计 ${m.label}`, hole: 36, link: $('py-legend'),
     });
 
     $('py-legend').innerHTML = rows.map((r) => `
