@@ -12,7 +12,8 @@
     "headers": "tsx scripts/headers.ts",
     "check": "tsx scripts/check-consistency.ts",
     "export": "tsx scripts/export-view.ts",
-    "xcheck": "tsx scripts/xcheck.ts"
+    "xcheck": "tsx scripts/xcheck.ts",
+    "build:static": "tsx scripts/build-static.ts"
   },
   "dependencies": {
     "next": "16.3.0",

@@ -154,6 +154,26 @@ curl -X POST -H "Authorization: Bearer $SYNC_TOKEN" https://你的域名/api/syn
 两种定时方式，任选：
 
 **Vercel Cron** — `vercel.json` 里已配好，每天 UTC 01:30（北京时间 09:30）触发。
+
+## 对外发布（GitHub Pages）
+
+看板本体 `preview/dashboard.html` 是自包含的单文件应用，数据以 `const DATA = {…}`
+内联在里面，不依赖任何后端。`npm run build:static` 会把里面的数据换成当前数据源
+导出的结果，产物写到 `dist/index.html`，可以丢给任何静态托管。
+
+仓库里已配好 `.github/workflows/pages.yml`：改动看板会发一次、每天北京时间 09:40
+重新拉一次数、也可以手动触发。**开启只需要一步** —— 仓库 Settings → Pages →
+Source 选 **GitHub Actions**。地址是 `https://<用户名>.github.io/<仓库名>/`。
+
+要让线上数据每天自己更新，把本地 `.env.local` 里那几个飞书变量加成仓库的
+Actions secrets（Settings → Secrets and variables → Actions）：
+`FEISHU_APP_ID` / `FEISHU_APP_SECRET` / `FEISHU_BASE_URL` / `FEISHU_WIKI_TOKEN` /
+`FEISHU_WIKI_TOKEN_KEYWORDS` / `FEISHU_SHEET_*`。没配也能发布，只是数据停在
+仓库里那份 `preview/dashboard.html` 的时点。
+
+> **Pages 没有密码。** 拿到地址的人都能看到全量 GMV、投放费、利润和搜索词。
+> 需要控制范围就别用 Pages，改用带访问控制的托管（例如 Vercel 的
+> Deployment Protection），或者只把 `dist/index.html` 发给指定的人。
 在 Vercel 项目里配好 `SYNC_TOKEN` 环境变量即可。
 
 **GitHub Actions** — `.github/workflows/daily-sync.yml`，同样的时间。
