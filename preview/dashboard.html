@@ -215,6 +215,26 @@ b, strong { font-weight: var(--w-md); }
 .live { display: inline-flex; align-items: center; gap: 5px; }
 .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
 
+/* --- 手动刷新 -------------------------------------------------------------
+   页面是静态构建产物，数据在构建时就烤进了 HTML，所以这颗按钮做的是「重新取
+   一次页面」，拿到的是最近一次自动同步的结果。它不会、也不该让浏览器直接去连
+   飞书 —— 那要把凭据放进一个公开页面里。 */
+.refresh {
+  appearance: none; cursor: pointer; font: inherit; font-size: 12px;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  padding: 4px 9px; color: var(--ink-2);
+  transition: background .15s, color .15s;
+}
+.refresh:hover:not(:disabled) { background: var(--line-soft); color: var(--ink); }
+.refresh:disabled { cursor: default; color: var(--ink-3); }
+.refresh svg { width: 13px; height: 13px; display: block; transform-origin: 50% 50%; }
+@keyframes refreshSpin { to { transform: rotate(360deg); } }
+.refresh.is-busy svg { animation: refreshSpin .9s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .refresh.is-busy svg { animation: none; } }
+/* 刷新回来之后的一句话回执。没有它，数据没变时按钮看起来就像没反应 */
+.refresh-note { font-size: 11.5px; color: var(--ink-3); transition: opacity .35s; }
+
 /* --- 布局 --------------------------------------------------------------- */
 .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 24px 72px; }
 .stack { display: flex; flex-direction: column; gap: 16px; }
@@ -778,7 +798,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 620px) {
   .wrap { padding: 16px 14px 56px; }
+  /* 窄屏顶栏塞不下：同步说明整条收起，刷新只留图标（title 还在，长按能看到） */
   .freshness .live { display: none; }
+  .refresh-tx, .refresh-note { display: none; }
   .section-title { font-size: 19px; }
   .glance { padding: 12px 16px; }
   .card-pad { padding: 15px 16px; }
@@ -812,6 +834,14 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     <nav class="navtabs" id="navtabs" aria-label="板块导航"></nav>
     <div class="freshness">
       <span id="asof"></span>
+      <button class="refresh" id="refresh" type="button"
+              title="重新载入页面，取最近一次自动同步的结果（每天 10:30）">
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.9"/><path d="M13.7 2.1v3.3h-3.3"/>
+        </svg><span class="refresh-tx">刷新</span>
+      </button>
+      <span class="refresh-note" id="refresh-note" role="status" hidden></span>
       <!-- 时间写死在这里，改发布计划时记得跟 .github/workflows/pages.yml 的 cron 对上 -->
       <span class="live"><span class="live-dot" aria-hidden="true"></span>每日 10:30 自动同步</span>
     </div>
@@ -1831,6 +1861,48 @@ if (initial) showSection(initial, { scroll: false });
 
 const wk = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(DATA.latestDate + 'T00:00:00Z').getUTCDay()];
 $('asof').textContent = `数据截至 ${DATA.latestDate}（${wk}）`;
+
+/**
+ * 顶栏的手动刷新。
+ *
+ * 这一页是**构建时**把数据烤进 HTML 的静态单文件，页面自己不连任何接口，
+ * 所以「刷新」能做的是重新取一次页面 —— 每天 10:30 的自动构建跑完之后，
+ * 点它就能立刻拿到新的那一份，不用等浏览器自己过期。
+ * 让页面直接去连飞书是另一回事：那要把凭据放进一个公开网址里，不做。
+ *
+ * 刷完给一句回执。数据本来就已经是最新时，页面刷新前后长得一模一样，
+ * 没有回执的话按钮看起来就像坏了 —— 所以刷新前记下当前的数据版本，
+ * 回来一比，明确告诉读者「变了」还是「本来就是最新的」。
+ */
+(function () {
+  const btn = $('refresh'), note = $('refresh-note');
+  const KEY = 'plaud-dash-refresh';
+  // 隐私模式 / 沙箱里 sessionStorage 可能直接抛，取不到就退化成「只刷新、不回执」
+  const store = (() => { try { return window.sessionStorage; } catch (e) { return null; } })();
+  const stamp = () => `${DATA.latestDate}|${DATA.syncedAt || ''}`;
+
+  if (store) {
+    let prev = null;
+    try { prev = JSON.parse(store.getItem(KEY) || 'null'); store.removeItem(KEY); } catch (e) { prev = null; }
+    // 只认 60 秒内的记号：隔天再打开这一页，不该冒出一句「已是最新」
+    if (prev && Date.now() - prev.at < 60000) {
+      note.hidden = false;
+      note.textContent = prev.stamp === stamp()
+        ? `已是最新（截至 ${DATA.latestDate}）` : `已更新至 ${DATA.latestDate}`;
+      setTimeout(() => { note.style.opacity = '0'; }, 4500);
+      setTimeout(() => { note.hidden = true; note.style.opacity = ''; }, 5000);
+    }
+  }
+
+  btn.addEventListener('click', () => {
+    btn.disabled = true;
+    btn.classList.add('is-busy');
+    note.hidden = true;
+    try { if (store) store.setItem(KEY, JSON.stringify({ stamp: stamp(), at: Date.now() })); } catch (e) { /* 存不下就没有回执，不影响刷新 */ }
+    // reload() 会带条件请求回源：有新构建就换新的，没有就秒回 304
+    location.reload();
+  });
+})();
 
 $('srcbanner').innerHTML = DATA.source === 'mock'
   ? `<span class="banner-dot" aria-hidden="true"></span><div>当前展示的是<b>演示数据</b>，不是真实经营数据 —— 量级照着真实店铺生成（客单价 ~1,300、客退率 ~29%、投放费率 ~6.7%、站内 ROI ~18），接上飞书后布局不会变。<b>拿演示数据开经营会是要出事的，所以这条提示不做成可关闭的。</b></div>`
