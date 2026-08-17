@@ -200,8 +200,9 @@ b, strong { font-weight: var(--w-md); }
   transition: color .15s, background .15s;
 }
 .navtab:hover { color: var(--ink); background: var(--line-soft); }
+/* 选中的板块给一块底色 —— 只靠下面那道 2px 的线，扫一眼很容易看漏当前在哪一块 */
 .navtab[aria-selected="true"] {
-  color: var(--ink); font-weight: var(--w-md); background: none;
+  color: var(--ink); font-weight: var(--w-md); background: var(--line-soft);
 }
 .navtab[aria-selected="true"]::after {
   content: ""; display: block; height: 2px; border-radius: 2px;
@@ -351,6 +352,9 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
 /* 「实际」是这张表最常被读的一列，加粗压过左右两列 —— 目标是参照，实际才是结论 */
 .gtable td.g-actual { font-weight: var(--w-bold); color: var(--ink); }
 .gtable tbody tr:last-child td { border-bottom: 0; }
+/* 隔一个区块垫一层底色。费用那组有 8 行，不垫底色的话上下两组会连成一片，
+   看不出「站内费比」和「利润率」分属两件事。写在 hover 之前，让悬停仍然压得住。 */
+.gtable tbody tr[data-grp="1"] td { background: color-mix(in srgb, var(--ink) 4%, var(--card)); }
 .gtable tbody tr:hover td { background: var(--line-soft); }
 
 /* 大区块：合并单元格，靠上对齐 */
@@ -360,7 +364,6 @@ table.gtable { border-collapse: collapse; width: 100%; font-size: 12.5px; min-wi
   border-right: 1px solid var(--line); background: var(--card-2);
   width: 84px;
 }
-.g-group span { display: block; font-size: 10.5px; font-weight: 400; color: var(--ink-3); margin-top: 3px; line-height: 1.5; }
 
 .g-name { text-align: left !important; font-variant-numeric: normal; color: var(--ink); }
 .g-emph { position: relative; font-weight: var(--w-md); }
@@ -807,17 +810,17 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .section-head { align-items: flex-start; }
 }
 
-.footnote {
-  margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line);
-  font-size: 11.5px; color: var(--ink-2); line-height: 1.8;
-}
-.footnote b { color: var(--ink); font-weight: var(--w-md); }
+/* 数据源那条挪到了页尾：它回答的是「这些数从哪来、什么时候来的」，属于附注，
+   不是进门第一眼该看的东西。演示数据那条例外，仍然留在顶部（见下）。 */
 .banner {
   display: flex; gap: 9px; align-items: flex-start;
   padding: 10px 16px; border-radius: 10px; margin-bottom: 14px;
   background: var(--card); border: 1px solid var(--line);
   font-size: 12px; color: var(--ink-2); line-height: 1.6;
 }
+.banner-foot { margin: 24px 0 0; }
+.banner a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.banner a:hover { color: var(--brand); }
 .banner b { color: var(--ink); font-weight: var(--w-md); }
 .banner-dot {
   width: 6px; height: 6px; border-radius: 50%; background: var(--amber);
@@ -849,7 +852,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 </header>
 
 <main class="wrap">
-  <div class="banner" id="srcbanner"></div>
+  <!-- 顶部只留演示数据的警告；数据源那条挪到了页尾 -->
+  <div class="banner" id="srcbanner" hidden></div>
 
   <div class="card glance">
     <span class="glance-tag">速览</span>
@@ -1241,14 +1245,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     </div>
   </section>
 
-  <div class="footnote">
-    <b>口径</b>　昨日比前一天；本月 MTD 比<b>上月同期</b>（1 号到同一个日号），不是整个上月；全年累计比去年同期。没有可比数据时显示「无数据」，不显示 0%。<br>
-    <b>比率</b>　全部先汇总再相除。先算每日退款率再取平均是错的 —— 那等于给成交 3 万和 300 万的日子同样的权重。<br>
-    <b>涨跌色</b>　颜色表达<b>好坏</b>，箭头表达<b>方向</b>：GMV ▲ 绿、退款率 ▲ 红、投放费 ▲ 红。「▲ 红」读作「涨了，而且这是坏事」。<br>
-    <b>站内 vs 站外</b>　站外以拉新为主，ROI 天然低于站内，但带来的是新客 —— 两者的 ROI 不能直接比高低。<br>
-    <b>拆解口径</b>　投放 / 产品 / 流量的明细按本月 MTD 统计 —— 一天的样本太小，排出来的触点榜每天都在抖。<br>
-    <b>图表</b>　绝不用双轴：量纲不同的指标不塞进一张图，两条轴的对齐方式是任意的，会凭空造出并不存在的相关性。
-  </div>
+  <div class="banner banner-foot" id="srcfoot"></div>
 </main>
 
 <script>
@@ -1904,22 +1901,42 @@ $('asof').textContent = `数据截至 ${DATA.latestDate}（${wk}）`;
   });
 })();
 
-$('srcbanner').innerHTML = DATA.source === 'mock'
-  ? `<span class="banner-dot" aria-hidden="true"></span><div>当前展示的是<b>演示数据</b>，不是真实经营数据 —— 量级照着真实店铺生成（客单价 ~1,300、客退率 ~29%、投放费率 ~6.7%、站内 ROI ~18），接上飞书后布局不会变。<b>拿演示数据开经营会是要出事的，所以这条提示不做成可关闭的。</b></div>`
-  : `<span class="banner-dot" aria-hidden="true" style="background:var(--brand)"></span><div>数据源：<b>${esc(DATA.source)}</b>，最近同步 ${esc(DATA.syncedAt.slice(0, 16).replace('T', ' '))}。</div>`;
+/**
+ * 数据源那条放在页尾：它回答的是「这些数从哪来、什么时候来的」，是附注，
+ * 不是进门第一眼该看的东西。
+ *
+ * 演示数据的警告不跟着走，仍然钉在顶部 —— 那不是出处说明，是「别拿这些数
+ * 开会」的警告，读者滚到页尾才看到就已经晚了。
+ */
+const DAILY_DOC = 'https://nicebuild.feishu.cn/wiki/Dx6FwC0DnirSYxk8cHmcoDF6nwf';
+const IS_MOCK = DATA.source === 'mock';
+
+$('srcbanner').hidden = !IS_MOCK;
+if (IS_MOCK) {
+  $('srcbanner').innerHTML = `<span class="banner-dot" aria-hidden="true"></span><div>当前展示的是<b>演示数据</b>，不是真实经营数据 —— 量级照着真实店铺生成（客单价 ~1,300、客退率 ~29%、投放费率 ~6.7%、站内 ROI ~18），接上飞书后布局不会变。<b>拿演示数据开经营会是要出事的，所以这条提示不做成可关闭的。</b></div>`;
+}
+
+$('srcfoot').innerHTML =
+  `<span class="banner-dot" aria-hidden="true"${IS_MOCK ? '' : ' style="background:var(--brand)"'}></span>` +
+  `<div>数据源：<b>${esc(IS_MOCK ? '演示数据（未接入飞书）' : DATA.source)}</b>` +
+  (DATA.syncedAt ? `，最近同步 ${esc(DATA.syncedAt.slice(0, 16).replace('T', ' '))}` : '') +
+  `。原始表：<a href="${DAILY_DOC}" target="_blank" rel="noopener noreferrer">天猫日报（飞书）</a> —— ` +
+  `看板里的每一个数都能在这张表里回溯到，对不上以原始表为准。</div>`;
 
 // --- 速览 -----------------------------------------------------------------
 (function () {
   const y = DATA.stats[0], m = DATA.stats[1];
   const g = y.core.find((k) => k.key === 'gmv'), gm = m.core.find((k) => k.key === 'gmv');
   const top = [...DATA.products.lines].sort((a, b) => b.gmv - a.gmv)[0];
-  const roi = y.aggregate.roi;
+  // 总费率＝当天总投放费 ÷ GMV。比综合 ROI 更适合放在速览：ROI 是「花一块换回几块」，
+  // 好坏得先知道盘子多大；费率直接就是「今天的钱花超了没有」，和目标表里的口径也是同一个
+  const costRate = y.aggregate.adCostRate;
   const d = (r) => r === null ? '无数据' : `${r > 0 ? '↑' : '↓'}${(Math.abs(r) * 100).toFixed(1)}%`;
   // 速览里两个数都是 GMV，涨即好
   const c = (r) => r === null ? 'var(--flat)' : r > 0 ? 'var(--gain)' : 'var(--loss)';
   $('glance').innerHTML =
     `昨日 GMV <b class="tnum">${fmtCurrency(g.value)}</b>，环比前日 <b class="tnum" style="color:${c(g.delta)}">${d(g.delta)}</b>，` +
-    `主机销量 <b class="tnum">${fmtInt(y.aggregate.deviceSales)}</b> 台，综合 ROI <b class="tnum">${fmtMult(roi)}</b>。` +
+    `主机销量 <b class="tnum">${fmtInt(y.aggregate.deviceSales)}</b> 台，总费率 <b class="tnum">${fmtPct(costRate, 2)}</b>。` +
     `本月累计 <b class="tnum">${fmtCurrency(gm.value)}</b>，较上月同期 <b class="tnum" style="color:${c(gm.delta)}">${d(gm.delta)}</b>，` +
     `<b>${esc(top.label)}</b> 领跑（占 ${fmtPct(top.gmvShare, 1)}）。`;
 })();
@@ -2228,12 +2245,57 @@ function buildCustomGoal(range) {
   };
 }
 
-const GROUP_NOTES = {
-  '销售': '规模与质量',
-  '费用': '花得少、买得值',
-  '利润': '预估口径',
-  '流量': '搜索入口',
-};
+/** 这一组只统计搜索入口，名字写全 —— 叫「流量」会被当成全店流量 */
+const GROUP_LABEL = { '流量': '搜索流量' };
+const grpName = (n) => GROUP_LABEL[n] || n;
+
+/**
+ * 目标实际覆盖到哪几个月。
+ *
+ * 飞书目标表只排到当前月份，而 QTD / H2TD / YTD 的周期都伸到年底 ——
+ * 于是「Q3 目标」实际只是 7+8 月，「全年目标」只是 1–8 月，而表头写的是
+ * 「全周期」。数字本身没算错，错的是这个名字：QTD 和 H2TD 会显示出一模一样
+ * 的一张表（两者覆盖的都是 7–8 月），读者只会以为看板坏了。
+ *
+ * 折算过的区间（自定义那种半个月起步的）连「几月合计」都不成立，另说。
+ */
+function targetCoverage(range) {
+  const keys = new Set((DATA.targets || []).filter((t) => t.period === 'month').map((t) => t.key));
+  const has = [], miss = [];
+  for (let m = range.from.slice(0, 7); m <= range.to.slice(0, 7); m = shiftDays(`${m}-28`, 7).slice(0, 7)) {
+    (keys.has(m) ? has : miss).push(m);
+  }
+  const monthEnd = (d) => {
+    const x = new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7), 0));
+    return `${d.slice(0, 7)}-${String(x.getUTCDate()).padStart(2, '0')}`;
+  };
+  // 整月起止才谈得上「几月合计」，中间截断的按天折算
+  const whole = range.from.slice(8) === '01' && range.to === monthEnd(range.to);
+  return { has, miss, whole };
+}
+
+/** ['2026-07','2026-08'] → 「7–8 月」；不连续就逐个列，免得用区间号糊弄过去 */
+function monthSpan(list) {
+  if (!list.length) return '';
+  const last = list[list.length - 1];
+  // 跨年时每个月都得带上年份，否则「11–2 月」根本读不出是哪一年到哪一年
+  const multiYear = list[0].slice(0, 4) !== last.slice(0, 4);
+  const n = (k) => `${+k.slice(5, 7)}`;
+  const one = (k) => (multiYear ? `${k.slice(0, 4)} 年 ` : '') + `${n(k)} 月`;
+  if (list.length === 1) return one(list[0]);
+  const contiguous = list.every((k, i) => i === 0 || k === shiftDays(`${list[i - 1]}-28`, 7).slice(0, 7));
+  if (multiYear) return contiguous ? `${one(list[0])}–${one(last)}` : list.map(one).join('、');
+  // 同一年就只在末尾写一次「月」：「7–8 月」比「7 月–8 月」干净
+  return contiguous ? `${n(list[0])}–${n(last)} 月` : `${list.map(n).join('、')} 月`;
+}
+
+/** 目标列那行小字：这个「目标」到底是哪几个月加出来的 */
+function targetScope(range) {
+  const c = targetCoverage(range);
+  if (!c.whole) return `${range.from} 至 ${range.to} 折算`;
+  if (!c.has.length) return '未排目标';
+  return `${monthSpan(c.has)}合计` + (c.miss.length ? `｜${monthSpan(c.miss)}未排` : '');
+}
 
 /** 数值 + 单位拼成一个字符串，表格里不拆两段 */
 const gval = (v, f) => v === null || v === undefined ? '—' : fmtBy(v, f).join('') + (f === 'currency' ? '元' : '');
@@ -2269,14 +2331,14 @@ function renderGoals() {
   const head = `<thead><tr>
     <th>区块</th>
     <th>指标</th>
-    <th>目标<span class="sub">${esc(g.label)} 全周期</span></th>
+    <th>目标<span class="sub">${esc(targetScope(g.range))}</span></th>
     <th>实际<span class="sub">至 ${g.range.from <= DATA.latestDate ? DATA.latestDate : g.range.to}</span></th>
     <th>达成度<span class="sub">计划进度 ${fmtPct(g.timeProgress, 1)}</span></th>
     <th>与目标差<span class="sub">百分点</span></th>
     <th>环比<span class="sub">${esc(g.compareLabel)}</span></th>
   </tr></thead>`;
 
-  const body = g.groups.map((grp) => grp.rows.map((r, i) => {
+  const body = g.groups.map((grp, gi) => grp.rows.map((r, i) => {
     const color = r.good === null ? 'var(--flat)' : r.good ? 'var(--gain)' : 'var(--loss)';
 
     // 计划进度刻度只画在累加型指标上 —— ROI 是水平值，画了会让人以为它也该只完成 19%
@@ -2299,8 +2361,8 @@ function renderGoals() {
 
     const mom = momTag(r.prevDelta, r.higherIsBetter);
 
-    return `<tr>
-      ${i === 0 ? `<td class="g-group" rowspan="${grp.rows.length}">${esc(grp.name)}<span>${esc(GROUP_NOTES[grp.name] || '')}</span></td>` : ''}
+    return `<tr data-grp="${gi % 2}">
+      ${i === 0 ? `<td class="g-group" rowspan="${grp.rows.length}">${esc(grpName(grp.name))}</td>` : ''}
       <td class="g-name ${r.emphasis ? 'g-emph' : ''}">${esc(r.label)}</td>
       <td>${gval(r.target, r.format)}</td>
       <td class="g-actual">${gval(r.actual, r.format)}</td>
@@ -2319,7 +2381,8 @@ $('goal-csv').addEventListener('click', () => {
   const g = goalIndex === GOAL_CUSTOM
     ? buildCustomGoal(goalCustomRange || { from: $('goal-from').value, to: $('goal-to').value })
     : DATA.goals[goalIndex];
-  const head = ['区块', '指标', '目标', '实际', '达成度', '与目标差(pp)', `环比(${g.compareLabel})`];
+  // 表头把目标的口径带上：光写「目标」，导出到 Excel 之后就没人知道它算的是哪几个月
+  const head = ['区块', '指标', `目标(${targetScope(g.range)})`, '实际', '达成度', '与目标差(pp)', `环比(${g.compareLabel})`];
   const lines = [head];
   for (const grp of g.groups) {
     for (const r of grp.rows) {
@@ -2327,7 +2390,7 @@ $('goal-csv').addEventListener('click', () => {
       const cell = (v) => v === null || v === undefined ? ''
         : r.format === 'percent' ? (v * 100).toFixed(2) + '%' : Math.round(v * 100) / 100;
       lines.push([
-        grp.name, r.label,
+        grpName(grp.name), r.label,
         cell(r.target), cell(r.actual),
         r.attainment === null ? '' : (r.attainment * 100).toFixed(2) + '%',
         r.ppDiff === null ? '' : (r.ppDiff * 100).toFixed(2),
