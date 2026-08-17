@@ -1979,8 +1979,7 @@ $('srcfoot').innerHTML =
   `<span class="banner-dot" aria-hidden="true"${IS_MOCK ? '' : ' style="background:var(--brand)"'}></span>` +
   `<div>数据源：<b>${esc(IS_MOCK ? '演示数据（未接入飞书）' : DATA.source)}</b>` +
   (DATA.syncedAt ? `，最近同步 ${esc(DATA.syncedAt.slice(0, 16).replace('T', ' '))}` : '') +
-  `。原始表：<a href="${DAILY_DOC}" target="_blank" rel="noopener noreferrer">天猫日报（飞书）</a> —— ` +
-  `看板里的每一个数都能在这张表里回溯到，对不上以原始表为准。</div>`;
+  `。原始表：<a href="${DAILY_DOC}" target="_blank" rel="noopener noreferrer">天猫日报（飞书）</a>。</div>`;
 
 // --- 速览 -----------------------------------------------------------------
 (function () {
