@@ -227,7 +227,13 @@ interface KpiSpec {
   higherIsBetter: boolean;
 }
 
-/** 店铺核心指标：需求里点名要放在首屏的 8 项 */
+/**
+ * 店铺核心指标：首屏两行、一行五个。
+ *
+ * 支付转化率和加购人数从次级挪了上来 —— 这两个是「UV 进来之后发生了什么」，
+ * 和 UV / 搜索 UV 是同一条链路上的相邻环节，拆到折叠区里等于把链路断在中间：
+ * 看到 UV 涨了 163%，得再点一次「展开」才知道转化率是掉的。
+ */
 export const STORE_CORE: KpiSpec[] = [
   { key: 'gmv', label: 'GMV', pick: (a) => a.gmv, format: 'currency', higherIsBetter: true },
   { key: 'deviceSales', label: '主机销量', pick: (a) => a.deviceSales, format: 'integer', higherIsBetter: true },
@@ -237,6 +243,8 @@ export const STORE_CORE: KpiSpec[] = [
   { key: 'adCostRate', label: '投放费率', pick: (a) => a.adCostRate, format: 'percent', higherIsBetter: false },
   { key: 'uv', label: 'UV', pick: (a) => a.uv, format: 'integer', higherIsBetter: true },
   { key: 'searchUv', label: '搜索 UV', pick: (a) => a.searchUv, format: 'integer', higherIsBetter: true },
+  { key: 'conversionRate', label: '支付转化率', pick: (a) => a.conversionRate, format: 'percent', higherIsBetter: true },
+  { key: 'addToCart', label: '加购人数', pick: (a) => a.addToCart, format: 'integer', higherIsBetter: true },
 ];
 
 /** 次级指标：默认收在「展开更多」里，需要时再看 */
@@ -244,9 +252,7 @@ export const STORE_EXTRA: KpiSpec[] = [
   { key: 'gmvAfterRefund', label: '退后 GMV', pick: (a) => a.gmvAfterRefund, format: 'currency', higherIsBetter: true },
   { key: 'buyers', label: '支付人数', pick: (a) => a.buyers, format: 'integer', higherIsBetter: true },
   { key: 'aov', label: '客单价', pick: (a) => a.aov, format: 'currency', higherIsBetter: true },
-  { key: 'conversionRate', label: '支付转化率', pick: (a) => a.conversionRate, format: 'percent', higherIsBetter: true },
   { key: 'uvValue', label: 'UV 价值', pick: (a) => a.uvValue, format: 'decimal', higherIsBetter: true },
-  { key: 'addToCart', label: '加购人数', pick: (a) => a.addToCart, format: 'integer', higherIsBetter: true },
   { key: 'newCustomerRate', label: '新客率', pick: (a) => a.newCustomerRate, format: 'percent', higherIsBetter: true },
 ];
 
