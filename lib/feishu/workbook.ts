@@ -397,6 +397,98 @@ export async function readWorkbook(
   const targets: Target[] = [];
   const monthlyActuals: Record<string, Record<string, number>> = {};
 
+  const setTarget = (monthStr: string, key: string, value: number) => {
+    let t = targets.find((x) => x.key === monthStr);
+    if (!t) { t = { period: 'month', key: monthStr, values: {} }; targets.push(t); }
+    t.values[key] = value;
+  };
+
+  /**
+   * 左侧「月汇总」区块：一行一个月，**十二个月全在这儿**。
+   *
+   * 右边那个按月展开的「项目」区块只铺到当月 —— 只读它的话，「Q3 目标」就成了
+   * 7+8 月、「全年目标」成了 1–8 月，季度和年度口径全是错的。这个区块给的是
+   * 已经拆好的月度计划（含 9–12 月），所以先按它把每个月的目标填满，
+   * 再让右边的明细覆盖上去（两边重合的月份数值一致，覆盖只是取更细的那份）。
+   *
+   * 它只有五个指标：GMV / 主机销量 / 总费用 / 总费比 / 利润。站内外的拆分目标
+   * 未来月份确实没排，所以那几行在季度 / 年度口径下就该显示「—」，不该拿
+   * 已排的几个月硬凑一个数当成全周期目标。
+   */
+  const SUMMARY_TARGET_KEYS: Record<string, string> = {
+    'GMV': 'gmv',
+    '主机销量': 'deviceSales',
+    '总费用': 'adCost',
+    '总费比': 'adCostRate',
+    '利润': 'grossProfit',
+  };
+  {
+    const groupRow = goalGrid.rows[goalGrid.headerRow - 1] ?? [];
+    const head = goalGrid.rows[goalGrid.headerRow] ?? [];
+    const monthLabelCol = groupRow.findIndex((c) => c.trim() === '月汇总');
+    const planStart = groupRow.findIndex((c) => c.trim() === '渠道目标');
+    // 「渠道目标」右边的下一个分组名就是它的右边界（这里是「实际达成」）
+    let planEnd = groupRow.length;
+    for (let c = planStart + 1; c < groupRow.length; c++) {
+      if (groupRow[c].trim() && groupRow[c].trim() !== '渠道目标') { planEnd = c; break; }
+    }
+
+    if (monthLabelCol < 0 || planStart < 0) {
+      warnings.push('「1.目标达成」左侧没找到「月汇总 / 渠道目标」区块，9 月以后的目标会缺');
+    } else {
+      const cols: Array<{ key: string; col: number }> = [];
+      for (let c = planStart; c < planEnd; c++) {
+        const key = SUMMARY_TARGET_KEYS[(head[c] ?? '').trim()];
+        if (key) cols.push({ key, col: c });
+      }
+      let months = 0;
+      /** 逐月累加，回头和表里那行 YTD 对一下 —— 少读一个月这里立刻就露馅 */
+      const monthSum: Record<string, number> = {};
+      let ytdRow: string[] | null = null;
+
+      for (let r = goalGrid.headerRow + 1; r < goalGrid.rows.length; r++) {
+        const row = goalGrid.rows[r];
+        const label = (row[monthLabelCol] ?? '').trim();
+        if (label === 'YTD') ytdRow = row;
+        const month = parseMonth(label);
+        // YTD / Q1 / H1 这些汇总行的标签不是「N月」，parseMonth 认不出，自然跳过
+        if (month === null) continue;
+        const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+        let hit = false;
+        for (const { key, col: c } of cols) {
+          const v = num(row[c]);
+          if (v !== 0) {
+            setTarget(monthStr, key, v);
+            monthSum[key] = (monthSum[key] ?? 0) + v;
+            hit = true;
+          }
+        }
+        if (hit) months += 1;
+      }
+      if (months < 12) {
+        warnings.push(`「1.目标达成」月汇总只解析出 ${months} 个月的目标，季度 / 全年口径会缺月`);
+      }
+
+      /**
+       * 和表自己那行 YTD 对账。
+       *
+       * 「十二个月都读到了」和「读对了」是两件事：漏一行、串一列，月份数照样是 12。
+       * 表里正好给了 YTD 合计，拿它当校验和，比任何断言都可靠。费比是率，不能相加，
+       * 所以只对绝对量。
+       */
+      if (ytdRow) {
+        for (const { key, col: c } of cols) {
+          if (key === 'adCostRate') continue;
+          const want = num(ytdRow[c]);
+          const got = monthSum[key] ?? 0;
+          if (want > 0 && Math.abs(want - got) > Math.max(1, want * 0.005)) {
+            warnings.push(`「1.目标达成」月汇总的 ${key} 十二个月合计 ${Math.round(got)}，与表里 YTD 行 ${Math.round(want)} 对不上`);
+          }
+        }
+      }
+    }
+  }
+
   // 月份表头在表头行的上一行，每个月占 5 列（目标/实际/达成率/上月MTD/MTD环比）
   const monthRow = goalGrid.rows[goalGrid.headerRow - 1] ?? [];
   const monthCols: Array<{ month: number; col: number }> = [];
@@ -426,9 +518,12 @@ export async function readWorkbook(
         const actualVal = num(row[mc + 1]);
 
         if (targetVal !== 0) {
-          let t = targets.find((x) => x.key === monthStr);
-          if (!t) { t = { period: 'month', key: monthStr, values: {} }; targets.push(t); }
-          t.values[key] = targetVal;
+          // 两个区块都给了同一个数就得对得上，对不上说明表被改过一处漏了一处
+          const prev = targets.find((x) => x.key === monthStr)?.values[key];
+          if (prev !== undefined && Math.abs(prev - targetVal) > Math.max(1, Math.abs(prev) * 0.01)) {
+            warnings.push(`「1.目标达成」${monthStr} 的${label}目标两处不一致：月汇总 ${prev}，项目明细 ${targetVal}，以明细为准`);
+          }
+          setTarget(monthStr, key, targetVal);
         }
         // 实际值只留没有日明细的那些；其余一律从日报聚合，免得同一个数两处口径打架
         if (key === 'grossProfit' && actualVal !== 0) {
@@ -449,6 +544,13 @@ export async function readWorkbook(
       if (v.searchConversionRate !== undefined && v.searchUv !== undefined) {
         v.searchBuyers ??= Math.round(v.searchConversionRate * v.searchUv);
       }
+      /**
+       * 反过来也补一次：月汇总只给了利润的绝对值，没给利润率，
+       * 而 9–12 月只有月汇总 —— 不补的话季度 / 全年口径下利润率整行是「—」，
+       * 明明利润和 GMV 的目标都在手上。除出来的和表里已有的月份一致（差 <0.1pp）。
+       */
+      if (v.grossProfit !== undefined && v.gmv) v.profitRate ??= v.grossProfit / v.gmv;
+      if (v.adCost !== undefined && v.gmv) v.adCostRate ??= v.adCost / v.gmv;
     }
   }
 
