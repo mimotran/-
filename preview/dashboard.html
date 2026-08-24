@@ -895,8 +895,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         </svg><span class="refresh-tx">刷新</span>
       </button>
       <span class="refresh-note" id="refresh-note" role="status" hidden></span>
-      <!-- 时间写死在这里，改发布计划时记得跟 .github/workflows/pages.yml 的 cron 对上 -->
-      <span class="live"><span class="live-dot" aria-hidden="true"></span>每日 10:30 自动同步</span>
+      <!--
+        不写具体时刻。cron 排在北京时间 10:30，但 GitHub 的定时触发是尽力而为的，
+        实测稳定顺延一个多小时（连续四天都落在 12:20 上下）。写死一个点钟等于
+        每天都在撒一次谎；真正的时间戳在页尾「最近同步」那行，那个是事实。
+      -->
+      <span class="live"><span class="live-dot" aria-hidden="true"></span>每日自动同步</span>
     </div>
   </div>
 </header>
