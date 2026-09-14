@@ -1,0 +1,7 @@
+# 中间产物和成品，不入库
+*.html
+rows_raw.json
+jd_raw.json
+rows.json
+jd_rows.json
+*.xlsx
