@@ -413,7 +413,7 @@ n_shop = len({s for k in shop_c for s in shop_c[k]})
 BAR_MAX = max((v[0] for wk in hist.values() for v in wk.values()), default=1) or 1
 
 dash["A1"] = "PLAUD 低价链接分布"
-dash["A1"].font = F(13, True)
+dash["A1"].font = F(12, True)
 dash["A2"] = (f"Note Pro 与 NotePin S｜指导价 国内版 ¥1299 / 海外版 ¥1399"
               f"｜低价 = 售价低于对应指导价｜每周一更新")
 dash["A2"].font = F(9, c=MUTED)
@@ -427,9 +427,9 @@ if len(weeks) > 1:
 for i, (lbl, val) in enumerate(kpi):
     dash.cell(row=4, column=1 + i * 2, value=lbl).font = F(9, c=MUTED)
     c = dash.cell(row=5, column=1 + i * 2, value=val)
-    c.font = F(14, True)
+    c.font = F(11, True)
     if lbl == "较上周低价":
-        c.font = F(14, True, UP if d > 0 else (DOWN if d < 0 else INK))
+        c.font = F(11, True, UP if d > 0 else (DOWN if d < 0 else INK))
 
 HEADS = ["排查日期", "产品型号", "平台", "版本", "低价", "在架", "占比", "分布", "店铺"]
 r = 7
@@ -460,6 +460,14 @@ for wk in reversed(weeks):                     # 最新一周排最上面
         c = dash.cell(row=r, column=i + 1, value=val)
         c.font, c.fill = F(10, True), BAND
     r += 2
+
+# 除条形外全部居中；条形必须贴左，否则各行没有共同基线，长度就没法比
+BAR_COL = HEADS.index("分布") + 1
+for row in dash.iter_rows(min_row=4, max_row=dash.max_row):
+    for c in row:
+        c.alignment = Alignment(
+            horizontal="left" if c.column == BAR_COL else "center",
+            vertical="center")
 
 
 wb.save(OUT)

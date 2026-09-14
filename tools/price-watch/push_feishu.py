@@ -299,13 +299,16 @@ def apply_dashboard_style(tok, ss_token, xlsx_path=None):
             back = _hex(c.fill.fgColor) if c.fill and c.fill.fgColor else None
             bold = bool(c.font and c.font.bold)
             size = int(c.font.size) if c.font and c.font.size else 10
-            if not (fore or back or bold or size != 10):
+            # 飞书 hAlign：0 左 / 1 中 / 2 右
+            align = {"center": 1, "right": 2}.get(
+                c.alignment.horizontal if c.alignment else None, 0)
+            if not (fore or back or bold or size != 10 or align):
                 continue
-            key = (fore, back, bold, size)
+            key = (fore, back, bold, size, align)
             groups.setdefault(key, []).append(f"{sid}!{c.coordinate}:{c.coordinate}")
 
-    for (fore, back, bold, size), ranges in groups.items():
-        style = {"font": {"bold": bold, "fontSize": f"{size}pt/1.5"}}
+    for (fore, back, bold, size, align), ranges in groups.items():
+        style = {"font": {"bold": bold, "fontSize": f"{size}pt/1.5"}, "hAlign": align}
         if fore:
             style["foreColor"] = fore
         if back:
