@@ -461,9 +461,6 @@ for wk in reversed(weeks):                     # 最新一周排最上面
         c.font, c.fill = F(10, True), BAND
     r += 2
 
-dash.cell(row=r, column=1,
-          value=f"条形长度 = 低价链接条数，全表同一刻度（1 格 = 1 条，历史最长 {BAR_MAX} 条）。"
-                f"一条商品链接算一条，同店多链接分别计。历史留存在 history.json。").font = F(9, c=MUTED)
 
 wb.save(OUT)
 print("listings:", len(listings), "| shops:", len(agg), "| offtopic:", len(offtopic))
