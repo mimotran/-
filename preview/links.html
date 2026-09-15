@@ -1,0 +1,1366 @@
+<title>PLAUD 低价链接监测 / 链接明细</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+/* ---------------------------------------------------------------------------
+   链接明细页 —— 风格取向是「风险监控后台」，不是 Excel：
+   白卡片浮在浅灰底上，信息密度高、装饰少，颜色只用来表达风险。
+   PLAUD 蓝是唯一的交互色；红 / 橙 / 黄专供风险等级，别拿去当装饰。
+--------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  --ground: #f4f5f7;
+  --card: #ffffff;
+  --card-2: #fafbfc;
+  --line: #e4e7ec;
+  --line-soft: #eef0f4;
+
+  --ink: #10151f;
+  --ink-2: #59616f;
+  --ink-3: #8b929e;
+
+  /* PLAUD 蓝：主按钮、链接、选中态。同一个色相三档，别再引入第二种蓝 */
+  --brand: #1a5cff;
+  --brand-ink: #0f3fbd;
+  --brand-soft: #eaf0ff;
+  --brand-line: #c7d8ff;
+
+  /* 风险色阶：轻度→严重逐级加重。严重是唯一用实心底的一档 */
+  --mild-bg: #fff7e0; --mild-ink: #8a5d00; --mild-line: #f5dfa8;
+  --medium-bg: #fff0e2; --medium-ink: #b0530b; --medium-line: #f6cfa6;
+  --high-bg: #ffecea; --high-ink: #c02a22; --high-line: #f8c7c1;
+  --severe-bg: #b3241c; --severe-ink: #ffffff; --severe-line: #991d16;
+  --severe-soft: #fde8e6;
+  --flat-bg: #f1f3f6; --flat-ink: #6b7280; --flat-line: #e2e5ea;
+
+  --row-hover: #f7f9ff;
+  --shadow: 0 1px 2px rgb(16 21 31 / .04), 0 8px 24px -18px rgb(16 21 31 / .28);
+  --radius: 12px;
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+          "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  padding: 0 0 48px;
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 13px/1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.wrap {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* --- 页头 ---------------------------------------------------------------- */
+.top {
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0 16px;
+  margin-bottom: 18px;
+}
+.top-in { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+.brandmark {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; letter-spacing: .08em;
+  color: var(--brand); text-transform: uppercase;
+}
+.brandmark::before {
+  content: ""; width: 8px; height: 8px; border-radius: 3px; background: var(--brand);
+}
+h1 { margin: 6px 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+.sub { margin: 0; color: var(--ink-2); font-size: 13px; max-width: 60ch; }
+.top-right { margin-left: auto; text-align: right; display: grid; gap: 6px; justify-items: end; }
+.stamp {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  background: var(--card-2); border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 12px;
+}
+.stamp .k { color: var(--ink-3); font-size: 12px; }
+.stamp .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.srcline { font-size: 12px; color: var(--ink-3); }
+
+/* --- 通用卡片 ------------------------------------------------------------ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.card-hd {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 13px 16px; border-bottom: 1px solid var(--line-soft);
+}
+.card-hd h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.card-hd .hint { color: var(--ink-3); font-size: 12px; }
+.card-bd { padding: 14px 16px; }
+
+/* --- 筛选区 -------------------------------------------------------------- */
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px 12px;
+}
+.field { display: grid; gap: 5px; min-width: 0; }
+.field > label { font-size: 12px; color: var(--ink-2); }
+.field.wide { grid-column: span 2; }
+select, input[type="date"], input[type="search"] {
+  width: 100%; height: 32px; padding: 0 9px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card); color: var(--ink);
+  font: inherit; font-size: 13px;
+}
+select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: var(--brand); }
+.dates { display: flex; align-items: center; gap: 6px; }
+.dates span { color: var(--ink-3); font-size: 12px; }
+
+.filter-foot {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line);
+}
+.quick { display: flex; gap: 6px; flex-wrap: wrap; margin-right: auto; }
+.chip {
+  border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
+  border-radius: 999px; padding: 5px 11px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.chip:hover { border-color: var(--brand-line); color: var(--brand); }
+.chip[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand-line); color: var(--brand-ink); font-weight: 500; }
+.btn {
+  height: 32px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink); font: inherit; cursor: pointer;
+}
+.btn:hover { border-color: var(--ink-3); }
+.btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 500; }
+.btn-primary:hover { background: var(--brand-ink); border-color: var(--brand-ink); }
+
+/* --- KPI ----------------------------------------------------------------- */
+.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+.kpi {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 14px 16px 13px; min-width: 0;
+}
+.kpi .k { font-size: 12px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.kpi .v {
+  margin-top: 6px; font-size: 26px; font-weight: 600; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums; line-height: 1.15;
+}
+.kpi .n { margin-top: 4px; font-size: 12px; color: var(--ink-3); min-height: 18px; }
+.kpi.is-low .v { color: var(--high-ink); }
+.kpi.is-severe .v { color: var(--severe-bg); }
+
+/* --- 表格 ---------------------------------------------------------------- */
+.tablewrap { overflow: auto; max-height: 68vh; border-radius: 0 0 var(--radius) var(--radius); }
+/* table-layout: fixed 不是为了好看 —— 固定列的 left/right 偏移是写死的像素值，
+   只有列宽严格等于 colgroup 才对得上。auto 布局下一条长备注就能把某一列撑宽，
+   固定列随即和相邻列错位、互相压盖。 */
+table.grid { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1956px; table-layout: fixed; }
+table.grid th, table.grid td {
+  padding: 9px 10px; text-align: left; vertical-align: top;
+  border-bottom: 1px solid var(--line-soft); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+table.grid thead th {
+  position: sticky; top: 0; z-index: 3;
+  background: var(--card-2); color: var(--ink-2);
+  font-weight: 500; font-size: 12px; white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+table.grid tbody tr { --row-bg: var(--card); }
+table.grid tbody tr:nth-child(even) { --row-bg: #fcfcfd; }
+table.grid tbody tr.sev { --row-bg: var(--severe-soft); }
+table.grid tbody tr:hover { --row-bg: var(--row-hover); }
+table.grid tbody td { background: var(--row-bg); }
+
+/* 固定列：左三列（平台 / 店铺名称 / 产品型号）、右两列（风险等级 / 操作）。
+   偏移量必须和 colgroup 里的宽度严格一致，差一像素就会露出下层内容。 */
+.pl1, .pl2, .pl3, .pr1, .pr2 { position: sticky; z-index: 2; background: var(--row-bg); }
+/* 选择器必须压过上面的 `table.grid thead th`（它设了 z-index:3）——
+   同层 z-index 下后出现的表头会盖住先出现的固定表头，横向滚动时固定列的
+   表头就被压在下面，body 固定住了、表头却跟着滚。 */
+table.grid thead th.pl1, table.grid thead th.pl2, table.grid thead th.pl3,
+table.grid thead th.pr1, table.grid thead th.pr2 { z-index: 5; background: var(--card-2); }
+.pl1 { left: 0; }
+.pl2 { left: 84px; }
+.pl3 { left: 294px; box-shadow: 1px 0 0 var(--line); }
+.pr1 { right: 170px; box-shadow: -1px 0 0 var(--line); }
+.pr2 { right: 0; }
+
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--brand); }
+th .arrow { color: var(--ink-3); font-size: 10px; margin-left: 2px; }
+th.on { color: var(--brand); font-weight: 600; }
+th.on .arrow { color: var(--brand); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.shopcell { display: grid; gap: 2px; white-space: normal; }
+.shopcell .name { font-weight: 500; overflow-wrap: anywhere; }
+.shopcell .meta { font-size: 11px; color: var(--ink-3); font-family: var(--mono); overflow-wrap: anywhere; }
+.notecell { white-space: normal; color: var(--ink-2); max-width: 240px; overflow-wrap: anywhere; }
+.muted { color: var(--ink-3); }
+
+.price { font-variant-numeric: tabular-nums; }
+.price.hit { font-weight: 600; color: var(--high-ink); }
+.price.hit-sev { font-weight: 700; color: var(--severe-bg); }
+
+.tag {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 12px; line-height: 18px; border: 1px solid transparent; white-space: nowrap;
+}
+.tag-mild { background: var(--mild-bg); color: var(--mild-ink); border-color: var(--mild-line); }
+.tag-medium { background: var(--medium-bg); color: var(--medium-ink); border-color: var(--medium-line); }
+.tag-high { background: var(--high-bg); color: var(--high-ink); border-color: var(--high-line); }
+.tag-severe { background: var(--severe-bg); color: var(--severe-ink); border-color: var(--severe-line); font-weight: 600; }
+.tag-none { background: var(--flat-bg); color: var(--flat-ink); border-color: var(--flat-line); }
+.tag-unknown { background: transparent; color: var(--ink-3); border: 1px dashed var(--line); }
+.tag-abn {
+  background: #fff4e0; color: #9a5b00; border-color: #f2d49a;
+  margin-left: 4px; cursor: help;
+}
+
+.acts { display: flex; gap: 6px; }
+.act {
+  border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
+  border-radius: 6px; padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer;
+  white-space: nowrap;
+}
+.act:hover { border-color: var(--brand-line); color: var(--brand); background: var(--brand-soft); }
+.act[disabled] { opacity: .4; cursor: not-allowed; }
+.act-main { color: var(--brand); border-color: var(--brand-line); }
+.linkmini { font-size: 11px; color: var(--brand); }
+
+.tfoot {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 11px 16px; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: 12px;
+}
+.pager { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+.pager button {
+  min-width: 30px; height: 28px; padding: 0 8px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink-2); border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.pager button:hover:not([disabled]) { border-color: var(--brand-line); color: var(--brand); }
+.pager button[aria-current="true"] { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 500; }
+.pager button[disabled] { opacity: .4; cursor: not-allowed; }
+.pager .gap { color: var(--ink-3); padding: 0 2px; }
+.sizesel { height: 28px; width: auto; padding: 0 6px; }
+
+.empty { padding: 44px 16px; text-align: center; color: var(--ink-3); }
+.empty strong { display: block; color: var(--ink-2); font-size: 14px; margin-bottom: 6px; }
+
+.banner {
+  border-radius: var(--radius); padding: 11px 14px; margin-bottom: 14px;
+  font-size: 12.5px; border: 1px solid var(--mild-line); background: var(--mild-bg); color: var(--mild-ink);
+}
+.banner.info { border-color: var(--brand-line); background: var(--brand-soft); color: var(--brand-ink); }
+.banner ul { margin: 6px 0 0; padding-left: 18px; }
+
+.legend { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--ink-3); font-size: 12px; }
+.legend .tag { font-size: 11px; }
+
+.foot { color: var(--ink-3); font-size: 12px; padding: 4px 2px 0; display: grid; gap: 4px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(8px);
+  background: var(--ink); color: #fff; border-radius: 999px; padding: 8px 18px; font-size: 13px;
+  opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; z-index: 50;
+}
+.toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 1240px) {
+  .kpis { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 820px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .field.wide { grid-column: span 1; }
+  /* 窄屏上固定列会把可视区吃掉大半，干脆全部解除固定。
+     表头那两行必须一起解除：thead th 的 position:sticky 选择器更具体，
+     只把 body 改成 static 的话，表头还横向钉着、身体跟着滚，整张表就错位了。
+     纵向固定保留（只去掉 left/right），表头照样跟着竖向滚动停在顶部。 */
+  .pl1, .pl2, .pl3, .pr1, .pr2 { position: static; box-shadow: none; }
+  table.grid thead th.pl1, table.grid thead th.pl2, table.grid thead th.pl3,
+  table.grid thead th.pr1, table.grid thead th.pr2 { left: auto; right: auto; box-shadow: none; }
+}
+</style>
+
+<div class="top">
+  <div class="wrap top-in">
+    <div>
+      <span class="brandmark">PLAUD 低价链接监测</span>
+      <h1>PLAUD 低价链接监测 / 链接明细</h1>
+      <p class="sub">查看所有巡检链接，并快速定位低价商品、异常店铺及价格风险。</p>
+    </div>
+    <div class="top-right">
+      <span class="stamp"><span class="k">最近数据日期</span><span class="v" id="latest">—</span></span>
+      <span class="srcline" id="srcline"></span>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="card">
+    <div class="card-hd">
+      <h2>筛选条件</h2>
+      <span class="hint">条件可任意组合；所有指标与表格都按筛选结果实时重算</span>
+    </div>
+    <div class="card-bd">
+      <div class="filters">
+        <div class="field wide">
+          <label for="f-from">排查日期</label>
+          <div class="dates">
+            <input type="date" id="f-from" aria-label="排查日期开始">
+            <span>至</span>
+            <input type="date" id="f-to" aria-label="排查日期结束">
+          </div>
+        </div>
+        <div class="field"><label for="f-platform">平台</label><select id="f-platform"></select></div>
+        <div class="field"><label for="f-model">产品型号</label><select id="f-model"></select></div>
+        <div class="field"><label for="f-version">版本</label><select id="f-version"></select></div>
+        <div class="field"><label for="f-shopType">店铺类型</label><select id="f-shopType"></select></div>
+        <div class="field"><label for="f-low">是否低价</label><select id="f-low">
+          <option value="all">全部</option>
+          <option value="low">仅低价</option>
+          <option value="normal">非低价</option>
+        </select></div>
+        <div class="field"><label for="f-band">低价程度</label><select id="f-band"></select></div>
+        <div class="field"><label for="f-region">发货地</label><select id="f-region"></select></div>
+        <div class="field wide">
+          <label for="f-q">关键词搜索</label>
+          <input type="search" id="f-q" placeholder="店铺名称 / 卖家ID / 商品链接 / 备注">
+        </div>
+      </div>
+      <div class="filter-foot">
+        <div class="quick">
+          <button class="chip" id="q-latest" type="button">最新一天</button>
+          <button class="chip" id="q-7" type="button">近 7 天</button>
+          <button class="chip" id="q-all" type="button">全部日期</button>
+        </div>
+        <button class="btn btn-primary" id="do-query" type="button" title="应用当前条件，并把条件写进地址栏，便于分享">查询</button>
+        <button class="btn" id="do-reset" type="button">重置</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section class="card">
+    <div class="card-hd">
+      <h2>低价链接明细</h2>
+      <span class="hint" id="tbl-hint"></span>
+      <div class="legend" style="margin-left:auto">
+        <span class="tag tag-mild">轻度 &lt;5%</span>
+        <span class="tag tag-medium">中度 5–10%</span>
+        <span class="tag tag-high">高风险 10–20%</span>
+        <span class="tag tag-severe">严重 ≥20%</span>
+        <span class="tag tag-abn">⚠ 异常价格 ≥40%</span>
+      </div>
+    </div>
+    <div class="tablewrap">
+      <table class="grid" id="tbl">
+        <colgroup>
+          <col style="width:84px"><col style="width:210px"><col style="width:168px">
+          <col style="width:112px"><col style="width:116px"><col style="width:108px"><col style="width:112px">
+          <col style="width:116px"><col style="width:86px"><col style="width:112px">
+          <col style="width:88px"><col style="width:104px"><col style="width:220px">
+          <col style="width:150px"><col style="width:170px">
+        </colgroup>
+        <thead><tr id="thead-row"></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="tfoot">
+      <span id="count"></span>
+      <label class="muted">每页
+        <select class="sizesel" id="pagesize">
+          <option value="20">20</option><option value="50">50</option><option value="100">100</option>
+        </select> 条
+      </label>
+      <div class="pager" id="pager"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-hd">
+      <h2>店铺聚合</h2>
+      <span class="hint">同一卖家 ID 视为同一家店；卖家 ID 为空时退回「平台 + 卖家昵称」。按低价链接数排序</span>
+      <button class="chip" id="shop-more" type="button" style="margin-left:auto">展开全部</button>
+    </div>
+    <div class="tablewrap" style="max-height:none">
+      <table class="grid" id="shoptbl" style="min-width:1234px">
+        <colgroup>
+          <col style="width:84px"><col style="width:240px"><col style="width:120px">
+          <col style="width:100px"><col style="width:100px"><col style="width:110px">
+          <col style="width:110px"><col style="width:260px"><col style="width:110px">
+        </colgroup>
+        <thead><tr>
+          <th>平台</th><th>店铺</th><th>店铺类型</th>
+          <th class="num">链接记录</th><th class="num">低价链接</th><th class="num">严重低价</th>
+          <th class="num">最大低价幅度</th><th>涉及型号</th><th>操作</th>
+        </tr></thead>
+        <tbody id="shopbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="foot" id="foot"></div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* eslint-disable */
+/* __RULES_BEGIN__ */
+/**
+ * 低价链接监测 —— 口径、筛选、排序、聚合的**唯一实现**。
+ *
+ * 这个文件同时被两边用：
+ *   · Node 侧（scripts/sync-links.ts、scripts/build-links.ts）import 它做自检和对账；
+ *   · 浏览器侧由 scripts/build-links.ts 原样注入 preview/links.html 的 rules 块。
+ *
+ * 所以它必须是**不依赖任何模块、不碰 DOM 的纯 JS**：写成 .ts 就得有一份编译产物，
+ * 页面里那份和 lib 里那份迟早会走样 —— 天猫看板的聚合逻辑在页面里重写过一遍，
+ * 为此专门养了一套对账脚本。这次换个办法：干脆只留一份源码。
+ *
+ * 价格方向（最容易搞反的地方）：
+ *   价差 = 官方指导价 − 发现价格        指导价 ¥1,399、发现价 ¥1,310 → 价差 +¥89
+ *   低价幅度 = 价差 ÷ 官方指导价                                     → 6.36%
+ * 因此「低价」是价差 > 0，不是 < 0。
+ */
+
+/** 低价幅度 ≥ 40% 视为疑似配件 / 定金 / 优惠券 / 抓取错误，标「异常价格」但**不剔除**统计 */
+const ABNORMAL_RATE = 0.4;
+
+/**
+ * 风险等级。rank 只用来排序，越大越严重；`min` 是**闭区间下界**，`max` 是开区间上界。
+ * 边界归属：恰好 5% 算中度、恰好 10% 算高风险、恰好 20% 算严重。
+ */
+const RISK_LEVELS = [
+  { key: 'severe', label: '严重', rank: 4, min: 0.2, max: Infinity },
+  { key: 'high', label: '高风险', rank: 3, min: 0.1, max: 0.2 },
+  { key: 'medium', label: '中度', rank: 2, min: 0.05, max: 0.1 },
+  { key: 'mild', label: '轻度', rank: 1, min: 0, max: 0.05 },
+  { key: 'none', label: '非低价', rank: 0, min: -Infinity, max: 0 },
+  /** 缺官方指导价或发现价格，算不出幅度。既不算低价也不算非低价，单独一档 */
+  { key: 'unknown', label: '缺口径', rank: -1, min: NaN, max: NaN },
+];
+
+const RISK_LABEL = RISK_LEVELS.reduce((acc, level) => {
+  acc[level.key] = level.label;
+  return acc;
+}, /** @type {Record<string, string>} */ ({}));
+
+const RISK_RANK = RISK_LEVELS.reduce((acc, level) => {
+  acc[level.key] = level.rank;
+  return acc;
+}, /** @type {Record<string, number>} */ ({}));
+
+/** 「低价程度」筛选项：和风险等级一一对应，不另起一套区间，免得两处口径漂移 */
+const BANDS = [
+  { key: 'all', label: '全部' },
+  { key: 'mild', label: '<5%' },
+  { key: 'medium', label: '5%-10%' },
+  { key: 'high', label: '10%-20%' },
+  { key: 'severe', label: '>20%' },
+];
+
+/** 数值字段可能是 null（源表空着），统一收敛成 number | null，不要悄悄变成 0 */
+function num(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/** 官方指导价。必须 > 0，否则算幅度会除出 Infinity */
+function getListPrice(row) {
+  const v = num(row && row.listPrice);
+  return v !== null && v > 0 ? v : null;
+}
+
+/** 发现价格。允许 0（真有标 0 元的引流链接），但不允许负数 */
+function getPrice(row) {
+  const v = num(row && row.price);
+  return v !== null && v >= 0 ? v : null;
+}
+
+/** 价差（元）= 官方指导价 − 发现价格。算不出返回 null */
+function getPriceGap(row) {
+  const list = getListPrice(row);
+  const price = getPrice(row);
+  if (list === null || price === null) return null;
+  return list - price;
+}
+
+/** 低价幅度 = (官方指导价 − 发现价格) ÷ 官方指导价。算不出返回 null */
+function getDiscountRate(row) {
+  const list = getListPrice(row);
+  const price = getPrice(row);
+  if (list === null || price === null) return null;
+  return (list - price) / list;
+}
+
+/** 低价 = 发现价格 < 官方指导价。口径缺失时既不是低价也不是非低价，返回 false */
+function isLowPrice(row) {
+  const rate = getDiscountRate(row);
+  return rate !== null && rate > 0;
+}
+
+/** 风险等级 key，见 RISK_LEVELS */
+function getRiskLevel(row) {
+  const rate = getDiscountRate(row);
+  if (rate === null) return 'unknown';
+  if (rate <= 0) return 'none';
+  for (const level of RISK_LEVELS) {
+    if (level.rank > 0 && rate >= level.min && rate < level.max) return level.key;
+  }
+  return 'none';
+}
+
+function getRiskRank(row) {
+  return RISK_RANK[getRiskLevel(row)] ?? 0;
+}
+
+/** 疑似异常价格（配件 / 定金 / 优惠券 / 抓取错误）。仍然计入低价统计，只是打标 */
+function isAbnormalPrice(row) {
+  const rate = getDiscountRate(row);
+  return rate !== null && rate >= ABNORMAL_RATE;
+}
+
+/**
+ * 店铺唯一标识。
+ *
+ * 优先卖家 ID/UID —— 店铺名称会改、会撞名，同一家店在不同日期抓到的昵称也可能不一样。
+ * 没有 ID 时退到「平台 + 卖家昵称」，仍然带上平台：淘宝和京东各有一家「XX数码专营店」很常见。
+ */
+function getShopKey(row) {
+  const platform = (row.platform || '').trim();
+  const sellerId = (row.sellerId || '').trim();
+  if (sellerId) return `${platform}::uid::${sellerId}`;
+  return `${platform}::name::${(row.shop || '').trim()}`;
+}
+
+/**
+ * 链接唯一标识。用于「同一条链接在多天被抓到」时的去重计数。
+ * URL 带 ?spm= 之类的追踪参数，先削掉再比。
+ */
+function getLinkKey(row) {
+  const url = normalizeUrl(row.url);
+  if (url) return `url::${url}`;
+  return `fallback::${getShopKey(row)}::${row.model || ''}::${row.version || ''}`;
+}
+
+/**
+ * 追踪参数黑名单。**不能**把整个 query 削掉 —— 淘宝 / 京东的商品 ID 就在 query 里
+ * （item.htm?id=123），削了之后一家店所有链接会被当成同一条，去重计数直接塌掉。
+ */
+const TRACKING_PARAMS = new Set([
+  'spm', 'scm', 'pvid', 'utparam', 'ut_sk', 'sourcetype', 'suid', 'shortlink',
+  'share_crt_v', 'sp_tk', 'from', 'scene', 'clicktime', 'union_lens', 'ad_click',
+  'extra_params', 'abbucket', 'app', 'channel', 'tk', 'bxsign', 'cpa', 'ptag',
+  'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+]);
+
+/** 去掉 hash、追踪参数和末尾斜杠，剩下的参数排序后拼回去，让同一条链接的不同写法归一 */
+function normalizeUrl(raw) {
+  const text = (raw || '').trim();
+  if (!text) return '';
+  const noHash = text.split('#')[0];
+  const qi = noHash.indexOf('?');
+  const base = (qi < 0 ? noHash : noHash.slice(0, qi)).replace(/\/+$/, '').toLowerCase();
+  if (qi < 0) return base;
+
+  const kept = [];
+  for (const part of noHash.slice(qi + 1).split('&')) {
+    if (!part) continue;
+    const eq = part.indexOf('=');
+    const key = (eq < 0 ? part : part.slice(0, eq)).toLowerCase();
+    if (TRACKING_PARAMS.has(key)) continue;
+    kept.push(`${key}=${eq < 0 ? '' : part.slice(eq + 1)}`);
+  }
+  kept.sort();
+  return kept.length ? `${base}?${kept.join('&')}` : base;
+}
+
+/** 唯一值集合，按出现顺序去重后排序，用来生成筛选项 */
+function collectOptions(rows, field) {
+  const seen = new Set();
+  for (const row of rows) {
+    const v = (row[field] || '').trim();
+    if (v) seen.add(v);
+  }
+  return [...seen].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'));
+}
+
+/** 数据源里的全部排查日期，升序 */
+function collectDates(rows) {
+  const seen = new Set();
+  for (const row of rows) if (row.date) seen.add(row.date);
+  return [...seen].sort();
+}
+
+function latestDate(rows) {
+  const dates = collectDates(rows);
+  return dates.length ? dates[dates.length - 1] : '';
+}
+
+/** 筛选条件的默认值。页面和自检脚本共用，省得两处各写一份默认 */
+function emptyFilters() {
+  return {
+    dateFrom: '',
+    dateTo: '',
+    platform: '',
+    model: '',
+    version: '',
+    shopType: '',
+    region: '',
+    /** all | low | normal */
+    lowPrice: 'all',
+    /** all | mild | medium | high | severe */
+    band: 'all',
+    q: '',
+  };
+}
+
+/**
+ * 筛选。所有条件可组合，空值表示「全部」。
+ *
+ * 关键词搜索的范围按需求固定为：店铺名称 / 卖家 ID / 商品链接 / 备注。
+ * 多个空格分隔的词是**与**关系 —— 「淘宝 999」应当只剩同时命中两者的行。
+ */
+function applyFilters(rows, filters) {
+  const f = { ...emptyFilters(), ...(filters || {}) };
+  const terms = f.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
+  return rows.filter((row) => {
+    if (f.dateFrom && row.date < f.dateFrom) return false;
+    if (f.dateTo && row.date > f.dateTo) return false;
+    if (f.platform && row.platform !== f.platform) return false;
+    if (f.model && row.model !== f.model) return false;
+    if (f.version && row.version !== f.version) return false;
+    if (f.shopType && row.shopType !== f.shopType) return false;
+    if (f.region && row.region !== f.region) return false;
+
+    const low = isLowPrice(row);
+    if (f.lowPrice === 'low' && !low) return false;
+    if (f.lowPrice === 'normal' && low) return false;
+
+    if (f.band !== 'all' && getRiskLevel(row) !== f.band) return false;
+
+    if (terms.length) {
+      const haystack = [row.shop, row.sellerId, row.url, row.note].join(' ').toLowerCase();
+      for (const term of terms) if (!haystack.includes(term)) return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * 顶部五个指标。**全部**由当前筛选结果算出，页面上不许出现任何写死的汇总数字。
+ *
+ * 「在架链接」按记录条数算 —— 表格里有几行，这里就是几。选了日期区间时同一条链接
+ * 会被抓到多次，所以另外给出去重后的链接数（links / lowLinks），页面在两者不等时
+ * 显示一行小字说明，不在主数上做手脚。
+ */
+function summarize(rows) {
+  const linkKeys = new Set();
+  const lowLinkKeys = new Set();
+  const shopKeys = new Set();
+  let low = 0;
+  let severe = 0;
+  let abnormal = 0;
+  let unknown = 0;
+
+  for (const row of rows) {
+    linkKeys.add(getLinkKey(row));
+    shopKeys.add(getShopKey(row));
+    const level = getRiskLevel(row);
+    if (level === 'unknown') unknown += 1;
+    if (isLowPrice(row)) {
+      low += 1;
+      lowLinkKeys.add(getLinkKey(row));
+      if (level === 'severe') severe += 1;
+      if (isAbnormalPrice(row)) abnormal += 1;
+    }
+  }
+
+  return {
+    records: rows.length,
+    links: linkKeys.size,
+    low,
+    lowLinks: lowLinkKeys.size,
+    lowRate: rows.length ? low / rows.length : 0,
+    shops: shopKeys.size,
+    severe,
+    abnormal,
+    unknown,
+  };
+}
+
+/** 各风险等级的条数，用于表头旁边的分布条 */
+function riskBreakdown(rows) {
+  const counts = {};
+  for (const level of RISK_LEVELS) counts[level.key] = 0;
+  for (const row of rows) counts[getRiskLevel(row)] += 1;
+  return counts;
+}
+
+/**
+ * 排序。默认 `risk`：严重 → 高风险 → 中度 → 轻度 → 非低价，同级按低价幅度从高到低。
+ * 其余字段排序时，同样拿低价幅度当次级键，免得一堆同值行每次渲染顺序都不一样。
+ */
+function sortRows(rows, key = 'risk', dir = 'desc') {
+  const sign = dir === 'asc' ? 1 : -1;
+  const rate = (row) => {
+    const v = getDiscountRate(row);
+    return v === null ? -Infinity : v;
+  };
+  const value = (row) => {
+    switch (key) {
+      case 'price':
+        return getPrice(row) === null ? -Infinity : getPrice(row);
+      case 'gap':
+        return getPriceGap(row) === null ? -Infinity : getPriceGap(row);
+      case 'rate':
+        return rate(row);
+      case 'sales':
+        return typeof row.monthlySales === 'number' ? row.monthlySales : -Infinity;
+      case 'date':
+        return row.date || '';
+      case 'risk':
+      default:
+        return getRiskRank(row);
+    }
+  };
+
+  return [...rows].sort((a, b) => {
+    const va = value(a);
+    const vb = value(b);
+    if (va < vb) return -sign;
+    if (va > vb) return sign;
+    // 次级键固定按低价幅度降序，第三级用序号，保证顺序稳定
+    const ra = rate(a);
+    const rb = rate(b);
+    if (ra !== rb) return rb - ra;
+    return (a.seq || 0) - (b.seq || 0);
+  });
+}
+
+/**
+ * 按店铺聚合：同一家店的多条链接合成一行，用来找「整店大幅降价」的异常店铺。
+ * 排序口径 = 低价链接数优先，其次最大低价幅度 —— 一家店 8 条链接全在降，
+ * 比另一家只有 1 条降得更狠更值得先看。
+ */
+function aggregateShops(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    const key = getShopKey(row);
+    let shop = map.get(key);
+    if (!shop) {
+      shop = {
+        key,
+        shop: row.shop || '(未命名店铺)',
+        sellerId: row.sellerId || '',
+        platform: row.platform || '',
+        shopType: row.shopType || '',
+        shopUrl: row.shopUrl || '',
+        records: 0,
+        low: 0,
+        severe: 0,
+        maxRate: null,
+        minPrice: null,
+        models: new Set(),
+        latest: '',
+      };
+      map.set(key, shop);
+    }
+    shop.records += 1;
+    if (!shop.shopUrl && row.shopUrl) shop.shopUrl = row.shopUrl;
+    if (!shop.shopType && row.shopType) shop.shopType = row.shopType;
+    if (row.model) shop.models.add(row.model);
+    if (row.date > shop.latest) shop.latest = row.date;
+
+    const rate = getDiscountRate(row);
+    const price = getPrice(row);
+    if (isLowPrice(row)) {
+      shop.low += 1;
+      if (getRiskLevel(row) === 'severe') shop.severe += 1;
+      if (rate !== null && (shop.maxRate === null || rate > shop.maxRate)) shop.maxRate = rate;
+      if (price !== null && (shop.minPrice === null || price < shop.minPrice)) shop.minPrice = price;
+    }
+  }
+
+  return [...map.values()]
+    .map((shop) => ({ ...shop, models: [...shop.models] }))
+    .sort(
+      (a, b) =>
+        b.low - a.low ||
+        (b.maxRate ?? -1) - (a.maxRate ?? -1) ||
+        b.records - a.records ||
+        a.shop.localeCompare(b.shop, 'zh-Hans-CN'),
+    );
+}
+
+/* __RULES_END__ */
+</script>
+
+<script>
+/* eslint-disable */
+const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuild.feishu.cn/sheets/YEDVs46o2hzZ8htBnakcbzNpnrp?sheet=1WDztC","sheetTitle":"排查记录","warnings":[],"latestDate":"","builtAt":""};
+
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  /** 源表可能缺列，补齐成 LinkRecord 的形状，后面所有判断就不用再防空 */
+  const ROWS = (DATA.rows || []).map((r, i) => ({
+    seq: typeof r.seq === 'number' ? r.seq : i + 1,
+    date: r.date || '',
+    platform: r.platform || '',
+    shop: r.shop || '',
+    sellerId: r.sellerId || '',
+    shopType: r.shopType || '',
+    model: r.model || '',
+    version: r.version || '',
+    price: typeof r.price === 'number' ? r.price : null,
+    listPrice: typeof r.listPrice === 'number' ? r.listPrice : null,
+    monthlySales: typeof r.monthlySales === 'number' ? r.monthlySales : null,
+    region: r.region || '',
+    note: r.note || '',
+    url: r.url || '',
+    shopUrl: r.shopUrl || '',
+  }));
+
+  const DATES = collectDates(ROWS);
+  const LATEST = DATA.latestDate || latestDate(ROWS);
+
+  // --- 格式化 --------------------------------------------------------------
+  const fmtInt = (v) => Number(v || 0).toLocaleString('zh-CN');
+  const fmtMoney = (v) => v === null || v === undefined ? '—' : '¥' + Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+  const fmtPct = (v, d) => v === null || v === undefined ? '—' : (v * 100).toFixed(d === undefined ? 2 : d) + '%';
+  const fmtGap = (v) => v === null ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + '¥' + Math.abs(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const dash = (s) => s ? esc(s) : '<span class="muted">—</span>';
+
+  /** 站外链接一律新窗口打开，并且带上 noopener —— 打开的是第三方商品页 */
+  function openUrl(url) {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
+  let toastTimer = 0;
+  function toast(text) {
+    const el = $('toast');
+    el.textContent = text;
+    el.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('on'), 1600);
+  }
+
+  function copy(text) {
+    if (!text) return;
+    const done = () => toast('已复制商品链接');
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  function fallbackCopy(text, done) {
+    // file:// 打开或非安全上下文时 clipboard API 不可用，退回老办法
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('复制失败，请手动复制'); }
+    document.body.removeChild(ta);
+  }
+
+  // --- 状态 ----------------------------------------------------------------
+  const state = {
+    filters: emptyFilters(),
+    sort: { key: 'risk', dir: 'desc' },
+    page: 1,
+    size: 20,
+    shopAll: false,
+  };
+
+  /** 默认视图：最新排查日期 + 其余条件全部。没有数据时留空 */
+  function defaultFilters() {
+    const f = emptyFilters();
+    f.dateFrom = LATEST;
+    f.dateTo = LATEST;
+    return f;
+  }
+
+  // --- 筛选项 --------------------------------------------------------------
+  const OPTION_FIELDS = [
+    { id: 'f-platform', field: 'platform', key: 'platform' },
+    { id: 'f-model', field: 'model', key: 'model' },
+    { id: 'f-version', field: 'version', key: 'version' },
+    { id: 'f-shopType', field: 'shopType', key: 'shopType' },
+    { id: 'f-region', field: 'region', key: 'region' },
+  ];
+  const OPTIONS = {};
+
+  function fillSelects() {
+    for (const spec of OPTION_FIELDS) {
+      const values = collectOptions(ROWS, spec.field);
+      OPTIONS[spec.key] = values;
+      $(spec.id).innerHTML =
+        '<option value="">全部</option>' +
+        values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    }
+    $('f-band').innerHTML = BANDS.map((b) => `<option value="${b.key}">${b.label}</option>`).join('');
+    const min = DATES[0] || '';
+    const max = DATES[DATES.length - 1] || '';
+    for (const id of ['f-from', 'f-to']) {
+      if (min) $(id).min = min;
+      if (max) $(id).max = max;
+    }
+  }
+
+  // --- URL 参数 ------------------------------------------------------------
+  /**
+   * 看板页跳进来时带的参数要尽量「认得出」：大小写不同、少写前缀（Note Pro vs
+   * PLAUD Note Pro）都应该命中，实在匹配不上就退回「全部」并在横幅里说明，
+   * 而不是筛出一张空表让人以为当天没数据。
+   */
+  function resolveOption(raw, values) {
+    const v = String(raw || '').trim();
+    if (!v) return { value: '', ok: true };
+    const norm = (s) => s.replace(/\s+/g, '').toLowerCase();
+    const exact = values.find((x) => x === v);
+    if (exact) return { value: exact, ok: true };
+    const ci = values.find((x) => norm(x) === norm(v));
+    if (ci) return { value: ci, ok: true };
+    const loose = values.find((x) => norm(x).includes(norm(v)) || norm(v).includes(norm(x)));
+    if (loose) return { value: loose, ok: true };
+    return { value: '', ok: false };
+  }
+
+  const BAND_ALIAS = {
+    all: 'all', mild: 'mild', medium: 'medium', high: 'high', severe: 'severe',
+    lt5: 'mild', '<5': 'mild', '5to10': 'medium', '5-10': 'medium',
+    '10to20': 'high', '10-20': 'high', gt20: 'severe', '>20': 'severe',
+  };
+
+  function readQuery() {
+    const q = new URLSearchParams(location.search);
+    const f = defaultFilters();
+    const unmatched = [];
+    const get = (...names) => {
+      for (const n of names) { const v = q.get(n); if (v !== null) return v; }
+      return null;
+    };
+
+    const date = get('date', 'day');
+    const from = get('dateFrom', 'from', 'start');
+    const to = get('dateTo', 'to', 'end');
+    if (date === 'all' || from === 'all') { f.dateFrom = ''; f.dateTo = ''; }
+    else if (date) { f.dateFrom = date; f.dateTo = date; }
+    else if (from || to) { f.dateFrom = from || ''; f.dateTo = to || ''; }
+
+    const opt = (names, key) => {
+      const raw = get.apply(null, names);
+      if (raw === null) return;
+      const hit = resolveOption(raw, OPTIONS[key] || []);
+      f[key] = hit.value;
+      if (!hit.ok) unmatched.push(`${names[0]}=${raw}`);
+    };
+    opt(['platform'], 'platform');
+    opt(['product', 'model'], 'model');
+    opt(['version'], 'version');
+    opt(['shopType', 'storeType'], 'shopType');
+    opt(['region', 'ship'], 'region');
+
+    const low = get('lowPrice', 'low');
+    if (low !== null) {
+      const v = low.toLowerCase();
+      f.lowPrice = (v === 'true' || v === '1' || v === 'low' || v === 'yes') ? 'low'
+        : (v === 'false' || v === '0' || v === 'normal' || v === 'no') ? 'normal' : 'all';
+    }
+    const band = get('band', 'level');
+    if (band !== null) f.band = BAND_ALIAS[band.toLowerCase()] || 'all';
+
+    const kw = get('q', 'keyword', 'search');
+    if (kw !== null) f.q = kw;
+
+    const size = Number(get('size', 'pageSize'));
+    if ([20, 50, 100].indexOf(size) >= 0) state.size = size;
+    const sort = get('sort');
+    if (sort && ['risk', 'price', 'gap', 'rate', 'sales', 'date'].indexOf(sort) >= 0) state.sort.key = sort;
+    const dir = get('dir');
+    if (dir === 'asc' || dir === 'desc') state.sort.dir = dir;
+
+    return { filters: f, unmatched };
+  }
+
+  /** 把当前条件写回地址栏，便于分享 / 刷新后保持视图 */
+  function writeQuery() {
+    const f = state.filters;
+    const q = new URLSearchParams();
+    if (!f.dateFrom && !f.dateTo) q.set('date', 'all');
+    else if (f.dateFrom && f.dateFrom === f.dateTo) q.set('date', f.dateFrom);
+    else {
+      if (f.dateFrom) q.set('dateFrom', f.dateFrom);
+      if (f.dateTo) q.set('dateTo', f.dateTo);
+    }
+    if (f.platform) q.set('platform', f.platform);
+    if (f.model) q.set('product', f.model);
+    if (f.version) q.set('version', f.version);
+    if (f.shopType) q.set('shopType', f.shopType);
+    if (f.region) q.set('region', f.region);
+    if (f.lowPrice !== 'all') q.set('lowPrice', f.lowPrice === 'low' ? 'true' : 'false');
+    if (f.band !== 'all') q.set('band', f.band);
+    if (f.q.trim()) q.set('q', f.q.trim());
+    if (state.size !== 20) q.set('size', String(state.size));
+    if (state.sort.key !== 'risk') q.set('sort', state.sort.key);
+    if (state.sort.dir !== 'desc') q.set('dir', state.sort.dir);
+    const qs = q.toString();
+    history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+  }
+
+  function pushFiltersToUi() {
+    const f = state.filters;
+    $('f-from').value = f.dateFrom;
+    $('f-to').value = f.dateTo;
+    $('f-platform').value = f.platform;
+    $('f-model').value = f.model;
+    $('f-version').value = f.version;
+    $('f-shopType').value = f.shopType;
+    $('f-region').value = f.region;
+    $('f-low').value = f.lowPrice;
+    $('f-band').value = f.band;
+    $('f-q').value = f.q;
+    $('pagesize').value = String(state.size);
+
+    const isLatest = f.dateFrom === LATEST && f.dateTo === LATEST && !!LATEST;
+    const isAll = !f.dateFrom && !f.dateTo;
+    $('q-latest').setAttribute('aria-pressed', String(isLatest));
+    $('q-all').setAttribute('aria-pressed', String(isAll));
+    $('q-7').setAttribute('aria-pressed', String(!isLatest && !isAll && f.dateTo === LATEST && f.dateFrom === shiftDays(LATEST, -6)));
+  }
+
+  function readFiltersFromUi() {
+    const f = state.filters;
+    let from = $('f-from').value;
+    let to = $('f-to').value;
+    if (from && to && from > to) { const t = from; from = to; to = t; }
+    f.dateFrom = from;
+    f.dateTo = to;
+    f.platform = $('f-platform').value;
+    f.model = $('f-model').value;
+    f.version = $('f-version').value;
+    f.shopType = $('f-shopType').value;
+    f.region = $('f-region').value;
+    f.lowPrice = $('f-low').value;
+    f.band = $('f-band').value;
+    f.q = $('f-q').value;
+  }
+
+  function shiftDays(date, delta) {
+    if (!date) return '';
+    const d = new Date(date + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + delta);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // --- KPI -----------------------------------------------------------------
+  function renderKpis(rows) {
+    const s = summarize(rows);
+    const dedup = (label, records, links) =>
+      links && links < records ? `${label} ${fmtInt(links)} 条链接（区间内多次抓取）` : '';
+
+    const tiles = [
+      { k: '在架链接', v: fmtInt(s.records), n: dedup('去重后', s.records, s.links) || '当前筛选下的巡检记录数' },
+      { k: '低价链接', v: fmtInt(s.low), n: dedup('去重后', s.low, s.lowLinks) || '发现价格低于官方指导价', cls: s.low ? 'is-low' : '' },
+      { k: '低价占比', v: fmtPct(s.lowRate, 1), n: `${fmtInt(s.low)} / ${fmtInt(s.records)}`, cls: s.low ? 'is-low' : '' },
+      { k: '涉及店铺', v: fmtInt(s.shops), n: '按卖家 ID 去重' },
+      { k: '严重低价', v: fmtInt(s.severe), n: s.abnormal ? `含 ${fmtInt(s.abnormal)} 条疑似异常价格` : '低价幅度 ≥ 20%', cls: s.severe ? 'is-severe' : '' },
+    ];
+    $('kpis').innerHTML = tiles.map((t) => `
+      <div class="kpi ${t.cls || ''}">
+        <div class="k">${esc(t.k)}</div>
+        <div class="v">${t.v}</div>
+        <div class="n">${esc(t.n)}</div>
+      </div>`).join('');
+
+    const parts = [];
+    if (s.unknown) parts.push(`${s.unknown} 条缺官方指导价或发现价格，计入「在架链接」但不计入低价统计`);
+    $('tbl-hint').textContent = parts.join('；');
+  }
+
+  // --- 表格 ----------------------------------------------------------------
+  /**
+   * 列顺序。价格四件套（发现价格 / 官方指导价 / 价差 / 低价幅度）紧跟在固定的左三列
+   * 之后，而不是排在排查日期、店铺类型后面 —— 表总宽接近 2000px，常见笔记本屏幕
+   * 一屏放不下，右侧固定的「风险等级 / 操作」会盖住中间的列。把价格放在最靠前的
+   * 可见区，保证不横向滚动也能一眼看到「便宜了多少」。
+   */
+  const COLUMNS = [
+    { label: '平台', cls: 'pl1' },
+    { label: '店铺名称', cls: 'pl2' },
+    { label: '产品型号', cls: 'pl3' },
+    { label: '发现价格', sort: 'price', num: true },
+    { label: '官方指导价', num: true },
+    { label: '价差', sort: 'gap', num: true },
+    { label: '低价幅度', sort: 'rate', num: true },
+    { label: '排查日期', sort: 'date' },
+    { label: '版本' },
+    { label: '店铺类型' },
+    { label: '月销', sort: 'sales', num: true },
+    { label: '发货地' },
+    { label: '备注' },
+    { label: '风险等级', sort: 'risk', cls: 'pr1' },
+    { label: '操作', cls: 'pr2' },
+  ];
+
+  function renderHead() {
+    $('thead-row').innerHTML = COLUMNS.map((c) => {
+      const cls = [c.cls, c.num ? 'num' : '', c.sort ? 'sortable' : '', c.sort && state.sort.key === c.sort ? 'on' : ''].filter(Boolean).join(' ');
+      const arrow = c.sort
+        ? `<span class="arrow">${state.sort.key === c.sort ? (state.sort.dir === 'desc' ? '▼' : '▲') : '↕'}</span>`
+        : '';
+      return `<th class="${cls}"${c.sort ? ` data-sort="${c.sort}" title="点击按${esc(c.label)}排序"` : ''}>${esc(c.label)}${arrow}</th>`;
+    }).join('');
+  }
+
+  function riskTag(row) {
+    const level = getRiskLevel(row);
+    const label = RISK_LABEL[level];
+    return `<span class="tag tag-${level}">${esc(label)}</span>` +
+      (isAbnormalPrice(row) ? '<span class="tag tag-abn" title="低价幅度 ≥ 40%，疑似配件 / 定金 / 优惠券 / 非完整商品或抓取错误，请人工复核">⚠ 异常</span>' : '');
+  }
+
+  function renderRows(rows) {
+    if (!rows.length) {
+      $('tbody').innerHTML = `<tr><td colspan="${COLUMNS.length}"><div class="empty"><strong>${ROWS.length ? '当前筛选条件下没有记录' : '还没有接入「排查记录」数据'}</strong>${ROWS.length ? '换个日期或把条件放宽一些试试。' : '构建时没有取到源表数据，页面不会展示任何编造的数字。'}</div></td></tr>`;
+      return;
+    }
+
+    $('tbody').innerHTML = rows.map((row) => {
+      const level = getRiskLevel(row);
+      const rate = getDiscountRate(row);
+      const gap = getPriceGap(row);
+      const sev = level === 'severe';
+      const hit = level === 'high' || level === 'medium' || level === 'mild';
+      const priceCls = sev ? 'price hit-sev' : hit ? 'price hit' : 'price';
+      const shopMeta = row.sellerId ? esc(row.sellerId) : '<span class="muted">无卖家 ID</span>';
+      const shopLink = row.shopUrl
+        ? ` <a class="linkmini" href="${esc(row.shopUrl)}" target="_blank" rel="noopener noreferrer">查看店铺 ↗</a>`
+        : '';
+      return `<tr class="${sev ? 'sev' : ''}">
+        <td class="pl1">${dash(row.platform)}</td>
+        <td class="pl2"><div class="shopcell"><span class="name" title="${esc(row.shop)}">${dash(row.shop)}</span><span class="meta">${shopMeta}${shopLink}</span></div></td>
+        <td class="pl3" title="${esc(row.model)}">${dash(row.model)}</td>
+        <td class="num"><span class="${priceCls}">${fmtMoney(getPrice(row))}</span></td>
+        <td class="num"><span class="price muted">${fmtMoney(getListPrice(row))}</span></td>
+        <td class="num"><span class="${gap !== null && gap > 0 ? priceCls : 'price muted'}">${fmtGap(gap)}</span></td>
+        <td class="num"><span class="${rate !== null && rate > 0 ? priceCls : 'price muted'}">${rate === null ? '—' : fmtPct(rate)}</span></td>
+        <td>${dash(row.date)}</td>
+        <td>${dash(row.version)}</td>
+        <td>${dash(row.shopType)}</td>
+        <td class="num">${row.monthlySales === null ? '<span class="muted">—</span>' : fmtInt(row.monthlySales)}</td>
+        <td>${dash(row.region)}</td>
+        <td class="notecell" title="${esc(row.note)}">${dash(row.note)}</td>
+        <td class="pr1">${riskTag(row)}</td>
+        <td class="pr2"><div class="acts">
+          <button class="act act-main" type="button" data-open="${esc(row.url)}"${row.url ? '' : ' disabled title="源表没有商品链接"'}>查看商品</button>
+          <button class="act" type="button" data-copy="${esc(row.url)}"${row.url ? '' : ' disabled'}>复制链接</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderPager(total) {
+    const pages = Math.max(1, Math.ceil(total / state.size));
+    if (state.page > pages) state.page = pages;
+    const p = state.page;
+    const btn = (label, page, opts) => {
+      const o = opts || {};
+      return `<button type="button" data-page="${page}"${o.disabled ? ' disabled' : ''}${o.current ? ' aria-current="true"' : ''}>${label}</button>`;
+    };
+
+    const items = [btn('上一页', p - 1, { disabled: p <= 1 })];
+    const nums = [];
+    for (let i = 1; i <= pages; i++) {
+      if (i === 1 || i === pages || Math.abs(i - p) <= 1) nums.push(i);
+    }
+    let prev = 0;
+    for (const n of nums) {
+      if (prev && n - prev > 1) items.push('<span class="gap">…</span>');
+      items.push(btn(String(n), n, { current: n === p }));
+      prev = n;
+    }
+    items.push(btn('下一页', p + 1, { disabled: p >= pages }));
+    $('pager').innerHTML = items.join('');
+
+    const from = total ? (p - 1) * state.size + 1 : 0;
+    const to = Math.min(total, p * state.size);
+    $('count').textContent = total
+      ? `共 ${fmtInt(total)} 条，当前第 ${fmtInt(from)}–${fmtInt(to)} 条（第 ${p}/${pages} 页）`
+      : '共 0 条';
+  }
+
+  // --- 店铺聚合 ------------------------------------------------------------
+  const SHOP_PREVIEW = 8;
+  function renderShops(rows) {
+    const shops = aggregateShops(rows);
+    const shown = state.shopAll ? shops : shops.slice(0, SHOP_PREVIEW);
+    $('shop-more').textContent = state.shopAll ? '收起' : `展开全部（${shops.length}）`;
+    $('shop-more').hidden = shops.length <= SHOP_PREVIEW;
+
+    if (!shops.length) {
+      $('shopbody').innerHTML = `<tr><td colspan="9"><div class="empty">当前筛选下没有店铺</div></td></tr>`;
+      return;
+    }
+    $('shopbody').innerHTML = shown.map((s) => {
+      const heavy = s.maxRate !== null && s.maxRate >= 0.2;
+      return `<tr>
+        <td>${dash(s.platform)}</td>
+        <td><div class="shopcell"><span class="name">${dash(s.shop)}</span><span class="meta">${s.sellerId ? esc(s.sellerId) : '<span class="muted">无卖家 ID</span>'}</span></div></td>
+        <td>${dash(s.shopType)}</td>
+        <td class="num">${fmtInt(s.records)}</td>
+        <td class="num"><span class="${s.low ? 'price hit' : 'muted'}">${fmtInt(s.low)}</span></td>
+        <td class="num"><span class="${s.severe ? 'price hit-sev' : 'muted'}">${fmtInt(s.severe)}</span></td>
+        <td class="num"><span class="${heavy ? 'price hit-sev' : s.maxRate ? 'price hit' : 'muted'}">${s.maxRate === null ? '—' : fmtPct(s.maxRate)}</span></td>
+        <td class="notecell" title="${esc(s.models.join('、'))}">${s.models.length ? esc(s.models.join('、')) : '<span class="muted">—</span>'}</td>
+        <td><div class="acts">
+          <button class="act" type="button" data-open="${esc(s.shopUrl)}"${s.shopUrl ? '' : ' disabled title="源表没有店铺链接"'}>查看店铺</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // --- 主渲染 --------------------------------------------------------------
+  function render() {
+    const filtered = applyFilters(ROWS, state.filters);
+    const sorted = sortRows(filtered, state.sort.key, state.sort.dir);
+    const pages = Math.max(1, Math.ceil(sorted.length / state.size));
+    if (state.page > pages) state.page = pages;
+    const slice = sorted.slice((state.page - 1) * state.size, state.page * state.size);
+
+    renderKpis(filtered);
+    renderHead();
+    renderRows(slice);
+    renderPager(sorted.length);
+    renderShops(filtered);
+    pushFiltersToUi();
+  }
+
+  // --- 页头 / 页尾 ---------------------------------------------------------
+  function renderChrome(unmatched) {
+    $('latest').textContent = LATEST || '—';
+    const src = DATA.docUrl
+      ? `数据源：<a href="${esc(DATA.docUrl)}" target="_blank" rel="noopener noreferrer">飞书「${esc(DATA.sheetTitle || '排查记录')}」↗</a>`
+      : `数据源：${esc(DATA.sheetTitle || '排查记录')}`;
+    $('srcline').innerHTML = src;
+
+    const notes = [];
+    if (DATA.source !== 'feishu') {
+      notes.push(ROWS.length
+        ? '当前页面用的<strong>不是</strong>飞书实时数据，仅供界面验证。'
+        : '构建时没有取到「排查记录」，页面处于空态 —— 不会用编造的数字占位。配好飞书凭证后重新构建即可。');
+    }
+    if (unmatched && unmatched.length) {
+      notes.push(`地址栏参数 ${unmatched.map(esc).join('、')} 在当前数据里没有匹配值，已按「全部」处理。`);
+    }
+    if (DATA.warnings && DATA.warnings.length) {
+      notes.push(`同步告警 ${DATA.warnings.length} 条：<ul>${DATA.warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>`);
+    }
+    const banner = $('banner');
+    banner.hidden = notes.length === 0;
+    banner.innerHTML = notes.join('<br>');
+
+    const foot = [];
+    foot.push(`共 ${fmtInt(ROWS.length)} 条巡检记录，覆盖 ${DATES.length} 个排查日期${DATES.length ? `（${DATES[0]} ~ ${DATES[DATES.length - 1]}）` : ''}。`);
+    foot.push('口径：价差 = 官方指导价 − 发现价格；低价幅度 = 价差 ÷ 官方指导价。低价 = 发现价格低于官方指导价。');
+    foot.push('本页所有数字均由「排查记录」逐条实时计算，源表更新后重新构建即可同步，无需手改任何汇总值。');
+    if (DATA.syncedAt) foot.push(`数据同步于 ${new Date(DATA.syncedAt).toLocaleString('zh-CN', { hour12: false })}。`);
+    $('foot').innerHTML = foot.map((t) => `<div>${t}</div>`).join('');
+  }
+
+  // --- 事件 ----------------------------------------------------------------
+  function bind() {
+    const live = () => { readFiltersFromUi(); state.page = 1; render(); };
+    for (const id of ['f-from', 'f-to', 'f-platform', 'f-model', 'f-version', 'f-shopType', 'f-region', 'f-low', 'f-band']) {
+      $(id).addEventListener('change', live);
+    }
+    let qTimer = 0;
+    $('f-q').addEventListener('input', () => {
+      clearTimeout(qTimer);
+      qTimer = setTimeout(live, 200);
+    });
+    $('f-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(qTimer); live(); writeQuery(); } });
+
+    $('do-query').addEventListener('click', () => { live(); writeQuery(); });
+    $('do-reset').addEventListener('click', () => {
+      state.filters = defaultFilters();
+      state.sort = { key: 'risk', dir: 'desc' };
+      state.page = 1;
+      state.size = 20;
+      render();
+      writeQuery();
+    });
+
+    const setRange = (from, to) => {
+      state.filters.dateFrom = from;
+      state.filters.dateTo = to;
+      state.page = 1;
+      render();
+    };
+    $('q-latest').addEventListener('click', () => setRange(LATEST, LATEST));
+    $('q-7').addEventListener('click', () => setRange(shiftDays(LATEST, -6), LATEST));
+    $('q-all').addEventListener('click', () => setRange('', ''));
+
+    $('thead-row').addEventListener('click', (e) => {
+      const th = e.target.closest('[data-sort]');
+      if (!th) return;
+      const key = th.dataset.sort;
+      // 同一列再点一次换方向；换列时给一个合理的默认方向（日期和风险默认从高到低）
+      if (state.sort.key === key) state.sort.dir = state.sort.dir === 'desc' ? 'asc' : 'desc';
+      else state.sort = { key, dir: 'desc' };
+      state.page = 1;
+      render();
+    });
+
+    $('pager').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-page]');
+      if (!b || b.disabled) return;
+      state.page = Number(b.dataset.page);
+      render();
+      document.querySelector('.tablewrap').scrollTop = 0;
+    });
+
+    $('pagesize').addEventListener('change', () => {
+      state.size = Number($('pagesize').value) || 20;
+      state.page = 1;
+      render();
+    });
+
+    $('shop-more').addEventListener('click', () => { state.shopAll = !state.shopAll; render(); });
+
+    document.addEventListener('click', (e) => {
+      const open = e.target.closest('[data-open]');
+      if (open && open.dataset.open) { openUrl(open.dataset.open); return; }
+      const cp = e.target.closest('[data-copy]');
+      if (cp && cp.dataset.copy) copy(cp.dataset.copy);
+    });
+  }
+
+  // --- 启动 ----------------------------------------------------------------
+  fillSelects();
+  const parsed = readQuery();
+  state.filters = parsed.filters;
+  renderChrome(parsed.unmatched);
+  bind();
+  render();
+})();
+</script>

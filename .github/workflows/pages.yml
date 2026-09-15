@@ -9,6 +9,7 @@ on:
     branches: ['claude/tmall-dashboard-field-mapping-rdq5gr']
     paths:
       - 'preview/dashboard.html'
+      - 'preview/links.html'
       - 'lib/**'
       - 'scripts/**'
       - '.github/workflows/pages.yml'
@@ -60,6 +61,24 @@ jobs:
           FEISHU_SHEET_PRODUCTS: ${{ secrets.FEISHU_SHEET_PRODUCTS }}
           FEISHU_SHEET_CAMPAIGNS: ${{ secrets.FEISHU_SHEET_CAMPAIGNS }}
         run: npm run build:static
+
+      # 低价链接监测明细页 → dist/links.html。
+      # 数据源是另一个工作簿（「排查记录」），凭证共用上面那套；
+      # 两个 secrets 不配就走默认的工作簿 / 子表，见 lib/lowprice/feishu.ts。
+      # 取不到数据时页面走空态，构建照样成功，绝不会发演示数据。
+      - name: 生成链接明细页
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_BASE_URL: ${{ secrets.FEISHU_BASE_URL }}
+          FEISHU_LOWPRICE_SPREADSHEET_TOKEN: ${{ secrets.FEISHU_LOWPRICE_SPREADSHEET_TOKEN }}
+          FEISHU_LOWPRICE_SHEET: ${{ secrets.FEISHU_LOWPRICE_SHEET }}
+        run: npm run build:links
+
+      # 口径对账：页面里注入的 rules 必须逐字节等于 lib/lowprice/rules.js，
+      # 且两边算出来的指标、排序、聚合完全一致。对不上就让这次发布失败。
+      - name: 链接明细页对账
+        run: npm run check:links
 
       - uses: actions/upload-pages-artifact@v3
         with:

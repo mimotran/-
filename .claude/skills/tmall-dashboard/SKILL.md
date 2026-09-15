@@ -137,3 +137,23 @@ npm run build:static   # 烤进 HTML → dist/index.html
 - `references/deploy.md` —— 发布、定时构建、secrets、以及定时任务不生效时怎么查
 - `scripts/xcmp.mjs` —— 数值对账脚本（配合 `scripts/xcheck.ts` 用）
 - `scripts/probe-template.mjs` —— Playwright 交互探针模板
+
+## 另一条线：低价链接监测 / 链接明细页
+
+同一个仓库里还有第二个产物 `dist/links.html`（源文件 `preview/links.html`），
+数据源是**另一个飞书工作簿**里的「排查记录」子表，和天猫看板完全解耦：
+`lib/lowprice/**` + `scripts/*-links.ts`，不碰 `lib/metrics.ts` 和 `lib/feishu/normalize.ts`。
+
+改它之前先读 README 的「低价链接监测 / 链接明细页」一节。三件必须知道的事：
+
+1. **口径只有一份源码。** `lib/lowprice/rules.js` 是纯 JS，`npm run build:links` 把它
+   原样注入页面 —— 不像天猫看板那样在页面里重写一遍聚合逻辑。改口径只改这个文件，
+   然后 `npm run build:links -- --write-preview` 把 rules 块写回 preview。
+2. **`npm run check:links` 是硬门槛**（CI 里也跑）：逐字节比对注入的 rules、
+   再逐行 / 逐筛选组合 / 逐排序键比结果。对不上就是页面没重新构建。
+3. **价格方向别搞反。** 价差 = 官方指导价 − 发现价格，所以低价是**正**价差。
+   分档边界算进重的一档（恰好 5% 是中度，恰好 20% 是严重）；幅度 ≥40% 额外打
+   「异常价格」标识但**照样计入**低价统计。
+
+固定列的 left/right 偏移是写死的像素值，所以表格必须 `table-layout: fixed`，
+改列宽要同时改 colgroup、`.pl*/.pr*` 的偏移和 `min-width`，三处对不上就会错位。
