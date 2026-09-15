@@ -56,7 +56,10 @@ export interface LinkSummary {
   low: number;
   lowLinks: number;
   lowRate: number;
+  /** 有低价链接的店铺去重数（= 源表「看板」页的「涉及店铺」口径） */
   shops: number;
+  /** 当前筛选下的全部店铺去重数 */
+  allShops: number;
   severe: number;
   abnormal: number;
   /** 缺官方指导价 / 发现价格，算不出幅度的条数 */

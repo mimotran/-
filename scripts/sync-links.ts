@@ -61,7 +61,7 @@ async function main() {
   console.log(`    在架链接 ${s.records}（去重 ${s.links} 条链接）`);
   console.log(`    低价链接 ${s.low}`);
   console.log(`    低价占比 ${(s.lowRate * 100).toFixed(1)}%`);
-  console.log(`    涉及店铺 ${s.shops}`);
+  console.log(`    涉及店铺 ${s.shops}（有低价链接的店铺；在架店铺共 ${s.allShops} 家）`);
   console.log(`    严重低价 ${s.severe}（其中疑似异常价格 ${s.abnormal}）`);
 
   const persisted = await writeLinkSnapshot({

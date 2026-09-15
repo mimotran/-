@@ -29,7 +29,8 @@ export const LINK_ALIASES = {
   shopUrl: ['店铺链接', '店铺URL', '店铺地址', '旺旺链接'],
   model: ['产品型号', '型号', '商品型号', '产品', '产品名称'],
   version: ['版本', '版本类型', '国内/海外', '区域版本'],
-  price: ['发现价格', '发现价', '监测价格', '实际售价', '到手价', '售价', '成交价'],
+  // 源表这一列实际叫「违规售价」，需求文档里写的是「发现价格」，两个都认
+  price: ['违规售价', '发现价格', '违规价格', '发现价', '监测价格', '实际售价', '到手价', '售价', '成交价'],
   listPrice: ['官方指导价', '指导价', '官方价', '官方售价', '建议零售价', '控价'],
   gap: ['价差(元)', '价差', '差价', '价格差'],
   rate: ['低价幅度', '低价幅度(%)', '降价幅度', '低价比例', '折扣幅度'],
@@ -108,11 +109,16 @@ function toUrl(value: unknown): string {
 /**
  * 源表里的「低价幅度」可能写成 0.0636、6.36% 或 6.36 三种。
  * toNumber 认得百分号，剩下 6.36 这种裸数按百分点处理 —— 一条链接不可能便宜 636%。
+ *
+ * 但**卖得比指导价贵一倍以上**时幅度本来就会超过 -100%（售价 4123 / 指导价 1299 → -217%），
+ * 源表存的就是 -2.17 这个小数。所以只有在现算幅度落在 ±100% 以内时，才把 >1 的裸数
+ * 当成百分点 —— 少了这个前提，这类行会被误判成「源表和现算对不上」，把哨兵变成噪音。
  */
-function rateOrNull(value: unknown): number | null {
+function rateOrNull(value: unknown, computed: number | null): number | null {
   const n = numberOrNull(value);
   if (n === null) return null;
-  return Math.abs(n) > 1 ? n / 100 : n;
+  if (Math.abs(n) > 1 && (computed === null || Math.abs(computed) <= 1)) return n / 100;
+  return n;
 }
 
 export function parseLinkRows(records: Array<Record<string, unknown>>): ParseResult {
@@ -126,15 +132,20 @@ export function parseLinkRows(records: Array<Record<string, unknown>>): ParseRes
   let noListPrice = 0;
   let gapMismatch = 0;
   let rateMismatch = 0;
-  let loose = 0;
+  let loosePrice = 0;
 
-  /** 先严格解析，失败了再宽松抠一次数字，并记一笔 */
-  const numField = (value: unknown): number | null => {
+  /**
+   * 先严格解析，失败了再宽松抠一次数字。
+   *
+   * 只有**价格**走到宽松路径才记一笔告警 —— 月销在淘宝上本来就写成「23人付款」，
+   * 每次都报一条「112 个单元格带文案」等于把哨兵调成噪音。
+   */
+  const numField = (value: unknown, isPrice = false): number | null => {
     const strict = numberOrNull(value);
     if (strict !== null) return strict;
     if (toText(value) === '') return null;
     const relaxed = looseNumber(value);
-    if (relaxed !== null) loose += 1;
+    if (relaxed !== null && isPrice) loosePrice += 1;
     return relaxed;
   };
 
@@ -174,8 +185,8 @@ export function parseLinkRows(records: Array<Record<string, unknown>>): ParseRes
       shopType: toText(get('shopType')),
       model: toText(get('model')),
       version: toText(get('version')),
-      price: numField(get('price')),
-      listPrice: numField(get('listPrice')),
+      price: numField(get('price'), true),
+      listPrice: numField(get('listPrice'), true),
       monthlySales: numField(get('monthlySales')),
       region: toText(get('region')),
       note: toText(get('note')),
@@ -192,8 +203,8 @@ export function parseLinkRows(records: Array<Record<string, unknown>>): ParseRes
     const gap = getPriceGap(row);
     if (srcGap !== null && gap !== null && Math.abs(srcGap - gap) > 1) gapMismatch += 1;
 
-    const srcRate = rateOrNull(get('rate'));
     const rate = getDiscountRate(row);
+    const srcRate = rateOrNull(get('rate'), rate);
     if (srcRate !== null && rate !== null && Math.abs(srcRate - rate) > 0.005) rateMismatch += 1;
 
     rows.push(row);
@@ -209,9 +220,9 @@ export function parseLinkRows(records: Array<Record<string, unknown>>): ParseRes
     );
   }
   if (noDate) warnings.push(`${noDate} 行没有可识别的排查日期，已跳过。`);
-  if (loose) {
+  if (loosePrice) {
     warnings.push(
-      `${loose} 个价格 / 月销单元格带着文案（如「月销500+」），已抠出其中的数字。` +
+      `${loosePrice} 个价格单元格带着文案（如「到手价 1,310」），已抠出其中的数字。` +
         '数值异常时先回源表看这些格子。',
     );
   }

@@ -163,7 +163,7 @@ select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: 
 /* table-layout: fixed 不是为了好看 —— 固定列的 left/right 偏移是写死的像素值，
    只有列宽严格等于 colgroup 才对得上。auto 布局下一条长备注就能把某一列撑宽，
    固定列随即和相邻列错位、互相压盖。 */
-table.grid { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1956px; table-layout: fixed; }
+table.grid { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1970px; table-layout: fixed; }
 table.grid th, table.grid td {
   padding: 9px 10px; text-align: left; vertical-align: top;
   border-bottom: 1px solid var(--line-soft); white-space: nowrap;
@@ -204,8 +204,19 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .shopcell { display: grid; gap: 2px; white-space: normal; }
 .shopcell .name { font-weight: 500; overflow-wrap: anywhere; }
-.shopcell .meta { font-size: 11px; color: var(--ink-3); font-family: var(--mono); overflow-wrap: anywhere; }
-.notecell { white-space: normal; color: var(--ink-2); max-width: 240px; overflow-wrap: anywhere; }
+.shopcell .meta {
+  font-size: 11px; color: var(--ink-3); font-family: var(--mono);
+  display: flex; gap: 6px; align-items: baseline; min-width: 0; flex-wrap: nowrap;
+}
+/* 淘宝的 appUid 有 51 位：ID 自己截断，「查看店铺」不许被它挤到第二行 */
+.shopcell .uid { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shopcell .meta .linkmini { flex: none; white-space: nowrap; }
+/* 选择器要压过 `table.grid th, table.grid td { white-space: nowrap }`（0,1,2），
+   否则备注永远是一行 —— 类选择器 (0,1,0) 抢不过它 */
+table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap: anywhere; }
+/* 备注是一整段人工判断（「疑似跨境水货…原标题：…」），截成两行 + 悬停看全文；
+   不截的话一行备注能把整行撑到 5 行高，一屏看不了几条 */
+.clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .muted { color: var(--ink-3); }
 
 .price { font-variant-numeric: tabular-nums; }
@@ -370,8 +381,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
         <colgroup>
           <col style="width:84px"><col style="width:210px"><col style="width:168px">
           <col style="width:112px"><col style="width:116px"><col style="width:108px"><col style="width:112px">
-          <col style="width:116px"><col style="width:86px"><col style="width:112px">
-          <col style="width:88px"><col style="width:104px"><col style="width:220px">
+          <col style="width:200px">
+          <col style="width:116px"><col style="width:76px"><col style="width:150px">
+          <col style="width:88px"><col style="width:110px">
           <col style="width:150px"><col style="width:170px">
         </colgroup>
         <thead><tr id="thead-row"></tr></thead>
@@ -392,7 +404,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   <section class="card">
     <div class="card-hd">
       <h2>店铺聚合</h2>
-      <span class="hint">同一卖家 ID 视为同一家店；卖家 ID 为空时退回「平台 + 卖家昵称」。按低价链接数排序</span>
+      <span class="hint" id="shop-hint">同一卖家 ID 视为同一家店；卖家 ID 为空时退回「平台 + 卖家昵称」。按低价链接数排序</span>
       <button class="chip" id="shop-more" type="button" style="margin-left:auto">展开全部</button>
     </div>
     <div class="tablewrap" style="max-height:none">
@@ -672,6 +684,7 @@ function summarize(rows) {
   const linkKeys = new Set();
   const lowLinkKeys = new Set();
   const shopKeys = new Set();
+  const lowShopKeys = new Set();
   let low = 0;
   let severe = 0;
   let abnormal = 0;
@@ -685,6 +698,7 @@ function summarize(rows) {
     if (isLowPrice(row)) {
       low += 1;
       lowLinkKeys.add(getLinkKey(row));
+      lowShopKeys.add(getShopKey(row));
       if (level === 'severe') severe += 1;
       if (isAbnormalPrice(row)) abnormal += 1;
     }
@@ -696,7 +710,14 @@ function summarize(rows) {
     low,
     lowLinks: lowLinkKeys.size,
     lowRate: rows.length ? low / rows.length : 0,
-    shops: shopKeys.size,
+    /**
+     * 「涉及店铺」= **有低价链接的**店铺去重数，不是在架店铺总数。
+     * 口径取自源表「看板」页：2026-09-14 那天两个在售型号是 93 / 33 / 35.5% / 23，
+     * 23 正是低价店铺数（在架店铺有 66 家）。运营看这个数是为了知道要找多少家店谈，
+     * 把没降价的店算进去会把它放大三倍。全量店铺数另给 allShops，在小字里标。
+     */
+    shops: lowShopKeys.size,
+    allShops: shopKeys.size,
     severe,
     abnormal,
     unknown,
@@ -1082,7 +1103,7 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
       { k: '在架链接', v: fmtInt(s.records), n: dedup('去重后', s.records, s.links) || '当前筛选下的巡检记录数' },
       { k: '低价链接', v: fmtInt(s.low), n: dedup('去重后', s.low, s.lowLinks) || '发现价格低于官方指导价', cls: s.low ? 'is-low' : '' },
       { k: '低价占比', v: fmtPct(s.lowRate, 1), n: `${fmtInt(s.low)} / ${fmtInt(s.records)}`, cls: s.low ? 'is-low' : '' },
-      { k: '涉及店铺', v: fmtInt(s.shops), n: '按卖家 ID 去重' },
+      { k: '涉及店铺', v: fmtInt(s.shops), n: `有低价链接的店铺，按卖家 ID 去重（在架共 ${fmtInt(s.allShops)} 家）`, cls: s.shops ? 'is-low' : '' },
       { k: '严重低价', v: fmtInt(s.severe), n: s.abnormal ? `含 ${fmtInt(s.abnormal)} 条疑似异常价格` : '低价幅度 ≥ 20%', cls: s.severe ? 'is-severe' : '' },
     ];
     $('kpis').innerHTML = tiles.map((t) => `
@@ -1112,12 +1133,14 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     { label: '官方指导价', num: true },
     { label: '价差', sort: 'gap', num: true },
     { label: '低价幅度', sort: 'rate', num: true },
+    // 备注放在价格后面：源表这一列写的是「为什么可疑」（疑似跨境水货 / 配件SKU 价 / 原标题），
+    // 是运营判断的主要依据。排在最后会被右侧固定列盖住，一屏根本看不到。
+    { label: '备注' },
     { label: '排查日期', sort: 'date' },
     { label: '版本' },
     { label: '店铺类型' },
     { label: '月销', sort: 'sales', num: true },
     { label: '发货地' },
-    { label: '备注' },
     { label: '风险等级', sort: 'risk', cls: 'pr1' },
     { label: '操作', cls: 'pr2' },
   ];
@@ -1152,7 +1175,9 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
       const sev = level === 'severe';
       const hit = level === 'high' || level === 'medium' || level === 'mild';
       const priceCls = sev ? 'price hit-sev' : hit ? 'price hit' : 'price';
-      const shopMeta = row.sellerId ? esc(row.sellerId) : '<span class="muted">无卖家 ID</span>';
+      const shopMeta = row.sellerId
+        ? `<span class="uid" title="${esc(row.sellerId)}">${esc(row.sellerId)}</span>`
+        : '<span class="muted">无卖家 ID</span>';
       const shopLink = row.shopUrl
         ? ` <a class="linkmini" href="${esc(row.shopUrl)}" target="_blank" rel="noopener noreferrer">查看店铺 ↗</a>`
         : '';
@@ -1164,12 +1189,12 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
         <td class="num"><span class="price muted">${fmtMoney(getListPrice(row))}</span></td>
         <td class="num"><span class="${gap !== null && gap > 0 ? priceCls : 'price muted'}">${fmtGap(gap)}</span></td>
         <td class="num"><span class="${rate !== null && rate > 0 ? priceCls : 'price muted'}">${rate === null ? '—' : fmtPct(rate)}</span></td>
+        <td class="notecell"><div class="clamp2" title="${esc(row.note)}">${dash(row.note)}</div></td>
         <td>${dash(row.date)}</td>
         <td>${dash(row.version)}</td>
-        <td>${dash(row.shopType)}</td>
+        <td title="${esc(row.shopType)}">${dash(row.shopType)}</td>
         <td class="num">${row.monthlySales === null ? '<span class="muted">—</span>' : fmtInt(row.monthlySales)}</td>
-        <td>${dash(row.region)}</td>
-        <td class="notecell" title="${esc(row.note)}">${dash(row.note)}</td>
+        <td title="${esc(row.region)}">${dash(row.region)}</td>
         <td class="pr1">${riskTag(row)}</td>
         <td class="pr2"><div class="acts">
           <button class="act act-main" type="button" data-open="${esc(row.url)}"${row.url ? '' : ' disabled title="源表没有商品链接"'}>查看商品</button>
@@ -1214,6 +1239,12 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
   function renderShops(rows) {
     const shops = aggregateShops(rows);
     const shown = state.shopAll ? shops : shops.slice(0, SHOP_PREVIEW);
+    const lowShops = shops.filter((s) => s.low > 0).length;
+    // 这张表列的是当前筛选下的**全部**店铺；KPI 的「涉及店铺」只数有低价链接的那些，
+    // 两个数不一样是有意的，在这里说清楚，免得被当成算错了
+    $('shop-hint').textContent =
+      `同一卖家 ID 视为同一家店（为空时退回「平台 + 卖家昵称」）。` +
+      `当前筛选下共 ${fmtInt(shops.length)} 家店，其中 ${fmtInt(lowShops)} 家有低价链接 —— 按低价链接数排序`;
     $('shop-more').textContent = state.shopAll ? '收起' : `展开全部（${shops.length}）`;
     $('shop-more').hidden = shops.length <= SHOP_PREVIEW;
 
@@ -1225,7 +1256,7 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
       const heavy = s.maxRate !== null && s.maxRate >= 0.2;
       return `<tr>
         <td>${dash(s.platform)}</td>
-        <td><div class="shopcell"><span class="name">${dash(s.shop)}</span><span class="meta">${s.sellerId ? esc(s.sellerId) : '<span class="muted">无卖家 ID</span>'}</span></div></td>
+        <td><div class="shopcell"><span class="name" title="${esc(s.shop)}">${dash(s.shop)}</span><span class="meta">${s.sellerId ? `<span class="uid" title="${esc(s.sellerId)}">${esc(s.sellerId)}</span>` : '<span class="muted">无卖家 ID</span>'}</span></div></td>
         <td>${dash(s.shopType)}</td>
         <td class="num">${fmtInt(s.records)}</td>
         <td class="num"><span class="${s.low ? 'price hit' : 'muted'}">${fmtInt(s.low)}</span></td>
