@@ -123,7 +123,62 @@ function main() {
   if (shopsA !== shopsB) throw new Error('店铺聚合结果不一致');
   console.log(`✓ 店铺聚合一致（${lib.aggregateShops(rows).length} 家店）`);
 
-  // 6. 口径本身的内在一致性：低价数 = 各低价档之和，且和「仅低价」筛选对得上
+  // 6. 趋势 / 批次：页面上的图和 KPI 环比都走这几个函数
+  const trendA = lib.trendSeries(rows);
+  const trendB = page.trendSeries(rows);
+  if (JSON.stringify(trendA) !== JSON.stringify(trendB)) throw new Error('趋势序列不一致');
+  // 每期的指标必须等于「按那一天筛出来再 summarize」，否则趋势图和 KPI 会各说各话
+  for (const point of trendA) {
+    const direct = lib.summarize(lib.applyFilters(rows, { dateFrom: point.date, dateTo: point.date }));
+    for (const key of ['records', 'low', 'lowRate', 'shops', 'severe'] as const) {
+      if (Math.abs(point[key] - direct[key]) > 1e-9) {
+        throw new Error(`趋势里 ${point.date} 的 ${key} 与按日期筛选的结果不一致`);
+      }
+    }
+  }
+  const trendRecords = trendA.reduce((a, p) => a + p.records, 0);
+  if (trendRecords !== rows.length) throw new Error(`各期记录数之和 ${trendRecords} ≠ 总行数 ${rows.length}`);
+  console.log(`✓ 趋势序列一致（${trendA.length} 期，各期之和 = 总行数）`);
+
+  const dedupA = lib.latestPerLink(rows);
+  if (JSON.stringify(dedupA.map((r) => r.seq).sort()) !== JSON.stringify(page.latestPerLink(rows).map((r) => r.seq).sort())) {
+    throw new Error('按链接去重的结果不一致');
+  }
+  if (dedupA.length !== lib.summarize(rows).links) {
+    throw new Error(`去重后行数 ${dedupA.length} ≠ 去重链接数 ${lib.summarize(rows).links}`);
+  }
+  console.log(`✓ 按链接去重一致（${rows.length} → ${dedupA.length} 条）`);
+
+  for (const [name, a, b] of [
+    ['产品分布', lib.distribution(rows), page.distribution(rows)],
+    ['发货地分布', lib.breakdownBy(rows, 'region'), page.breakdownBy(rows, 'region')],
+    ['店铺类型分布', lib.breakdownBy(rows, 'shopType'), page.breakdownBy(rows, 'shopType')],
+  ] as const) {
+    if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${name}不一致`);
+  }
+  const distSum = lib.distribution(rows).reduce((a, d) => a + d.records, 0);
+  if (distSum !== rows.length) throw new Error(`分布各组之和 ${distSum} ≠ 总行数 ${rows.length}`);
+  console.log('✓ 分布聚合一致，且各组之和 = 总行数');
+
+  for (const i in dates) {
+    const d = dates[i];
+    const a = lib.previousRange(dates, d, d);
+    const b = page.previousRange(dates, d, d);
+    if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`previousRange(${d}) 不一致`);
+    const expect = Number(i) > 0 ? dates[Number(i) - 1] : null;
+    if ((a ? a.to : null) !== expect) throw new Error(`${d} 的上一期应当是 ${expect}，实际 ${a ? a.to : null}`);
+  }
+  console.log(`✓ 环比窗口一致（${dates.length} 期，逐期核对上一期）`);
+
+  // 低价均差只对低价链接取平均 —— 把非低价算进来会被高于指导价的行拉成负数
+  const lowRows = lib.applyFilters(rows, { lowPrice: 'low' });
+  if (lowRows.length) {
+    const manual = lowRows.reduce((a, r) => a + (lib.getPriceGap(r) ?? 0), 0) / lowRows.length;
+    if (Math.abs(manual - lib.summarize(rows).avgLowGap) > 1e-6) throw new Error('低价均差口径不一致');
+    console.log(`✓ 低价均差 ¥${manual.toFixed(2)}（只对 ${lowRows.length} 条低价链接取平均）`);
+  }
+
+  // 7. 口径本身的内在一致性：低价数 = 各低价档之和，且和「仅低价」筛选对得上
   const all = lib.summarize(rows);
   const breakdown = lib.riskBreakdown(rows);
   const bandSum = breakdown.mild + breakdown.medium + breakdown.high + breakdown.severe;

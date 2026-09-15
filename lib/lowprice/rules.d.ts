@@ -48,3 +48,35 @@ export function sortRows(
   dir?: 'asc' | 'desc',
 ): LinkRecord[];
 export function aggregateShops(rows: LinkRecord[]): ShopAggregate[];
+
+export interface TrendPoint extends LinkSummary {
+  date: string;
+  risk: Record<RiskKey, number>;
+}
+export interface DistributionRow {
+  key: string;
+  parts: string[];
+  records: number;
+  low: number;
+  lowRate: number;
+  severe: number;
+}
+export interface BreakdownRow {
+  key: string;
+  records: number;
+  low: number;
+  lowRate: number;
+  severe: number;
+}
+
+export function trendSeries(rows: LinkRecord[]): TrendPoint[];
+export function delta(current: number, previous: number | null | undefined): { abs: number; pct: number | null } | null;
+export function latestPerLink(rows: LinkRecord[]): LinkRecord[];
+export function distribution(rows: LinkRecord[], fields?: Array<keyof LinkRecord>): DistributionRow[];
+export function breakdownBy(rows: LinkRecord[], field: keyof LinkRecord): BreakdownRow[];
+export function previousRange(
+  dates: string[],
+  from: string,
+  to: string,
+): { from: string; to: string } | null;
+export function lastPeriods(dates: string[], n: number): { from: string; to: string };

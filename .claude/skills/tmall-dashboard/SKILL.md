@@ -161,5 +161,12 @@ npm run build:static   # 烤进 HTML → dist/index.html
 `Note Pro` + `NotePin S` —— 所以本页不筛型号时是 112 条，看板上写的是 93 条，
 这不是算错了。
 
-固定列的 left/right 偏移是写死的像素值，所以表格必须 `table-layout: fixed`，
-改列宽要同时改 colgroup、`.pl*/.pr*` 的偏移和 `min-width`，三处对不上就会错位。
+固定列的 left/right 偏移是写死的像素值，所以表格必须 `table-layout: fixed`。
+列定义（标签、宽度、单元格渲染）集中在页面的 `columns()` 里，colgroup、表头、
+单元格和表宽都从它生成 —— 改列宽只改那一处，别再去动 CSS 里的 `.pl*/.pr*` 偏移，
+除非动的是**左三列 / 右两列**的宽度（那才需要同步改偏移量）。
+
+趋势图是每期一根堆叠柱 + 一条低价占比虚线，**故意不用双轴**（理由同天猫看板的规矩 2）。
+图按容器像素宽度重画，不是 viewBox 拉伸，所以窗口 resize 要重新 render，否则字会糊。
+趋势和 KPI 迷你折线都用 `trendSeries(rowsIgnoringDate())` —— 传进去的行**不能**带日期
+筛选，否则图上只剩一个点。

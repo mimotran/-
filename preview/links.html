@@ -33,6 +33,18 @@
   --severe-soft: #fde8e6;
   --flat-bg: #f1f3f6; --flat-ink: #6b7280; --flat-line: #e2e5ea;
 
+  /* 图表填充色：上面那组是文字色，直接拿去填色块会糊成一片深色。
+     这一组是同色相提亮后的版本，专供图表，顺序 = 风险由重到轻 */
+  --c-severe: #b3241c;
+  --c-high: #e05442;
+  --c-medium: #ef8c2b;
+  --c-mild: #f3c54e;
+  --c-none: #c9d2de;
+  --c-unknown: #c3c9d4;
+
+  --gain: #0a8f63;
+  --loss: #c02a22;
+
   --row-hover: #f7f9ff;
   --shadow: 0 1px 2px rgb(16 21 31 / .04), 0 8px 24px -18px rgb(16 21 31 / .28);
   --radius: 12px;
@@ -55,11 +67,7 @@ body {
 a { color: var(--brand); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-.wrap {
-  max-width: 1680px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
+.wrap { max-width: 1680px; margin: 0 auto; padding: 0 20px; }
 
 /* --- 页头 ---------------------------------------------------------------- */
 .top {
@@ -74,9 +82,7 @@ a:hover { text-decoration: underline; }
   font-size: 12px; font-weight: 600; letter-spacing: .08em;
   color: var(--brand); text-transform: uppercase;
 }
-.brandmark::before {
-  content: ""; width: 8px; height: 8px; border-radius: 3px; background: var(--brand);
-}
+.brandmark::before { content: ""; width: 8px; height: 8px; border-radius: 3px; background: var(--brand); }
 h1 { margin: 6px 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
 .sub { margin: 0; color: var(--ink-2); font-size: 13px; max-width: 60ch; }
 .top-right { margin-left: auto; text-align: right; display: grid; gap: 6px; justify-items: end; }
@@ -91,11 +97,8 @@ h1 { margin: 6px 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -.01e
 
 /* --- 通用卡片 ------------------------------------------------------------ */
 .card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  margin-bottom: 16px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px;
 }
 .card-hd {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -105,20 +108,20 @@ h1 { margin: 6px 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -.01e
 .card-hd .hint { color: var(--ink-3); font-size: 12px; }
 .card-bd { padding: 14px 16px; }
 
+.cols { display: grid; gap: 16px; margin-bottom: 16px; align-items: start; }
+.cols-trend { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.cols-3 { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); }
+.cols .card { margin-bottom: 0; height: 100%; }
+
 /* --- 筛选区 -------------------------------------------------------------- */
-.filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 10px 12px;
-}
+.filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px 12px; }
 .field { display: grid; gap: 5px; min-width: 0; }
 .field > label { font-size: 12px; color: var(--ink-2); }
 .field.wide { grid-column: span 2; }
 select, input[type="date"], input[type="search"] {
   width: 100%; height: 32px; padding: 0 9px;
   border: 1px solid var(--line); border-radius: 8px;
-  background: var(--card); color: var(--ink);
-  font: inherit; font-size: 13px;
+  background: var(--card); color: var(--ink); font: inherit; font-size: 13px;
 }
 select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: var(--brand); }
 .dates { display: flex; align-items: center; gap: 6px; }
@@ -128,13 +131,20 @@ select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: 
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line);
 }
-.quick { display: flex; gap: 6px; flex-wrap: wrap; margin-right: auto; }
+.quick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .chip {
   border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
   border-radius: 999px; padding: 5px 11px; font: inherit; font-size: 12px; cursor: pointer;
 }
 .chip:hover { border-color: var(--brand-line); color: var(--brand); }
 .chip[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand-line); color: var(--brand-ink); font-weight: 500; }
+.chip[disabled] { opacity: .45; cursor: not-allowed; }
+.toggle {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px 4px 9px; cursor: pointer;
+}
+.toggle input { margin: 0; accent-color: var(--brand); }
+.toggle.off { opacity: .5; cursor: not-allowed; }
 .btn {
   height: 32px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line);
   background: var(--card); color: var(--ink); font: inherit; cursor: pointer;
@@ -142,21 +152,78 @@ select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: 
 .btn:hover { border-color: var(--ink-3); }
 .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 500; }
 .btn-primary:hover { background: var(--brand-ink); border-color: var(--brand-ink); }
+.spacer { margin-left: auto; }
 
 /* --- KPI ----------------------------------------------------------------- */
-.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+.kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
 .kpi {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow); padding: 14px 16px 13px; min-width: 0;
+  box-shadow: var(--shadow); padding: 13px 15px 12px; min-width: 0;
 }
-.kpi .k { font-size: 12px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.kpi .k { font-size: 12px; color: var(--ink-2); }
+.kpi .row { display: flex; align-items: flex-end; gap: 8px; margin-top: 5px; }
 .kpi .v {
-  margin-top: 6px; font-size: 26px; font-weight: 600; letter-spacing: -.02em;
-  font-variant-numeric: tabular-nums; line-height: 1.15;
+  font-size: 25px; font-weight: 600; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums; line-height: 1.1;
 }
-.kpi .n { margin-top: 4px; font-size: 12px; color: var(--ink-3); min-height: 18px; }
+.kpi .spark { margin-left: auto; opacity: .9; flex: none; }
+.kpi .n { margin-top: 5px; font-size: 11.5px; color: var(--ink-3); min-height: 17px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
 .kpi.is-low .v { color: var(--high-ink); }
 .kpi.is-severe .v { color: var(--severe-bg); }
+.dlt { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dlt.up-bad { color: var(--loss); }
+.dlt.down-good { color: var(--gain); }
+.dlt.flat { color: var(--ink-3); }
+
+/* --- 图表 ---------------------------------------------------------------- */
+.chartbox { position: relative; }
+svg.chart { display: block; width: 100%; overflow: visible; }
+svg.chart text { font-family: var(--font); fill: var(--ink-3); }
+svg.chart .axis { font-size: 11px; }
+svg.chart .grid { stroke: var(--line-soft); stroke-width: 1; shape-rendering: crispEdges; }
+svg.chart .band { fill: var(--brand-soft); opacity: 0; }
+svg.chart .band.on { opacity: .34; }
+svg.chart .seg { cursor: pointer; stroke: #fff; stroke-width: .75; }
+svg.chart .dim { opacity: .28; }
+svg.chart .sel { stroke: var(--brand); stroke-width: 1.5; }
+svg.chart .ln { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round; }
+svg.chart .dot { fill: #fff; stroke: var(--brand); stroke-width: 2; }
+svg.chart .val { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+.tip {
+  position: absolute; z-index: 20; pointer-events: none; opacity: 0;
+  transition: opacity .12s; transform: translate(-50%, -100%);
+  background: rgb(16 21 31 / .93); color: #fff; border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; line-height: 1.5; white-space: nowrap;
+  box-shadow: 0 6px 20px -6px rgb(0 0 0 / .4);
+}
+.tip.on { opacity: 1; }
+.tip .t { font-weight: 600; margin-bottom: 3px; }
+.tip .r { display: flex; gap: 10px; justify-content: space-between; }
+.tip .r i { font-style: normal; opacity: .75; }
+.tip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+
+.legend { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--ink-3); font-size: 12px; }
+.legend .tag { font-size: 11px; }
+.legend .key { display: inline-flex; align-items: center; gap: 5px; cursor: default; }
+.legend .key i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+.ringwrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.ringlegend { display: grid; gap: 7px; flex: 1; min-width: 140px; }
+.ringlegend .r { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.ringlegend .r i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.ringlegend .r .n { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.ringlegend .r .p { color: var(--ink-3); width: 46px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 横向条榜：一行一个分组，条长表示低价链接数，浅底表示在架总数 */
+.hbars { display: grid; gap: 9px; }
+.hbar { display: grid; grid-template-columns: minmax(96px, auto) 1fr 92px; gap: 10px; align-items: center; font-size: 12px; }
+.hbar .lb { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar .tr { position: relative; height: 16px; background: var(--flat-bg); border-radius: 4px; overflow: hidden; }
+.hbar .fl { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
+.hbar .nm { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.hbar .nm b { color: var(--high-ink); font-weight: 600; }
+.hbar .rk { color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
 /* --- 表格 ---------------------------------------------------------------- */
 .tablewrap { overflow: auto; max-height: 68vh; border-radius: 0 0 var(--radius) var(--radius); }
@@ -233,16 +300,12 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 .tag-severe { background: var(--severe-bg); color: var(--severe-ink); border-color: var(--severe-line); font-weight: 600; }
 .tag-none { background: var(--flat-bg); color: var(--flat-ink); border-color: var(--flat-line); }
 .tag-unknown { background: transparent; color: var(--ink-3); border: 1px dashed var(--line); }
-.tag-abn {
-  background: #fff4e0; color: #9a5b00; border-color: #f2d49a;
-  margin-left: 4px; cursor: help;
-}
+.tag-abn { background: #fff4e0; color: #9a5b00; border-color: #f2d49a; margin-left: 4px; cursor: help; }
 
 .acts { display: flex; gap: 6px; }
 .act {
   border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
-  border-radius: 6px; padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer;
-  white-space: nowrap;
+  border-radius: 6px; padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
 }
 .act:hover { border-color: var(--brand-line); color: var(--brand); background: var(--brand-soft); }
 .act[disabled] { opacity: .4; cursor: not-allowed; }
@@ -264,18 +327,22 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 .pager .gap { color: var(--ink-3); padding: 0 2px; }
 .sizesel { height: 28px; width: auto; padding: 0 6px; }
 
-.empty { padding: 44px 16px; text-align: center; color: var(--ink-3); }
+.empty { padding: 36px 16px; text-align: center; color: var(--ink-3); }
 .empty strong { display: block; color: var(--ink-2); font-size: 14px; margin-bottom: 6px; }
 
 .banner {
   border-radius: var(--radius); padding: 11px 14px; margin-bottom: 14px;
   font-size: 12.5px; border: 1px solid var(--mild-line); background: var(--mild-bg); color: var(--mild-ink);
 }
-.banner.info { border-color: var(--brand-line); background: var(--brand-soft); color: var(--brand-ink); }
 .banner ul { margin: 6px 0 0; padding-left: 18px; }
 
-.legend { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--ink-3); font-size: 12px; }
-.legend .tag { font-size: 11px; }
+.notes { display: grid; gap: 8px; font-size: 12px; color: var(--ink-2); }
+.notes .n { display: flex; gap: 8px; align-items: flex-start; }
+.notes .n b { color: var(--ink); font-weight: 600; }
+.notes .i {
+  flex: none; width: 18px; height: 18px; border-radius: 5px; background: var(--brand-soft);
+  color: var(--brand-ink); font-size: 11px; font-weight: 600; display: grid; place-items: center;
+}
 
 .foot { color: var(--ink-3); font-size: 12px; padding: 4px 2px 0; display: grid; gap: 4px; }
 
@@ -286,11 +353,16 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 }
 .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-@media (max-width: 1240px) {
+@media (max-width: 1400px) {
   .kpis { grid-template-columns: repeat(3, 1fr); }
+  .cols-3 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 1100px) {
+  .cols-trend { grid-template-columns: 1fr; }
 }
 @media (max-width: 820px) {
   .kpis { grid-template-columns: repeat(2, 1fr); }
+  .cols-3 { grid-template-columns: 1fr; }
   .field.wide { grid-column: span 1; }
   /* 窄屏上固定列会把可视区吃掉大半，干脆全部解除固定。
      表头那两行必须一起解除：thead th 的 position:sticky 选择器更具体，
@@ -310,7 +382,7 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
       <p class="sub">查看所有巡检链接，并快速定位低价商品、异常店铺及价格风险。</p>
     </div>
     <div class="top-right">
-      <span class="stamp"><span class="k">最近数据日期</span><span class="v" id="latest">—</span></span>
+      <span class="stamp"><span class="k">最近排查</span><span class="v" id="latest">—</span></span>
       <span class="srcline" id="srcline"></span>
     </div>
   </div>
@@ -322,12 +394,16 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
   <section class="card">
     <div class="card-hd">
       <h2>筛选条件</h2>
-      <span class="hint">条件可任意组合；所有指标与表格都按筛选结果实时重算</span>
+      <span class="hint">源表每周更新一批，日期即批次；条件可任意组合，所有指标、图表与表格实时重算</span>
     </div>
     <div class="card-bd">
       <div class="filters">
+        <div class="field">
+          <label for="f-period">排查批次</label>
+          <select id="f-period"></select>
+        </div>
         <div class="field wide">
-          <label for="f-from">排查日期</label>
+          <label for="f-from">自定义区间</label>
           <div class="dates">
             <input type="date" id="f-from" aria-label="排查日期开始">
             <span>至</span>
@@ -352,10 +428,15 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
       </div>
       <div class="filter-foot">
         <div class="quick">
-          <button class="chip" id="q-latest" type="button">最新一天</button>
-          <button class="chip" id="q-7" type="button">近 7 天</button>
-          <button class="chip" id="q-all" type="button">全部日期</button>
+          <button class="chip" id="q-latest" type="button">最新一期</button>
+          <button class="chip" id="q-4" type="button">近 4 期</button>
+          <button class="chip" id="q-8" type="button">近 8 期</button>
+          <button class="chip" id="q-all" type="button">全部批次</button>
+          <label class="toggle" id="dedupe-wrap" title="跨批次时同一条链接会被重复抓到，打开后每条链接只保留区间内最新一次">
+            <input type="checkbox" id="f-dedupe"> 同一链接只看最新一次
+          </label>
         </div>
+        <span class="spacer"></span>
         <button class="btn btn-primary" id="do-query" type="button" title="应用当前条件，并把条件写进地址栏，便于分享">查询</button>
         <button class="btn" id="do-reset" type="button">重置</button>
       </div>
@@ -363,6 +444,52 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
   </section>
 
   <div class="kpis" id="kpis"></div>
+
+  <div class="cols cols-trend">
+    <section class="card">
+      <div class="card-hd">
+        <h2>低价链接趋势</h2>
+        <span class="hint" id="trend-hint"></span>
+        <div class="legend" id="trend-legend" style="margin-left:auto"></div>
+      </div>
+      <div class="card-bd">
+        <div class="chartbox" id="trend-box"><div class="tip" id="trend-tip"></div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-hd">
+        <h2>风险分级分布</h2>
+        <span class="hint">当前筛选结果</span>
+      </div>
+      <div class="card-bd">
+        <div class="ringwrap">
+          <div class="chartbox" id="ring-box" style="flex:none"><div class="tip" id="ring-tip"></div></div>
+          <div class="ringlegend" id="ring-legend"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="cols cols-3">
+    <section class="card">
+      <div class="card-hd">
+        <h2>产品 / 平台 / 版本分布</h2>
+        <span class="hint">条长＝低价链接数，浅底＝在架链接数</span>
+      </div>
+      <div class="card-bd"><div class="hbars" id="dist"></div></div>
+    </section>
+
+    <section class="card">
+      <div class="card-hd"><h2>高风险店铺 TOP 10</h2><span class="hint">按低价链接数</span></div>
+      <div class="card-bd"><div class="hbars" id="topshops"></div></div>
+    </section>
+
+    <section class="card">
+      <div class="card-hd"><h2>发货地分布</h2><span class="hint">按低价链接数</span></div>
+      <div class="card-bd"><div class="hbars" id="regions"></div></div>
+    </section>
+  </div>
 
   <section class="card">
     <div class="card-hd">
@@ -378,14 +505,7 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
     </div>
     <div class="tablewrap">
       <table class="grid" id="tbl">
-        <colgroup>
-          <col style="width:84px"><col style="width:210px"><col style="width:168px">
-          <col style="width:112px"><col style="width:116px"><col style="width:108px"><col style="width:112px">
-          <col style="width:200px">
-          <col style="width:116px"><col style="width:76px"><col style="width:150px">
-          <col style="width:88px"><col style="width:110px">
-          <col style="width:150px"><col style="width:170px">
-        </colgroup>
+        <colgroup id="colgroup"></colgroup>
         <thead><tr id="thead-row"></tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -404,7 +524,7 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
   <section class="card">
     <div class="card-hd">
       <h2>店铺聚合</h2>
-      <span class="hint" id="shop-hint">同一卖家 ID 视为同一家店；卖家 ID 为空时退回「平台 + 卖家昵称」。按低价链接数排序</span>
+      <span class="hint" id="shop-hint"></span>
       <button class="chip" id="shop-more" type="button" style="margin-left:auto">展开全部</button>
     </div>
     <div class="tablewrap" style="max-height:none">
@@ -421,6 +541,20 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
         </tr></thead>
         <tbody id="shopbody"></tbody>
       </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-hd"><h2>指标口径</h2><span class="hint">页面上所有数字都由「排查登记表」逐条现算</span></div>
+    <div class="card-bd">
+      <div class="notes">
+        <div class="n"><span class="i">1</span><span><b>价差</b> = 官方指导价 − 发现价格。发现价格更低时价差为正，所以<b>低价 = 正价差</b>。</span></div>
+        <div class="n"><span class="i">2</span><span><b>低价幅度</b> = 价差 ÷ 官方指导价。分档边界算进重的一档：恰好 5% 是中度、恰好 20% 是严重。</span></div>
+        <div class="n"><span class="i">3</span><span><b>严重低价</b> = 幅度 ≥ 20%；幅度 ≥ 40% 另标「⚠ 异常价格」（疑似配件 SKU / 定金 / 优惠券 / 抓取错误），<b>仍然计入</b>低价统计，不自动剔除。</span></div>
+        <div class="n"><span class="i">4</span><span><b>涉及店铺</b> = 有低价链接的店铺去重数（优先按卖家 ID，为空时用「平台 + 卖家昵称」）；在架店铺总数另标在小字里。</span></div>
+        <div class="n"><span class="i">5</span><span><b>低价均差</b> = 低价链接价差的平均值，只对低价链接取平均 —— 把高于指导价的链接算进来会把它拉成负数。</span></div>
+        <div class="n"><span class="i">6</span><span><b>环比</b>按<b>批次</b>比，不按自然天：源表每周一批，跨批的间隔并不固定。趋势图只受平台 / 型号等条件影响，<b>不受日期筛选影响</b>，否则单期视图下图上只剩一个点。</span></div>
+      </div>
     </div>
   </section>
 
@@ -689,6 +823,7 @@ function summarize(rows) {
   let severe = 0;
   let abnormal = 0;
   let unknown = 0;
+  let lowGapSum = 0;
 
   for (const row of rows) {
     linkKeys.add(getLinkKey(row));
@@ -699,6 +834,7 @@ function summarize(rows) {
       low += 1;
       lowLinkKeys.add(getLinkKey(row));
       lowShopKeys.add(getShopKey(row));
+      lowGapSum += getPriceGap(row) ?? 0;
       if (level === 'severe') severe += 1;
       if (isAbnormalPrice(row)) abnormal += 1;
     }
@@ -710,6 +846,13 @@ function summarize(rows) {
     low,
     lowLinks: lowLinkKeys.size,
     lowRate: rows.length ? low / rows.length : 0,
+    /**
+     * 低价均差（元）：**只对低价链接**取价差的平均。
+     *
+     * 把非低价链接也算进来会被高于指导价的行（有的卖到指导价三倍）拉成负数，
+     * 读起来变成「平均没降价」，恰好掩盖掉要看的东西。分母只用低价条数。
+     */
+    avgLowGap: low ? lowGapSum / low : 0,
     /**
      * 「涉及店铺」= **有低价链接的**店铺去重数，不是在架店铺总数。
      * 口径取自源表「看板」页：2026-09-14 那天两个在售型号是 93 / 33 / 35.5% / 23，
@@ -828,12 +971,131 @@ function aggregateShops(rows) {
     );
 }
 
+// ---------------------------------------------------------------------------
+// 趋势 / 批次
+//
+// 源表每周更新一批，所以「排查日期」就是**批次**。下面这组函数都按批次聚合，
+// 页面上的趋势图、环比、批次筛选器全部走它们，不在组件里另算一遍。
+// ---------------------------------------------------------------------------
+
+/**
+ * 按排查日期切成一期一期，每期算一遍 summarize + 风险构成。
+ *
+ * **不要**把日期筛选条件传进来 —— 趋势图的横轴就是日期，先按日期筛一遍
+ * 再画趋势，图上只会剩一个点。平台 / 型号 / 版本这些非日期条件才应该作用于它。
+ */
+function trendSeries(rows) {
+  const byDate = new Map();
+  for (const row of rows) {
+    if (!row.date) continue;
+    if (!byDate.has(row.date)) byDate.set(row.date, []);
+    byDate.get(row.date).push(row);
+  }
+  return [...byDate.keys()].sort().map((date) => {
+    const bucket = byDate.get(date);
+    const s = summarize(bucket);
+    return { date, ...s, risk: riskBreakdown(bucket) };
+  });
+}
+
+/**
+ * 环比：本期相对**上一期**的变化。
+ *
+ * `pct` 在上期为 0 时给 null 而不是 Infinity —— 从 0 涨到 5 没有百分比可言，
+ * 页面上显示「新增 5」比显示「+∞%」有用。
+ */
+function delta(current, previous) {
+  if (previous === undefined || previous === null) return null;
+  const abs = current - previous;
+  return { abs, pct: previous === 0 ? null : abs / Math.abs(previous) };
+}
+
+/**
+ * 每条链接只保留区间内**最新一次**抓取。
+ *
+ * 跨批次看的时候，同一条链接每期都会被抓一次，直接堆在一起会把「在架链接」
+ * 说成三倍。开了去重开关之后，KPI 和表格用的是同一份去重后的行，口径不会打架。
+ * 同一天同一条链接出现多行时（源表偶尔重复登记），取序号大的那条。
+ */
+function latestPerLink(rows) {
+  const best = new Map();
+  for (const row of rows) {
+    const key = getLinkKey(row);
+    const prev = best.get(key);
+    if (!prev || row.date > prev.date || (row.date === prev.date && (row.seq || 0) > (prev.seq || 0))) {
+      best.set(key, row);
+    }
+  }
+  return [...best.values()];
+}
+
+/**
+ * 分组分布：产品型号 × 平台 × 版本，对应源表「看板」页那张分布表。
+ * 只列真实出现过的组合，不铺满笛卡尔积 —— 空行没有信息量，还会把有数的行挤下去。
+ */
+function distribution(rows, fields = ['model', 'platform', 'version']) {
+  const groups = new Map();
+  for (const row of rows) {
+    const key = fields.map((f) => row[f] || '—').join(' / ');
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  return [...groups.entries()]
+    .map(([key, bucket]) => {
+      const s = summarize(bucket);
+      return { key, parts: key.split(' / '), records: s.records, low: s.low, lowRate: s.lowRate, severe: s.severe };
+    })
+    .sort((a, b) => b.low - a.low || b.lowRate - a.lowRate || b.records - a.records);
+}
+
+/** 某个字段的分布榜（发货地、店铺类型…），按低价数降序 */
+function breakdownBy(rows, field) {
+  const groups = new Map();
+  for (const row of rows) {
+    const key = (row[field] || '').trim() || '未填写';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  return [...groups.entries()]
+    .map(([key, bucket]) => {
+      const s = summarize(bucket);
+      return { key, records: s.records, low: s.low, lowRate: s.lowRate, severe: s.severe };
+    })
+    .sort((a, b) => b.low - a.low || b.records - a.records || a.key.localeCompare(b.key, 'zh-Hans-CN'));
+}
+
+/**
+ * 上一段同样长度的窗口，用来算环比。
+ *
+ * 按**批次**算而不是按自然天：源表每周更新一批，中间隔几天是不固定的，
+ * 按天往前推 7 天很容易推到两批之间的空档，环比就变成了和空气比。
+ * 传入的 dates 必须是全量批次（升序）。返回 null 表示前面没有可比的批次。
+ */
+function previousRange(dates, from, to) {
+  if (!dates.length) return null;
+  const lo = from ? dates.findIndex((d) => d >= from) : 0;
+  const hiRaw = to ? dates.map((d) => d <= to).lastIndexOf(true) : dates.length - 1;
+  if (lo < 0 || hiRaw < lo) return null;
+  const span = hiRaw - lo + 1;
+  const prevHi = lo - 1;
+  const prevLo = prevHi - span + 1;
+  if (prevHi < 0) return null;
+  return { from: dates[Math.max(0, prevLo)], to: dates[prevHi] };
+}
+
+/** 最近 n 期的起止（含当期）。n 大于总期数时就是全部 */
+function lastPeriods(dates, n) {
+  if (!dates.length) return { from: '', to: '' };
+  const start = Math.max(0, dates.length - n);
+  return { from: dates[start], to: dates[dates.length - 1] };
+}
+
 /* __RULES_END__ */
 </script>
 
 <script>
 /* eslint-disable */
-const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuild.feishu.cn/sheets/YEDVs46o2hzZ8htBnakcbzNpnrp?sheet=1WDztC","sheetTitle":"排查记录","warnings":[],"latestDate":"","builtAt":""};
+const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuild.feishu.cn/sheets/YEDVs46o2hzZ8htBnakcbzNpnrp?sheet=1WDztC","sheetTitle":"排查登记表","warnings":[],"latestDate":"","builtAt":""};
 
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -863,10 +1125,16 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
   // --- 格式化 --------------------------------------------------------------
   const fmtInt = (v) => Number(v || 0).toLocaleString('zh-CN');
   const fmtMoney = (v) => v === null || v === undefined ? '—' : '¥' + Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+  const fmtMoney0 = (v) => '¥' + Math.round(Number(v) || 0).toLocaleString('zh-CN');
   const fmtPct = (v, d) => v === null || v === undefined ? '—' : (v * 100).toFixed(d === undefined ? 2 : d) + '%';
-  const fmtGap = (v) => v === null ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + '¥' + Math.abs(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+  /** 价差：上百元时不再显示小数 —— 「+¥1,237.14」放不进列宽，而那 0.14 元没有意义 */
+  const fmtGap = (v) => v === null ? '—'
+    : (v > 0 ? '+' : v < 0 ? '−' : '') + '¥' +
+      Math.abs(v).toLocaleString('zh-CN', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : 2 });
+  const md = (d) => (d || '').slice(5);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const dash = (s) => s ? esc(s) : '<span class="muted">—</span>';
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
   /** 站外链接一律新窗口打开，并且带上 noopener —— 打开的是第三方商品页 */
   function openUrl(url) {
@@ -910,14 +1178,38 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     page: 1,
     size: 20,
     shopAll: false,
+    /** 跨批次时每条链接只保留最新一次 */
+    dedupe: false,
   };
 
-  /** 默认视图：最新排查日期 + 其余条件全部。没有数据时留空 */
+  /** 默认视图：最新一期 + 其余条件全部 */
   function defaultFilters() {
     const f = emptyFilters();
     f.dateFrom = LATEST;
     f.dateTo = LATEST;
     return f;
+  }
+
+  /** 当前日期窗口覆盖到的批次 */
+  function periodsInWindow() {
+    const f = state.filters;
+    return DATES.filter((d) => (!f.dateFrom || d >= f.dateFrom) && (!f.dateTo || d <= f.dateTo));
+  }
+
+  /**
+   * 当前视图的行。
+   *
+   * 去重放在这里、只放这一处：KPI、图表、表格、店铺聚合全部取自它，
+   * 口径不会出现「指标去了重、表格没去重」这种自相矛盾。
+   */
+  function viewRows() {
+    const rows = applyFilters(ROWS, state.filters);
+    return state.dedupe ? latestPerLink(rows) : rows;
+  }
+
+  /** 去掉日期条件之后的行 —— 趋势图和 KPI 迷你折线用它，否则横轴只剩一个点 */
+  function rowsIgnoringDate() {
+    return applyFilters(ROWS, { ...state.filters, dateFrom: '', dateTo: '' });
   }
 
   // --- 筛选项 --------------------------------------------------------------
@@ -939,6 +1231,10 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
         values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
     }
     $('f-band').innerHTML = BANDS.map((b) => `<option value="${b.key}">${b.label}</option>`).join('');
+    // 批次下拉：最新的排在最前，运营基本只看最近几期
+    $('f-period').innerHTML =
+      '<option value="">区间 / 全部</option>' +
+      [...DATES].reverse().map((d, i) => `<option value="${d}">${d}${i === 0 ? '（最新）' : ''}</option>`).join('');
     const min = DATES[0] || '';
     const max = DATES[DATES.length - 1] || '';
     for (const id of ['f-from', 'f-to']) {
@@ -984,7 +1280,12 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     const date = get('date', 'day');
     const from = get('dateFrom', 'from', 'start');
     const to = get('dateTo', 'to', 'end');
+    const periods = Number(get('periods', 'last'));
     if (date === 'all' || from === 'all') { f.dateFrom = ''; f.dateTo = ''; }
+    else if (Number.isFinite(periods) && periods > 0) {
+      const r = lastPeriods(DATES, periods);
+      f.dateFrom = r.from; f.dateTo = r.to;
+    }
     else if (date) { f.dateFrom = date; f.dateTo = date; }
     else if (from || to) { f.dateFrom = from || ''; f.dateTo = to || ''; }
 
@@ -1012,6 +1313,9 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
 
     const kw = get('q', 'keyword', 'search');
     if (kw !== null) f.q = kw;
+
+    const dedupe = get('dedupe', 'unique');
+    if (dedupe !== null) state.dedupe = dedupe === '1' || dedupe.toLowerCase() === 'true';
 
     const size = Number(get('size', 'pageSize'));
     if ([20, 50, 100].indexOf(size) >= 0) state.size = size;
@@ -1041,6 +1345,7 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     if (f.lowPrice !== 'all') q.set('lowPrice', f.lowPrice === 'low' ? 'true' : 'false');
     if (f.band !== 'all') q.set('band', f.band);
     if (f.q.trim()) q.set('q', f.q.trim());
+    if (state.dedupe) q.set('dedupe', '1');
     if (state.size !== 20) q.set('size', String(state.size));
     if (state.sort.key !== 'risk') q.set('sort', state.sort.key);
     if (state.sort.dir !== 'desc') q.set('dir', state.sort.dir);
@@ -1061,12 +1366,28 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     $('f-band').value = f.band;
     $('f-q').value = f.q;
     $('pagesize').value = String(state.size);
+    $('f-period').value = f.dateFrom && f.dateFrom === f.dateTo ? f.dateFrom : '';
 
+    const periods = periodsInWindow().length;
     const isLatest = f.dateFrom === LATEST && f.dateTo === LATEST && !!LATEST;
     const isAll = !f.dateFrom && !f.dateTo;
+    const matches = (n) => {
+      const r = lastPeriods(DATES, n);
+      return !isAll && f.dateFrom === r.from && f.dateTo === r.to && DATES.length > n;
+    };
     $('q-latest').setAttribute('aria-pressed', String(isLatest));
+    $('q-4').setAttribute('aria-pressed', String(matches(4)));
+    $('q-8').setAttribute('aria-pressed', String(matches(8)));
     $('q-all').setAttribute('aria-pressed', String(isAll));
-    $('q-7').setAttribute('aria-pressed', String(!isLatest && !isAll && f.dateTo === LATEST && f.dateFrom === shiftDays(LATEST, -6)));
+
+    // 单期视图里「只看最新一次」没有意义（本来就只有一次），禁用并说明，而不是留个空开关
+    const canDedupe = periods > 1;
+    $('f-dedupe').disabled = !canDedupe;
+    $('f-dedupe').checked = state.dedupe && canDedupe;
+    $('dedupe-wrap').classList.toggle('off', !canDedupe);
+    $('dedupe-wrap').title = canDedupe
+      ? '跨批次时同一条链接会被重复抓到，打开后每条链接只保留区间内最新一次'
+      : '当前只选了一期，链接本来就不会重复';
   }
 
   function readFiltersFromUi() {
@@ -1084,69 +1405,375 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     f.lowPrice = $('f-low').value;
     f.band = $('f-band').value;
     f.q = $('f-q').value;
-  }
-
-  function shiftDays(date, delta) {
-    if (!date) return '';
-    const d = new Date(date + 'T00:00:00Z');
-    d.setUTCDate(d.getUTCDate() + delta);
-    return d.toISOString().slice(0, 10);
+    state.dedupe = $('f-dedupe').checked && !$('f-dedupe').disabled;
   }
 
   // --- KPI -----------------------------------------------------------------
-  function renderKpis(rows) {
-    const s = summarize(rows);
-    const dedup = (label, records, links) =>
-      links && links < records ? `${label} ${fmtInt(links)} 条链接（区间内多次抓取）` : '';
+  /**
+   * 指标定义集中在这里：主值、迷你折线取哪个字段、涨了是好是坏。
+   * 「在架链接」涨跌本身不代表好坏（巡检范围变了也会动），所以 bad 给 null，显示灰色。
+   */
+  const METRICS = [
+    { key: 'records', label: '在架链接', fmt: fmtInt, bad: null, note: (s) => s.links < s.records ? `去重后 ${fmtInt(s.links)} 条链接` : '当前筛选下的巡检记录数' },
+    { key: 'low', label: '低价链接', fmt: fmtInt, bad: true, cls: (s) => s.low ? 'is-low' : '', note: () => '发现价格低于官方指导价' },
+    { key: 'lowRate', label: '低价占比', fmt: (v) => fmtPct(v, 1), bad: true, cls: (s) => s.low ? 'is-low' : '', note: (s) => `${fmtInt(s.low)} / ${fmtInt(s.records)}`, pctPoint: true },
+    { key: 'shops', label: '涉及店铺', fmt: fmtInt, bad: true, cls: (s) => s.shops ? 'is-low' : '', note: (s) => `有低价链接的店铺（在架共 ${fmtInt(s.allShops)} 家）` },
+    { key: 'severe', label: '严重低价', fmt: fmtInt, bad: true, cls: (s) => s.severe ? 'is-severe' : '', note: (s) => s.abnormal ? `含 ${fmtInt(s.abnormal)} 条疑似异常价格` : '低价幅度 ≥ 20%' },
+    { key: 'avgLowGap', label: '低价均差', fmt: fmtMoney0, bad: true, note: () => '低价链接平均便宜了多少' },
+  ];
 
-    const tiles = [
-      { k: '在架链接', v: fmtInt(s.records), n: dedup('去重后', s.records, s.links) || '当前筛选下的巡检记录数' },
-      { k: '低价链接', v: fmtInt(s.low), n: dedup('去重后', s.low, s.lowLinks) || '发现价格低于官方指导价', cls: s.low ? 'is-low' : '' },
-      { k: '低价占比', v: fmtPct(s.lowRate, 1), n: `${fmtInt(s.low)} / ${fmtInt(s.records)}`, cls: s.low ? 'is-low' : '' },
-      { k: '涉及店铺', v: fmtInt(s.shops), n: `有低价链接的店铺，按卖家 ID 去重（在架共 ${fmtInt(s.allShops)} 家）`, cls: s.shops ? 'is-low' : '' },
-      { k: '严重低价', v: fmtInt(s.severe), n: s.abnormal ? `含 ${fmtInt(s.abnormal)} 条疑似异常价格` : '低价幅度 ≥ 20%', cls: s.severe ? 'is-severe' : '' },
-    ];
-    $('kpis').innerHTML = tiles.map((t) => `
-      <div class="kpi ${t.cls || ''}">
-        <div class="k">${esc(t.k)}</div>
-        <div class="v">${t.v}</div>
-        <div class="n">${esc(t.n)}</div>
-      </div>`).join('');
+  function deltaHtml(metric, curr, prev) {
+    if (prev === null) return '<span class="dlt flat">环比 —</span>';
+    const d = delta(curr, prev);
+    if (!d || Math.abs(d.abs) < 1e-9) return '<span class="dlt flat">环比 持平</span>';
+    const up = d.abs > 0;
+    // 颜色表达好坏，箭头表达方向：「▲ 红」读作「涨了，而且这是坏事」
+    const cls = metric.bad === null ? 'flat' : (up === Boolean(metric.bad) ? 'up-bad' : 'down-good');
+    const text = metric.pctPoint
+      ? `${up ? '+' : '−'}${Math.abs(d.abs * 100).toFixed(1)} pt`
+      : (d.pct === null ? `${up ? '+' : '−'}${metric.fmt(Math.abs(d.abs))}` : `${up ? '+' : '−'}${(Math.abs(d.pct) * 100).toFixed(1)}%`);
+    return `<span class="dlt ${cls}">${up ? '▲' : '▼'} ${text}</span>`;
+  }
+
+  /** KPI 卡右下角的迷你折线：只表示走势，不画轴也不标值 */
+  function sparkline(values, bad) {
+    const w = 62, h = 20, pad = 2;
+    if (values.length < 2) return `<svg class="spark" width="${w}" height="${h}" aria-hidden="true"></svg>`;
+    const min = Math.min(...values), max = Math.max(...values);
+    const span = max - min || 1;
+    const x = (i) => pad + (i * (w - pad * 2)) / (values.length - 1);
+    const y = (v) => h - pad - ((v - min) / span) * (h - pad * 2);
+    const d = values.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+    const last = values[values.length - 1], prev = values[values.length - 2];
+    const rising = last > prev;
+    const color = bad === null ? css('--ink-3') : (rising === Boolean(bad) ? css('--loss') : css('--gain'));
+    return `<svg class="spark" width="${w}" height="${h}" aria-hidden="true">
+      <path d="${d}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" opacity=".85"/>
+      <circle cx="${x(values.length - 1).toFixed(1)}" cy="${y(last).toFixed(1)}" r="2.2" fill="${color}"/>
+    </svg>`;
+  }
+
+  function renderKpis(rows, trend) {
+    const s = summarize(rows);
+    const f = state.filters;
+    const prevWin = previousRange(DATES, f.dateFrom || DATES[0] || '', f.dateTo || DATES[DATES.length - 1] || '');
+    let prev = null;
+    if (prevWin) {
+      const prevRows = applyFilters(ROWS, { ...f, dateFrom: prevWin.from, dateTo: prevWin.to });
+      prev = summarize(state.dedupe ? latestPerLink(prevRows) : prevRows);
+    }
+
+    $('kpis').innerHTML = METRICS.map((m) => {
+      const spark = sparkline(trend.map((p) => p[m.key]), m.bad);
+      return `<div class="kpi ${m.cls ? m.cls(s) : ''}">
+        <div class="k">${esc(m.label)}</div>
+        <div class="row"><span class="v">${m.fmt(s[m.key])}</span>${spark}</div>
+        <div class="n">${deltaHtml(m, s[m.key], prev ? prev[m.key] : null)}<span>${esc(m.note(s))}</span></div>
+      </div>`;
+    }).join('');
 
     const parts = [];
     if (s.unknown) parts.push(`${s.unknown} 条缺官方指导价或发现价格，计入「在架链接」但不计入低价统计`);
+    if (state.dedupe) parts.push('已按「同一链接只看最新一次」去重');
     $('tbl-hint').textContent = parts.join('；');
+    return s;
+  }
+
+  // --- 趋势图 --------------------------------------------------------------
+  const RISK_ORDER = ['severe', 'high', 'medium', 'mild', 'none', 'unknown'];
+  const RISK_FILL = {
+    severe: '--c-severe', high: '--c-high', medium: '--c-medium',
+    mild: '--c-mild', none: '--c-none', unknown: '--c-unknown',
+  };
+
+  function tipAt(tipEl, box, x, y, html) {
+    tipEl.innerHTML = html;
+    tipEl.style.left = `${x}px`;
+    tipEl.style.top = `${y - 10}px`;
+    tipEl.classList.add('on');
+  }
+
+  /**
+   * 趋势图：一期一根堆叠柱（按风险分档），上面叠一条低价占比折线。
+   *
+   * 占比那条线**不共用**左边的数量轴 —— 量纲不同的两个指标塞进一根真值轴，
+   * 两边怎么对齐是任意的，会凭空造出并不存在的相关性。这里占比单独占右侧一条
+   * 0–100% 的刻度，并且画成虚线 + 空心点，视觉上和柱子明确分层。
+   */
+  function renderTrend(trend) {
+    const box = $('trend-box');
+    const tip = $('trend-tip');
+    const width = Math.max(320, box.clientWidth || 640);
+    const height = 236;
+    const pad = { t: 14, r: 44, b: 26, l: 40 };
+    const iw = width - pad.l - pad.r;
+    const ih = height - pad.t - pad.b;
+
+    if (!trend.length) {
+      box.innerHTML = '<div class="empty">当前筛选下没有任何批次</div>';
+      return;
+    }
+
+    const maxTotal = Math.max(1, ...trend.map((p) => p.records));
+    const step = niceStep(maxTotal, 4);
+    // 顶格取「刚好盖住最大值」的整数刻度，不强行凑满 4 格 ——
+    // 112 被顶到 200 的话，柱子只能占一半高，走势就看不出来了
+    const top = Math.max(step, Math.ceil(maxTotal / step) * step);
+    // 占比轴单独一条：低价占比常年在 10%~35%，固定 0–100% 会把折线压成一条直线。
+    // 上限取实际最大值上浮一档，并且**总是从 0 起**，免得放大微小波动。
+    const maxRate = Math.max(0.05, ...trend.map((p) => p.lowRate));
+    const rateTop = Math.min(1, Math.ceil(maxRate * 1.25 * 10) / 10);
+    const n = trend.length;
+    const slot = iw / n;
+    const bw = Math.min(46, Math.max(8, slot * 0.56));
+    const cx = (i) => pad.l + slot * (i + 0.5);
+    const yv = (v) => pad.t + ih - (v / top) * ih;
+    const yr = (v) => pad.t + ih - Math.min(1, v / rateTop) * ih;
+
+    const win = new Set(periodsInWindow());
+    const parts = [];
+
+    // 网格 + 左轴（链接数）
+    for (let v = 0; v <= top + 1e-6; v += step) {
+      parts.push(`<line class="grid" x1="${pad.l}" y1="${yv(v).toFixed(1)}" x2="${width - pad.r}" y2="${yv(v).toFixed(1)}"/>`);
+      parts.push(`<text class="axis" x="${pad.l - 7}" y="${(yv(v) + 3.5).toFixed(1)}" text-anchor="end">${fmtInt(v)}</text>`);
+    }
+    // 右轴（低价占比）：0 / 中 / 上限
+    for (const r of [0, rateTop / 2, rateTop]) {
+      parts.push(`<text class="axis" x="${width - pad.r + 7}" y="${(yr(r) + 3.5).toFixed(1)}" text-anchor="start">${(r * 100).toFixed(0)}%</text>`);
+    }
+
+    trend.forEach((p, i) => {
+      const inWin = win.has(p.date);
+      parts.push(`<rect class="band ${inWin && n > 1 ? 'on' : ''}" x="${(cx(i) - slot / 2).toFixed(1)}" y="${pad.t}" width="${slot.toFixed(1)}" height="${ih}" rx="4"/>`);
+      let acc = 0;
+      for (const key of RISK_ORDER) {
+        const v = p.risk[key] || 0;
+        if (!v) continue;
+        const y0 = yv(acc + v), y1 = yv(acc);
+        acc += v;
+        parts.push(`<rect class="seg ${inWin ? '' : 'dim'}" data-i="${i}" x="${(cx(i) - bw / 2).toFixed(1)}" y="${y0.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, y1 - y0).toFixed(1)}" fill="${css(RISK_FILL[key])}"/>`);
+      }
+      parts.push(`<text class="axis" x="${cx(i).toFixed(1)}" y="${height - 8}" text-anchor="middle">${md(p.date)}</text>`);
+    });
+
+    // 低价占比折线（右轴）
+    const line = trend.map((p, i) => `${i ? 'L' : 'M'}${cx(i).toFixed(1)},${yr(p.lowRate).toFixed(1)}`).join('');
+    parts.push(`<path d="${line}" fill="none" stroke="${css('--brand')}" stroke-width="2" stroke-dasharray="5 3" stroke-linejoin="round"/>`);
+    trend.forEach((p, i) => {
+      parts.push(`<circle class="dot" cx="${cx(i).toFixed(1)}" cy="${yr(p.lowRate).toFixed(1)}" r="3.4"/>`);
+    });
+
+    // 命中区：整列可点，点一下就把筛选切到那一期
+    trend.forEach((p, i) => {
+      parts.push(`<rect data-i="${i}" x="${(cx(i) - slot / 2).toFixed(1)}" y="${pad.t}" width="${slot.toFixed(1)}" height="${ih}" fill="transparent" style="cursor:pointer"/>`);
+    });
+
+    box.innerHTML = `<svg class="chart" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${parts.join('')}</svg>`
+      + `<div class="tip" id="trend-tip"></div>`;
+
+    const svg = box.querySelector('svg');
+    const tipEl = box.querySelector('#trend-tip');
+    svg.addEventListener('mousemove', (e) => {
+      const hit = e.target.closest('[data-i]');
+      if (!hit) { tipEl.classList.remove('on'); return; }
+      const p = trend[+hit.dataset.i];
+      const rows = RISK_ORDER.filter((k) => p.risk[k])
+        .map((k) => `<div class="r"><i><span class="sw" style="background:${css(RISK_FILL[k])}"></span>${RISK_LABEL[k]}</i><span>${fmtInt(p.risk[k])}</span></div>`)
+        .join('');
+      tipAt(tipEl, box, e.offsetX, e.offsetY, `<div class="t">${p.date}</div>
+        <div class="r"><i>在架链接</i><span>${fmtInt(p.records)}</span></div>
+        <div class="r"><i>低价链接</i><span>${fmtInt(p.low)}（${fmtPct(p.lowRate, 1)}）</span></div>
+        <div class="r"><i>涉及店铺</i><span>${fmtInt(p.shops)}</span></div>
+        ${rows}`);
+    });
+    svg.addEventListener('mouseleave', () => tipEl.classList.remove('on'));
+    svg.addEventListener('click', (e) => {
+      const hit = e.target.closest('[data-i]');
+      if (!hit) return;
+      const p = trend[+hit.dataset.i];
+      state.filters.dateFrom = p.date;
+      state.filters.dateTo = p.date;
+      state.page = 1;
+      render();
+    });
+
+    $('trend-legend').innerHTML =
+      RISK_ORDER.filter((k) => k !== 'unknown' || trend.some((p) => p.risk.unknown))
+        .map((k) => `<span class="key"><i style="background:${css(RISK_FILL[k])}"></i>${RISK_LABEL[k]}</span>`).join('')
+      + `<span class="key"><svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="${css('--brand')}" stroke-width="2" stroke-dasharray="4 3"/></svg>低价占比（右轴）</span>`;
+
+    $('trend-hint').textContent = trend.length > 1
+      ? `共 ${trend.length} 期，柱高＝在架链接数，点柱子可切到该期；不受日期筛选影响`
+      : '目前只有 1 期数据，下一批更新后这里会显示走势';
+  }
+
+  /** 取一个「好看」的刻度间隔：1/2/5 × 10^n */
+  function niceStep(max, ticks) {
+    const raw = max / ticks;
+    const mag = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1))));
+    for (const m of [1, 2, 5, 10]) if (raw <= mag * m) return mag * m;
+    return mag * 10;
+  }
+
+  // --- 风险环形图 ----------------------------------------------------------
+  function renderRing(rows) {
+    const box = $('ring-box');
+    const counts = riskBreakdown(rows);
+    const total = rows.length;
+    const size = 168, r = 62, sw = 22, cxy = size / 2;
+    const parts = [];
+    let a0 = -Math.PI / 2;
+
+    // 环里只放低价的四档：中心写的是低价链接数，把「非低价」也画进去会让
+    // 环和中心数字对不上（环是 112 条的构成，中心是其中 37 条）。
+    // 非低价和缺口径在图例里单独列一行，不参与画弧。
+    const LOW_KEYS = ['severe', 'high', 'medium', 'mild'];
+    const lowTotal = LOW_KEYS.reduce((a, k) => a + counts[k], 0);
+    const keys = LOW_KEYS.filter((k) => counts[k] > 0);
+    if (!total) {
+      box.innerHTML = '<div class="empty" style="width:168px">无数据</div>';
+      $('ring-legend').innerHTML = '';
+      return;
+    }
+    for (const k of keys) {
+      const frac = counts[k] / lowTotal;
+      const a1 = a0 + frac * Math.PI * 2;
+      // 整圈只有一档时画不出弧（起终点重合），退化成一个整圆
+      if (keys.length === 1) {
+        parts.push(`<circle cx="${cxy}" cy="${cxy}" r="${r}" fill="none" stroke="${css(RISK_FILL[k])}" stroke-width="${sw}" data-k="${k}"/>`);
+      } else {
+        parts.push(`<path d="${arc(cxy, cxy, r, a0, a1)}" fill="none" stroke="${css(RISK_FILL[k])}" stroke-width="${sw}" data-k="${k}"/>`);
+      }
+      a0 = a1;
+    }
+    if (!keys.length) {
+      parts.push(`<circle cx="${cxy}" cy="${cxy}" r="${r}" fill="none" stroke="${css('--c-none')}" stroke-width="${sw}"/>`);
+    }
+    parts.push(`<text x="${cxy}" y="${cxy - 4}" text-anchor="middle" style="font-size:24px;font-weight:600;fill:${css('--ink')}">${fmtInt(lowTotal)}</text>`);
+    parts.push(`<text x="${cxy}" y="${cxy + 15}" text-anchor="middle" style="font-size:11px">低价链接数</text>`);
+
+    box.innerHTML = `<svg class="chart" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${parts.join('')}</svg><div class="tip" id="ring-tip"></div>`;
+
+    // 低价四档的占比按**低价总数**算（环怎么分的，图例就怎么读）；
+    // 非低价 / 缺口径按在架总数算，并标出来，两套分母不混着看
+    $('ring-legend').innerHTML =
+      LOW_KEYS.filter((k) => counts[k] > 0).map((k) => `
+        <div class="r">
+          <i style="background:${css(RISK_FILL[k])}"></i>
+          <span>${RISK_LABEL[k]}</span>
+          <span class="n">${fmtInt(counts[k])}</span>
+          <span class="p">${fmtPct(counts[k] / lowTotal, 1)}</span>
+        </div>`).join('')
+      + ['none', 'unknown'].filter((k) => counts[k] > 0).map((k) => `
+        <div class="r" style="border-top:1px dashed var(--line);padding-top:7px;color:var(--ink-3)">
+          <i style="background:${css(RISK_FILL[k])}"></i>
+          <span>${RISK_LABEL[k]}</span>
+          <span class="n">${fmtInt(counts[k])}</span>
+          <span class="p">${fmtPct(counts[k] / total, 1)}</span>
+        </div>`).join('');
+  }
+
+  function arc(cx, cy, r, a0, a1) {
+    const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const large = a1 - a0 > Math.PI ? 1 : 0;
+    return `M${x0.toFixed(2)},${y0.toFixed(2)}A${r},${r} 0 ${large} 1 ${x1.toFixed(2)},${y1.toFixed(2)}`;
+  }
+
+  // --- 横向条榜 ------------------------------------------------------------
+  /** items: [{ label, low, records, rate, title }]，条长＝低价数，浅底＝在架数 */
+  function renderHBars(el, items, opts) {
+    const o = opts || {};
+    if (!items.length) { el.innerHTML = '<div class="empty">无数据</div>'; return; }
+    const max = Math.max(1, ...items.map((x) => x.records));
+    el.innerHTML = items.map((x) => {
+      const sev = x.rate >= 0.2;
+      const fill = sev ? css('--c-severe') : x.rate >= 0.1 ? css('--c-high') : x.rate > 0 ? css('--c-medium') : css('--c-none');
+      return `<div class="hbar">
+        <span class="lb" title="${esc(x.title || x.label)}">${esc(x.label)}</span>
+        <span class="tr" title="低价 ${fmtInt(x.low)} / 在架 ${fmtInt(x.records)}">
+          <span class="fl" style="width:${((x.records / max) * 100).toFixed(1)}%;background:var(--flat-bg)"></span>
+          <span class="fl" style="width:${((x.low / max) * 100).toFixed(1)}%;background:${fill}"></span>
+        </span>
+        <span class="nm"><b>${fmtInt(x.low)}</b> / ${fmtInt(x.records)} <span class="rk">${o.hideRate ? '' : fmtPct(x.rate, 1)}</span></span>
+      </div>`;
+    }).join('');
   }
 
   // --- 表格 ----------------------------------------------------------------
   /**
-   * 列顺序。价格四件套（发现价格 / 官方指导价 / 价差 / 低价幅度）紧跟在固定的左三列
-   * 之后，而不是排在排查日期、店铺类型后面 —— 表总宽接近 2000px，常见笔记本屏幕
-   * 一屏放不下，右侧固定的「风险等级 / 操作」会盖住中间的列。把价格放在最靠前的
-   * 可见区，保证不横向滚动也能一眼看到「便宜了多少」。
+   * 列定义。价格四件套 + 备注紧跟在固定的左三列之后：表总宽近 2000px，常见笔记本
+   * 一屏放不下，右侧固定的「风险等级 / 操作」会盖住中间的列。价格和备注（源表
+   * 写的是「为什么可疑」）是判断依据，必须落在不滚动就能看到的区域。
+   *
+   * 「排查日期」只在跨批次时才出现 —— 单期视图里整列都是同一个日期，
+   * 纯占位，而它占掉的宽度正好是备注能多显示半行的宽度。
+   * 表头、colgroup、单元格都从这一份定义生成，列增减时不会错位。
    */
-  const COLUMNS = [
-    { label: '平台', cls: 'pl1' },
-    { label: '店铺名称', cls: 'pl2' },
-    { label: '产品型号', cls: 'pl3' },
-    { label: '发现价格', sort: 'price', num: true },
-    { label: '官方指导价', num: true },
-    { label: '价差', sort: 'gap', num: true },
-    { label: '低价幅度', sort: 'rate', num: true },
-    // 备注放在价格后面：源表这一列写的是「为什么可疑」（疑似跨境水货 / 配件SKU 价 / 原标题），
-    // 是运营判断的主要依据。排在最后会被右侧固定列盖住，一屏根本看不到。
-    { label: '备注' },
-    { label: '排查日期', sort: 'date' },
-    { label: '版本' },
-    { label: '店铺类型' },
-    { label: '月销', sort: 'sales', num: true },
-    { label: '发货地' },
-    { label: '风险等级', sort: 'risk', cls: 'pr1' },
-    { label: '操作', cls: 'pr2' },
-  ];
+  function columns() {
+    const multi = periodsInWindow().length > 1;
+    const cols = [
+      { label: '平台', cls: 'pl1', w: 84, cell: (r) => dash(r.platform) },
+      { label: '店铺名称', cls: 'pl2', w: 210, cell: shopCell },
+      { label: '产品型号', cls: 'pl3', w: 168, cell: (r) => `<span title="${esc(r.model)}">${dash(r.model)}</span>` },
+      { label: '发现价格', sort: 'price', num: true, w: 112, cell: (r) => `<span class="${priceCls(r)}">${fmtMoney(getPrice(r))}</span>` },
+      { label: '官方指导价', num: true, w: 116, cell: (r) => `<span class="price muted">${fmtMoney(getListPrice(r))}</span>` },
+      { label: '价差', sort: 'gap', num: true, w: 100, cell: (r) => {
+        const gap = getPriceGap(r);
+        return `<span class="${gap !== null && gap > 0 ? priceCls(r) : 'price muted'}">${fmtGap(gap)}</span>`;
+      } },
+      { label: '低价幅度', sort: 'rate', num: true, w: 104, cell: (r) => {
+        const rate = getDiscountRate(r);
+        return `<span class="${rate !== null && rate > 0 ? priceCls(r) : 'price muted'}">${rate === null ? '—' : fmtPct(rate)}</span>`;
+      } },
+    ];
+    if (multi) cols.push({ label: '排查日期', sort: 'date', w: 124, cell: (r) => dash(r.date) });
+    cols.push(
+      { label: '备注', w: multi ? 128 : 200, cls2: 'notecell', cell: (r) => `<div class="clamp2" title="${esc(r.note)}">${dash(r.note)}</div>` },
+      { label: '版本', w: 76, cell: (r) => dash(r.version) },
+      { label: '店铺类型', w: 150, cell: (r) => `<span title="${esc(r.shopType)}">${dash(r.shopType)}</span>` },
+      { label: '月销', sort: 'sales', num: true, w: 88, cell: (r) => r.monthlySales === null ? '<span class="muted">—</span>' : fmtInt(r.monthlySales) },
+      { label: '发货地', w: 110, cell: (r) => `<span title="${esc(r.region)}">${dash(r.region)}</span>` },
+      { label: '风险等级', sort: 'risk', cls: 'pr1', w: 150, cell: riskTag },
+      { label: '操作', cls: 'pr2', w: 170, cell: (r) => `<div class="acts">
+        <button class="act act-main" type="button" data-open="${esc(r.url)}"${r.url ? '' : ' disabled title="源表没有商品链接"'}>查看商品</button>
+        <button class="act" type="button" data-copy="${esc(r.url)}"${r.url ? '' : ' disabled'}>复制链接</button>
+      </div>` },
+    );
+    if (!multi) cols.push({ label: '排查日期', sort: 'date', w: 0, hidden: true, cell: (r) => dash(r.date) });
+    return cols.filter((c) => !c.hidden);
+  }
 
+  function priceCls(row) {
+    const level = getRiskLevel(row);
+    return level === 'severe' ? 'price hit-sev'
+      : (level === 'high' || level === 'medium' || level === 'mild') ? 'price hit' : 'price';
+  }
+
+  function shopCell(row) {
+    const meta = row.sellerId
+      ? `<span class="uid" title="${esc(row.sellerId)}">${esc(row.sellerId)}</span>`
+      : '<span class="muted">无卖家 ID</span>';
+    const link = row.shopUrl
+      ? ` <a class="linkmini" href="${esc(row.shopUrl)}" target="_blank" rel="noopener noreferrer">查看店铺 ↗</a>`
+      : '';
+    return `<div class="shopcell"><span class="name" title="${esc(row.shop)}">${dash(row.shop)}</span><span class="meta">${meta}${link}</span></div>`;
+  }
+
+  function riskTag(row) {
+    const level = getRiskLevel(row);
+    return `<span class="tag tag-${level}">${esc(RISK_LABEL[level])}</span>` +
+      (isAbnormalPrice(row) ? '<span class="tag tag-abn" title="低价幅度 ≥ 40%，疑似配件 / 定金 / 优惠券 / 非完整商品或抓取错误，请人工复核">⚠ 异常</span>' : '');
+  }
+
+  let COLS = [];
   function renderHead() {
-    $('thead-row').innerHTML = COLUMNS.map((c) => {
+    COLS = columns();
+    $('colgroup').innerHTML = COLS.map((c) => `<col style="width:${c.w}px">`).join('');
+    // 固定列的 left/right 偏移是写死的像素值，表宽必须等于各列之和，否则对不上
+    $('tbl').style.minWidth = `${COLS.reduce((a, c) => a + c.w, 0)}px`;
+    $('thead-row').innerHTML = COLS.map((c) => {
       const cls = [c.cls, c.num ? 'num' : '', c.sort ? 'sortable' : '', c.sort && state.sort.key === c.sort ? 'on' : ''].filter(Boolean).join(' ');
       const arrow = c.sort
         ? `<span class="arrow">${state.sort.key === c.sort ? (state.sort.dir === 'desc' ? '▼' : '▲') : '↕'}</span>`
@@ -1155,52 +1782,18 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     }).join('');
   }
 
-  function riskTag(row) {
-    const level = getRiskLevel(row);
-    const label = RISK_LABEL[level];
-    return `<span class="tag tag-${level}">${esc(label)}</span>` +
-      (isAbnormalPrice(row) ? '<span class="tag tag-abn" title="低价幅度 ≥ 40%，疑似配件 / 定金 / 优惠券 / 非完整商品或抓取错误，请人工复核">⚠ 异常</span>' : '');
-  }
-
   function renderRows(rows) {
     if (!rows.length) {
-      $('tbody').innerHTML = `<tr><td colspan="${COLUMNS.length}"><div class="empty"><strong>${ROWS.length ? '当前筛选条件下没有记录' : '还没有接入「排查记录」数据'}</strong>${ROWS.length ? '换个日期或把条件放宽一些试试。' : '构建时没有取到源表数据，页面不会展示任何编造的数字。'}</div></td></tr>`;
+      $('tbody').innerHTML = `<tr><td colspan="${COLS.length}"><div class="empty"><strong>${ROWS.length ? '当前筛选条件下没有记录' : '还没有接入「排查登记表」数据'}</strong>${ROWS.length ? '换个批次或把条件放宽一些试试。' : '构建时没有取到源表数据，页面不会展示任何编造的数字。'}</div></td></tr>`;
       return;
     }
-
     $('tbody').innerHTML = rows.map((row) => {
-      const level = getRiskLevel(row);
-      const rate = getDiscountRate(row);
-      const gap = getPriceGap(row);
-      const sev = level === 'severe';
-      const hit = level === 'high' || level === 'medium' || level === 'mild';
-      const priceCls = sev ? 'price hit-sev' : hit ? 'price hit' : 'price';
-      const shopMeta = row.sellerId
-        ? `<span class="uid" title="${esc(row.sellerId)}">${esc(row.sellerId)}</span>`
-        : '<span class="muted">无卖家 ID</span>';
-      const shopLink = row.shopUrl
-        ? ` <a class="linkmini" href="${esc(row.shopUrl)}" target="_blank" rel="noopener noreferrer">查看店铺 ↗</a>`
-        : '';
-      return `<tr class="${sev ? 'sev' : ''}">
-        <td class="pl1">${dash(row.platform)}</td>
-        <td class="pl2"><div class="shopcell"><span class="name" title="${esc(row.shop)}">${dash(row.shop)}</span><span class="meta">${shopMeta}${shopLink}</span></div></td>
-        <td class="pl3" title="${esc(row.model)}">${dash(row.model)}</td>
-        <td class="num"><span class="${priceCls}">${fmtMoney(getPrice(row))}</span></td>
-        <td class="num"><span class="price muted">${fmtMoney(getListPrice(row))}</span></td>
-        <td class="num"><span class="${gap !== null && gap > 0 ? priceCls : 'price muted'}">${fmtGap(gap)}</span></td>
-        <td class="num"><span class="${rate !== null && rate > 0 ? priceCls : 'price muted'}">${rate === null ? '—' : fmtPct(rate)}</span></td>
-        <td class="notecell"><div class="clamp2" title="${esc(row.note)}">${dash(row.note)}</div></td>
-        <td>${dash(row.date)}</td>
-        <td>${dash(row.version)}</td>
-        <td title="${esc(row.shopType)}">${dash(row.shopType)}</td>
-        <td class="num">${row.monthlySales === null ? '<span class="muted">—</span>' : fmtInt(row.monthlySales)}</td>
-        <td title="${esc(row.region)}">${dash(row.region)}</td>
-        <td class="pr1">${riskTag(row)}</td>
-        <td class="pr2"><div class="acts">
-          <button class="act act-main" type="button" data-open="${esc(row.url)}"${row.url ? '' : ' disabled title="源表没有商品链接"'}>查看商品</button>
-          <button class="act" type="button" data-copy="${esc(row.url)}"${row.url ? '' : ' disabled'}>复制链接</button>
-        </div></td>
-      </tr>`;
+      const sev = getRiskLevel(row) === 'severe';
+      const cells = COLS.map((c) => {
+        const cls = [c.cls, c.cls2, c.num ? 'num' : ''].filter(Boolean).join(' ');
+        return `<td${cls ? ` class="${cls}"` : ''}>${c.cell(row)}</td>`;
+      }).join('');
+      return `<tr class="${sev ? 'sev' : ''}">${cells}</tr>`;
     }).join('');
   }
 
@@ -1215,9 +1808,7 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
 
     const items = [btn('上一页', p - 1, { disabled: p <= 1 })];
     const nums = [];
-    for (let i = 1; i <= pages; i++) {
-      if (i === 1 || i === pages || Math.abs(i - p) <= 1) nums.push(i);
-    }
+    for (let i = 1; i <= pages; i++) if (i === 1 || i === pages || Math.abs(i - p) <= 1) nums.push(i);
     let prev = 0;
     for (const n of nums) {
       if (prev && n - prev > 1) items.push('<span class="gap">…</span>');
@@ -1240,13 +1831,13 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     const shops = aggregateShops(rows);
     const shown = state.shopAll ? shops : shops.slice(0, SHOP_PREVIEW);
     const lowShops = shops.filter((s) => s.low > 0).length;
+    $('shop-more').textContent = state.shopAll ? '收起' : `展开全部（${shops.length}）`;
+    $('shop-more').hidden = shops.length <= SHOP_PREVIEW;
     // 这张表列的是当前筛选下的**全部**店铺；KPI 的「涉及店铺」只数有低价链接的那些，
     // 两个数不一样是有意的，在这里说清楚，免得被当成算错了
     $('shop-hint').textContent =
       `同一卖家 ID 视为同一家店（为空时退回「平台 + 卖家昵称」）。` +
       `当前筛选下共 ${fmtInt(shops.length)} 家店，其中 ${fmtInt(lowShops)} 家有低价链接 —— 按低价链接数排序`;
-    $('shop-more').textContent = state.shopAll ? '收起' : `展开全部（${shops.length}）`;
-    $('shop-more').hidden = shops.length <= SHOP_PREVIEW;
 
     if (!shops.length) {
       $('shopbody').innerHTML = `<tr><td colspan="9"><div class="empty">当前筛选下没有店铺</div></td></tr>`;
@@ -1257,7 +1848,7 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
       return `<tr>
         <td>${dash(s.platform)}</td>
         <td><div class="shopcell"><span class="name" title="${esc(s.shop)}">${dash(s.shop)}</span><span class="meta">${s.sellerId ? `<span class="uid" title="${esc(s.sellerId)}">${esc(s.sellerId)}</span>` : '<span class="muted">无卖家 ID</span>'}</span></div></td>
-        <td>${dash(s.shopType)}</td>
+        <td title="${esc(s.shopType)}">${dash(s.shopType)}</td>
         <td class="num">${fmtInt(s.records)}</td>
         <td class="num"><span class="${s.low ? 'price hit' : 'muted'}">${fmtInt(s.low)}</span></td>
         <td class="num"><span class="${s.severe ? 'price hit-sev' : 'muted'}">${fmtInt(s.severe)}</span></td>
@@ -1268,37 +1859,51 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
         </div></td>
       </tr>`;
     }).join('');
+    return shops;
   }
 
   // --- 主渲染 --------------------------------------------------------------
   function render() {
-    const filtered = applyFilters(ROWS, state.filters);
-    const sorted = sortRows(filtered, state.sort.key, state.sort.dir);
+    const rows = viewRows();
+    const trend = trendSeries(rowsIgnoringDate());
+    const sorted = sortRows(rows, state.sort.key, state.sort.dir);
     const pages = Math.max(1, Math.ceil(sorted.length / state.size));
     if (state.page > pages) state.page = pages;
     const slice = sorted.slice((state.page - 1) * state.size, state.page * state.size);
 
-    renderKpis(filtered);
+    renderKpis(rows, trend);
+    renderTrend(trend);
+    renderRing(rows);
+    renderHBars($('dist'), distribution(rows).slice(0, 10).map((d) => ({
+      label: d.parts.map((p) => p.replace(/^PLAUD\s*/i, '')).join(' · '),
+      title: d.key, low: d.low, records: d.records, rate: d.lowRate,
+    })));
+    renderHBars($('topshops'), aggregateShops(rows).slice(0, 10).map((s) => ({
+      label: s.shop, title: `${s.platform} · ${s.shop}`,
+      low: s.low, records: s.records, rate: s.records ? s.low / s.records : 0,
+    })));
+    renderHBars($('regions'), breakdownBy(rows, 'region').slice(0, 10).map((b) => ({
+      label: b.key, low: b.low, records: b.records, rate: b.lowRate,
+    })));
     renderHead();
     renderRows(slice);
     renderPager(sorted.length);
-    renderShops(filtered);
+    renderShops(rows);
     pushFiltersToUi();
   }
 
   // --- 页头 / 页尾 ---------------------------------------------------------
   function renderChrome(unmatched) {
     $('latest').textContent = LATEST || '—';
-    const src = DATA.docUrl
-      ? `数据源：<a href="${esc(DATA.docUrl)}" target="_blank" rel="noopener noreferrer">飞书「${esc(DATA.sheetTitle || '排查记录')}」↗</a>`
-      : `数据源：${esc(DATA.sheetTitle || '排查记录')}`;
-    $('srcline').innerHTML = src;
+    $('srcline').innerHTML = DATA.docUrl
+      ? `数据源：<a href="${esc(DATA.docUrl)}" target="_blank" rel="noopener noreferrer">飞书「${esc(DATA.sheetTitle || '排查登记表')}」↗</a>`
+      : `数据源：${esc(DATA.sheetTitle || '排查登记表')}`;
 
     const notes = [];
     if (DATA.source !== 'feishu') {
       notes.push(ROWS.length
         ? '当前页面用的<strong>不是</strong>飞书实时数据，仅供界面验证。'
-        : '构建时没有取到「排查记录」，页面处于空态 —— 不会用编造的数字占位。配好飞书凭证后重新构建即可。');
+        : '构建时没有取到「排查登记表」，页面处于空态 —— 不会用编造的数字占位。配好飞书凭证后重新构建即可。');
     }
     if (unmatched && unmatched.length) {
       notes.push(`地址栏参数 ${unmatched.map(esc).join('、')} 在当前数据里没有匹配值，已按「全部」处理。`);
@@ -1311,9 +1916,8 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     banner.innerHTML = notes.join('<br>');
 
     const foot = [];
-    foot.push(`共 ${fmtInt(ROWS.length)} 条巡检记录，覆盖 ${DATES.length} 个排查日期${DATES.length ? `（${DATES[0]} ~ ${DATES[DATES.length - 1]}）` : ''}。`);
-    foot.push('口径：价差 = 官方指导价 − 发现价格；低价幅度 = 价差 ÷ 官方指导价。低价 = 发现价格低于官方指导价。');
-    foot.push('本页所有数字均由「排查记录」逐条实时计算，源表更新后重新构建即可同步，无需手改任何汇总值。');
+    foot.push(`共 ${fmtInt(ROWS.length)} 条巡检记录，覆盖 ${DATES.length} 个排查批次${DATES.length ? `（${DATES[0]} ~ ${DATES[DATES.length - 1]}）` : ''}。`);
+    foot.push('本页所有数字均由「排查登记表」逐条实时计算，源表更新后重新构建即可同步，无需手改任何汇总值。');
     if (DATA.syncedAt) foot.push(`数据同步于 ${new Date(DATA.syncedAt).toLocaleString('zh-CN', { hour12: false })}。`);
     $('foot').innerHTML = foot.map((t) => `<div>${t}</div>`).join('');
   }
@@ -1321,14 +1925,17 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
   // --- 事件 ----------------------------------------------------------------
   function bind() {
     const live = () => { readFiltersFromUi(); state.page = 1; render(); };
-    for (const id of ['f-from', 'f-to', 'f-platform', 'f-model', 'f-version', 'f-shopType', 'f-region', 'f-low', 'f-band']) {
+    for (const id of ['f-from', 'f-to', 'f-platform', 'f-model', 'f-version', 'f-shopType', 'f-region', 'f-low', 'f-band', 'f-dedupe']) {
       $(id).addEventListener('change', live);
     }
-    let qTimer = 0;
-    $('f-q').addEventListener('input', () => {
-      clearTimeout(qTimer);
-      qTimer = setTimeout(live, 200);
+    $('f-period').addEventListener('change', () => {
+      const v = $('f-period').value;
+      // 空值＝回到区间模式，保留当前自定义区间不动
+      if (v) { state.filters.dateFrom = v; state.filters.dateTo = v; state.page = 1; render(); }
     });
+
+    let qTimer = 0;
+    $('f-q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(live, 200); });
     $('f-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(qTimer); live(); writeQuery(); } });
 
     $('do-query').addEventListener('click', () => { live(); writeQuery(); });
@@ -1337,6 +1944,7 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
       state.sort = { key: 'risk', dir: 'desc' };
       state.page = 1;
       state.size = 20;
+      state.dedupe = false;
       render();
       writeQuery();
     });
@@ -1348,14 +1956,15 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
       render();
     };
     $('q-latest').addEventListener('click', () => setRange(LATEST, LATEST));
-    $('q-7').addEventListener('click', () => setRange(shiftDays(LATEST, -6), LATEST));
+    $('q-4').addEventListener('click', () => { const r = lastPeriods(DATES, 4); setRange(r.from, r.to); });
+    $('q-8').addEventListener('click', () => { const r = lastPeriods(DATES, 8); setRange(r.from, r.to); });
     $('q-all').addEventListener('click', () => setRange('', ''));
 
     $('thead-row').addEventListener('click', (e) => {
       const th = e.target.closest('[data-sort]');
       if (!th) return;
       const key = th.dataset.sort;
-      // 同一列再点一次换方向；换列时给一个合理的默认方向（日期和风险默认从高到低）
+      // 同一列再点一次换方向；换列时给一个合理的默认方向（从高到低）
       if (state.sort.key === key) state.sort.dir = state.sort.dir === 'desc' ? 'asc' : 'desc';
       else state.sort = { key, dir: 'desc' };
       state.page = 1;
@@ -1384,6 +1993,10 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
       const cp = e.target.closest('[data-copy]');
       if (cp && cp.dataset.copy) copy(cp.dataset.copy);
     });
+
+    // 图是按容器像素宽度画的（不是 viewBox 拉伸），所以窗口变化要重画，否则文字会糊
+    let rTimer = 0;
+    window.addEventListener('resize', () => { clearTimeout(rTimer); rTimer = setTimeout(render, 160); });
   }
 
   // --- 启动 ----------------------------------------------------------------

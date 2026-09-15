@@ -56,6 +56,8 @@ export interface LinkSummary {
   low: number;
   lowLinks: number;
   lowRate: number;
+  /** 低价链接的平均价差（元），只对低价链接取平均 */
+  avgLowGap: number;
   /** 有低价链接的店铺去重数（= 源表「看板」页的「涉及店铺」口径） */
   shops: number;
   /** 当前筛选下的全部店铺去重数 */

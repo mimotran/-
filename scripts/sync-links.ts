@@ -11,7 +11,7 @@
 import { loadFeishuConfig } from '../lib/feishu/config';
 import { isLowPriceConfigured, loadLowPriceSource, syncLinks } from '../lib/lowprice/feishu';
 import { LINK_ALIASES } from '../lib/lowprice/parse';
-import { applyFilters, latestDate, summarize } from '../lib/lowprice/rules.js';
+import { applyFilters, latestDate, summarize, trendSeries } from '../lib/lowprice/rules.js';
 import { snapshotPath, writeLinkSnapshot } from '../lib/lowprice/snapshot';
 import { loadLocalEnv } from './env';
 
@@ -63,6 +63,20 @@ async function main() {
   console.log(`    低价占比 ${(s.lowRate * 100).toFixed(1)}%`);
   console.log(`    涉及店铺 ${s.shops}（有低价链接的店铺；在架店铺共 ${s.allShops} 家）`);
   console.log(`    严重低价 ${s.severe}（其中疑似异常价格 ${s.abnormal}）`);
+
+  // 每期一行：页面上的趋势图就是这张表画出来的，对不上说明页面走样了
+  const trend = trendSeries(rows);
+  if (trend.length > 1) {
+    console.log('');
+    console.log(`✓ ${trend.length} 个批次的走势（页面趋势图应当与此一致）：`);
+    for (const p of trend) {
+      console.log(
+        `    ${p.date}  在架 ${String(p.records).padStart(4)}  低价 ${String(p.low).padStart(4)}` +
+          `  占比 ${(p.lowRate * 100).toFixed(1).padStart(5)}%  店铺 ${String(p.shops).padStart(3)}` +
+          `  严重 ${String(p.severe).padStart(3)}  均差 ¥${Math.round(p.avgLowGap)}`,
+      );
+    }
+  }
 
   const persisted = await writeLinkSnapshot({
     rows: snapshot.rows,
