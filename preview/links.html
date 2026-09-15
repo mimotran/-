@@ -236,9 +236,9 @@ svg.chart .val { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabu
 /* table-layout: fixed 不是为了好看 —— 固定列的 left/right 偏移是写死的像素值，
    只有列宽严格等于 colgroup 才对得上。auto 布局下一条长备注就能把某一列撑宽，
    固定列随即和相邻列错位、互相压盖。 */
-table.grid { font-size: 11.5px; border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1720px; table-layout: fixed; }
+table.grid { font-size: 11.5px; border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1438px; table-layout: fixed; }
 table.grid th, table.grid td {
-  padding: 7px 9px; text-align: left; vertical-align: top;
+  padding: 7px 9px; text-align: center; vertical-align: middle;
   border-bottom: 1px solid var(--line-soft); white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
 }
@@ -265,10 +265,13 @@ table.grid tbody td { background: var(--row-bg); }
    表头就被压在下面，body 固定住了、表头却跟着滚。 */
 table.grid thead th.pl1, table.grid thead th.pl2, table.grid thead th.pl3,
 table.grid thead th.pr1, table.grid thead th.pr2 { z-index: 5; background: var(--card-2); }
+/* 偏移量由 JS 按**实际渲染宽度**写进这几个变量（见 syncStickyOffsets）。
+   写死像素值只在「表宽 = 各列之和」时才对：容器比表格宽时列会被等比拉伸，
+   固定列立刻和相邻列错位。列宽以后怎么改，这里都不用跟着动。 */
 .pl1 { left: 0; }
-.pl2 { left: 72px; }
-.pl3 { left: 268px; box-shadow: 1px 0 0 var(--line); }
-.pr1 { right: 156px; box-shadow: -1px 0 0 var(--line); }
+.pl2 { left: var(--pl2, 0px); }
+.pl3 { left: var(--pl3, 0px); box-shadow: 1px 0 0 var(--line); }
+.pr1 { right: var(--pr1, 0px); box-shadow: -1px 0 0 var(--line); }
 .pr2 { right: 0; }
 
 th.sortable { cursor: pointer; user-select: none; }
@@ -276,17 +279,16 @@ th.sortable:hover { color: var(--brand); }
 th .arrow { color: var(--ink-3); font-size: 10px; margin-left: 2px; }
 th.on { color: var(--brand); font-weight: 600; }
 th.on .arrow { color: var(--brand); }
-td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* 数值列也居中（删掉备注后每列内容都短，居中比右对齐整齐）。
+   tabular-nums 保留：数字等宽，上下两行的位数仍然是对齐的 */
+td.num, th.num { text-align: center; font-variant-numeric: tabular-nums; }
 
-.shopcell { display: grid; gap: 2px; white-space: normal; }
-.shopcell .name { font-weight: 500; font-size: 11.5px; overflow-wrap: anywhere; }
-.shopcell .meta {
-  font-size: 10px; color: var(--ink-3); font-family: var(--mono);
-  display: flex; gap: 6px; align-items: baseline; min-width: 0; flex-wrap: nowrap;
+.shopcell { display: flex; gap: 5px; align-items: baseline; justify-content: center; min-width: 0; }
+.shopcell .name {
+  font-weight: 500; font-size: 11.5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
-/* 淘宝的 appUid 有 51 位：ID 自己截断，「查看店铺」不许被它挤到第二行 */
-.shopcell .uid { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.shopcell .meta .linkmini { flex: none; white-space: nowrap; }
+.shopcell .linkmini { flex: none; white-space: nowrap; }
 /* 选择器要压过 `table.grid th, table.grid td { white-space: nowrap }`（0,1,2），
    否则备注永远是一行 —— 类选择器 (0,1,0) 抢不过它 */
 table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap: anywhere; }
@@ -311,7 +313,7 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 .tag-unknown { background: transparent; color: var(--ink-3); border: 1px dashed var(--line); }
 .tag-abn { background: #fff4e0; color: #9a5b00; border-color: #f2d49a; margin-left: 4px; cursor: help; }
 
-.acts { display: flex; gap: 6px; }
+.acts { display: flex; gap: 6px; justify-content: center; }
 .act {
   border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
   border-radius: 5px; padding: 2px 7px; font: inherit; font-size: 11px; cursor: pointer; white-space: nowrap;
@@ -1489,6 +1491,7 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     const parts = [];
     if (s.unknown) parts.push(`${s.unknown} 条缺官方指导价或发现价格，计入「在架链接」但不计入低价统计`);
     if (state.dedupe) parts.push('已按「同一链接只看最新一次」去重');
+    parts.push('备注（判断依据）挂在整行的悬停提示里，关键词搜索照旧能搜到');
     $('tbl-hint').textContent = parts.join('；');
     return s;
   }
@@ -1731,27 +1734,26 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     const multi = periodsInWindow().length > 1;
     const cols = [
       { label: '平台', cls: 'pl1', w: 72, cell: (r) => dash(r.platform) },
-      { label: '店铺名称', cls: 'pl2', w: 196, cell: shopCell },
-      { label: '产品型号', cls: 'pl3', w: 152, cell: (r) => `<span title="${esc(r.model)}">${dash(r.model)}</span>` },
-      { label: '发现价格', sort: 'price', num: true, w: 112, cell: (r) => `<span class="${priceCls(r)}">${fmtMoney(getPrice(r))}</span>` },
-      { label: '官方指导价', num: true, w: 108, cell: (r) => `<span class="price muted">${fmtMoney(getListPrice(r))}</span>` },
-      { label: '价差', sort: 'gap', num: true, w: 96, cell: (r) => {
+      { label: '店铺名称', cls: 'pl2', w: 180, cell: shopCell },
+      { label: '产品型号', cls: 'pl3', w: 150, cell: (r) => `<span title="${esc(r.model)}">${dash(r.model)}</span>` },
+      { label: '发现价格', sort: 'price', num: true, w: 104, cell: (r) => `<span class="${priceCls(r)}">${fmtMoney(getPrice(r))}</span>` },
+      { label: '官方指导价', num: true, w: 98, cell: (r) => `<span class="price muted">${fmtMoney(getListPrice(r))}</span>` },
+      { label: '价差', sort: 'gap', num: true, w: 90, cell: (r) => {
         const gap = getPriceGap(r);
         return `<span class="${gap !== null && gap > 0 ? priceCls(r) : 'price muted'}">${fmtGap(gap)}</span>`;
       } },
-      { label: '低价幅度', sort: 'rate', num: true, w: 100, cell: (r) => {
+      { label: '低价幅度', sort: 'rate', num: true, w: 94, cell: (r) => {
         const rate = getDiscountRate(r);
         return `<span class="${rate !== null && rate > 0 ? priceCls(r) : 'price muted'}">${rate === null ? '—' : fmtPct(rate)}</span>`;
       } },
     ];
     if (multi) cols.push({ label: '排查日期', sort: 'date', w: 104, cell: (r) => dash(r.date) });
     cols.push(
-      { label: '备注', w: multi ? 140 : 200, cls2: 'notecell', cell: (r) => `<div class="clamp2" title="${esc(r.note)}">${dash(r.note)}</div>` },
-      { label: '版本', w: 68, cell: (r) => dash(r.version) },
+      { label: '版本', w: 62, cell: (r) => dash(r.version) },
       { label: '店铺类型', w: 140, cell: (r) => `<span title="${esc(r.shopType)}">${dash(r.shopType)}</span>` },
-      { label: '月销', sort: 'sales', num: true, w: 80, cell: (r) => r.monthlySales === null ? '<span class="muted">—</span>' : fmtInt(r.monthlySales) },
-      { label: '发货地', w: 104, cell: (r) => `<span title="${esc(r.region)}">${dash(r.region)}</span>` },
-      { label: '风险等级', sort: 'risk', cls: 'pr1', w: 136, cell: riskTag },
+      { label: '月销', sort: 'sales', num: true, w: 72, cell: (r) => r.monthlySales === null ? '<span class="muted">—</span>' : fmtInt(r.monthlySales) },
+      { label: '发货地', w: 96, cell: (r) => `<span title="${esc(r.region)}">${dash(r.region)}</span>` },
+      { label: '风险等级', sort: 'risk', cls: 'pr1', w: 124, cell: riskTag },
       { label: '操作', cls: 'pr2', w: 156, cell: (r) => `<div class="acts">
         <button class="act act-main" type="button" data-open="${esc(r.url)}"${r.url ? '' : ' disabled title="源表没有商品链接"'}>查看商品</button>
         <button class="act" type="button" data-copy="${esc(r.url)}"${r.url ? '' : ' disabled'}>复制链接</button>
@@ -1767,14 +1769,18 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
       : (level === 'high' || level === 'medium' || level === 'mild') ? 'price hit' : 'price';
   }
 
+  /**
+   * 店铺格：只放店名 + 一个「店铺 ↗」小链接。
+   *
+   * 卖家 ID 是 51 位的 appUid，摆在表里既看不懂又占掉一整行高度（行高直接翻倍），
+   * 而它的用处是**去重**，不是给人读的 —— 挪进悬停提示，需要时还能看到。
+   */
   function shopCell(row) {
-    const meta = row.sellerId
-      ? `<span class="uid" title="${esc(row.sellerId)}">${esc(row.sellerId)}</span>`
-      : '<span class="muted">无卖家 ID</span>';
+    const tip = [row.shop, row.sellerId ? `卖家 ID：${row.sellerId}` : '无卖家 ID'].filter(Boolean).join('\n');
     const link = row.shopUrl
-      ? ` <a class="linkmini" href="${esc(row.shopUrl)}" target="_blank" rel="noopener noreferrer">查看店铺 ↗</a>`
+      ? `<a class="linkmini" href="${esc(row.shopUrl)}" target="_blank" rel="noopener noreferrer" title="在新窗口打开店铺">店铺 ↗</a>`
       : '';
-    return `<div class="shopcell"><span class="name" title="${esc(row.shop)}">${dash(row.shop)}</span><span class="meta">${meta}${link}</span></div>`;
+    return `<div class="shopcell"><span class="name" title="${esc(tip)}">${dash(row.shop)}</span>${link}</div>`;
   }
 
   function riskTag(row) {
@@ -1796,6 +1802,24 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
         : '';
       return `<th class="${cls}"${c.sort ? ` data-sort="${c.sort}" title="点击按${esc(c.label)}排序"` : ''}>${esc(c.label)}${arrow}</th>`;
     }).join('');
+    syncStickyOffsets();
+  }
+
+  /**
+   * 量一遍表头的真实列宽，把固定列的 left/right 写成 CSS 变量。
+   *
+   * 表格是 `width:100%` + `table-layout:fixed`：容器比 colgroup 之和宽时，
+   * 多出来的宽度会按比例摊给每一列，列宽就不再等于 colgroup 里写的值。
+   * 偏移量必须跟着实际宽度走，否则固定列会盖住（或露出）相邻列。
+   */
+  function syncStickyOffsets() {
+    const ths = [...$('thead-row').children];
+    if (ths.length < 5) return;
+    const w = (i) => ths[i].getBoundingClientRect().width;
+    const root = document.documentElement.style;
+    root.setProperty('--pl2', `${w(0)}px`);
+    root.setProperty('--pl3', `${w(0) + w(1)}px`);
+    root.setProperty('--pr1', `${w(ths.length - 1)}px`);
   }
 
   function renderRows(rows) {
@@ -1809,7 +1833,7 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
         const cls = [c.cls, c.cls2, c.num ? 'num' : ''].filter(Boolean).join(' ');
         return `<td${cls ? ` class="${cls}"` : ''}>${c.cell(row)}</td>`;
       }).join('');
-      return `<tr class="${sev ? 'sev' : ''}">${cells}</tr>`;
+      return `<tr class="${sev ? 'sev' : ''}"${row.note ? ` title="${esc(row.note)}"` : ''}>${cells}</tr>`;
     }).join('');
   }
 
@@ -1863,7 +1887,7 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
       const heavy = s.maxRate !== null && s.maxRate >= 0.2;
       return `<tr>
         <td>${dash(s.platform)}</td>
-        <td><div class="shopcell"><span class="name" title="${esc(s.shop)}">${dash(s.shop)}</span><span class="meta">${s.sellerId ? `<span class="uid" title="${esc(s.sellerId)}">${esc(s.sellerId)}</span>` : '<span class="muted">无卖家 ID</span>'}</span></div></td>
+        <td><div class="shopcell"><span class="name" title="${esc([s.shop, s.sellerId ? `卖家 ID：${s.sellerId}` : '无卖家 ID'].join('\n'))}">${dash(s.shop)}</span></div></td>
         <td title="${esc(s.shopType)}">${dash(s.shopType)}</td>
         <td class="num">${fmtInt(s.records)}</td>
         <td class="num"><span class="${s.low ? 'price hit' : 'muted'}">${fmtInt(s.low)}</span></td>
