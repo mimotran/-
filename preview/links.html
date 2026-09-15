@@ -9,45 +9,48 @@
 :root {
   color-scheme: light;
 
-  --ground: #f4f5f7;
+  /* 中性色走一条冷灰阶，不掺暖色：底 → 卡片 → 描边 → 三档文字 */
+  --ground: #f6f7f9;
   --card: #ffffff;
   --card-2: #fafbfc;
-  --line: #e4e7ec;
-  --line-soft: #eef0f4;
+  --line: #e5e7eb;
+  --line-soft: #f1f3f5;
 
-  --ink: #10151f;
-  --ink-2: #59616f;
-  --ink-3: #8b929e;
+  --ink: #111827;
+  --ink-2: #4b5563;
+  --ink-3: #98a0ad;
 
-  /* PLAUD 蓝：主按钮、链接、选中态。同一个色相三档，别再引入第二种蓝 */
-  --brand: #1a5cff;
-  --brand-ink: #0f3fbd;
-  --brand-soft: #eaf0ff;
-  --brand-line: #c7d8ff;
+  /* PLAUD 蓝：唯一的交互色，比之前沉一档，免得和红色抢 */
+  --brand: #2258e6;
+  --brand-ink: #1a44b8;
+  --brand-soft: #eef3ff;
+  --brand-line: #cbdcff;
 
-  /* 风险色阶：轻度→严重逐级加重。严重是唯一用实心底的一档 */
-  --mild-bg: #fff7e0; --mild-ink: #8a5d00; --mild-line: #f5dfa8;
-  --medium-bg: #fff0e2; --medium-ink: #b0530b; --medium-line: #f6cfa6;
-  --high-bg: #ffecea; --high-ink: #c02a22; --high-line: #f8c7c1;
-  --severe-bg: #b3241c; --severe-ink: #ffffff; --severe-line: #991d16;
-  --severe-soft: #fde8e6;
-  --flat-bg: #f1f3f6; --flat-ink: #6b7280; --flat-line: #e2e5ea;
+  /* 风险色：**同一个红色相的四个明度**，越深越严重。
+     之前轻度用黄、中度用橙、高风险用红，三个色相摆在一起像交通灯 ——
+     既看不出轻重顺序，颜色一多整页就花。现在深浅本身就是顺序。 */
+  --mild-bg: #fdf3ee; --mild-ink: #97522f; --mild-line: #f6ded1;
+  --medium-bg: #fdeae3; --medium-ink: #b04a2a; --medium-line: #f6cebd;
+  --high-bg: #fce9e6; --high-ink: #b32b1e; --high-line: #f4cac3;
+  --severe-bg: #a51f18; --severe-ink: #ffffff; --severe-line: #8e1a14;
+  --severe-soft: #fdf7f6;
+  --flat-bg: #f2f4f7; --flat-ink: #6b7280; --flat-line: #e5e7eb;
 
-  /* 图表填充色：上面那组是文字色，直接拿去填色块会糊成一片深色。
-     这一组是同色相提亮后的版本，专供图表，顺序 = 风险由重到轻 */
-  --c-severe: #b3241c;
-  --c-high: #e05442;
-  --c-medium: #ef8c2b;
-  --c-mild: #f3c54e;
-  --c-none: #c9d2de;
-  --c-unknown: #c3c9d4;
+  /* 图表填充：同一条红阶，由深到浅，非低价用中性灰 */
+  --c-severe: #a51f18;
+  --c-high: #d64534;
+  --c-medium: #ec7a55;
+  --c-mild: #f2a98f;
+  --c-none: #c3ccd9;
+  --c-unknown: #b3bcca;
 
-  --gain: #0a8f63;
-  --loss: #c02a22;
+  --gain: #0f8a63;
+  --loss: #b32b1e;
 
-  --row-hover: #f7f9ff;
-  --shadow: 0 1px 2px rgb(16 21 31 / .04), 0 8px 24px -18px rgb(16 21 31 / .28);
-  --radius: 12px;
+  --row-hover: #f7f9fe;
+  /* 阴影几乎去掉：一屏十几张卡片，每张都浮起来反而糊。留 1px 描边定边界 */
+  --shadow: 0 1px 2px rgb(17 24 39 / .04);
+  --radius: 10px;
   --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
           "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -58,7 +61,7 @@
 
 body {
   margin: 0;
-  padding: 0 0 48px;
+  padding: 0 0 56px;
   background: var(--ground);
   color: var(--ink);
   font: 400 12px/1.55 var(--font);
@@ -67,14 +70,14 @@ body {
 a { color: var(--brand); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-.wrap { max-width: 1680px; margin: 0 auto; padding: 0 20px; }
+.wrap { max-width: 1600px; margin: 0 auto; padding: 0 36px; }
 
 /* --- 页头 ---------------------------------------------------------------- */
 .top {
   background: var(--card);
   border-bottom: 1px solid var(--line);
-  padding: 18px 0 16px;
-  margin-bottom: 18px;
+  padding: 20px 0 18px;
+  margin-bottom: 20px;
 }
 .top-in { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
 .brandmark {
@@ -105,7 +108,7 @@ h1 { margin: 5px 0 3px; font-size: 17px; font-weight: 600; letter-spacing: -.01e
   padding: 11px 14px; border-bottom: 1px solid var(--line-soft);
 }
 .card-hd h2 { margin: 0; font-size: 13px; font-weight: 600; }
-.card-hd .hint { color: var(--ink-3); font-size: 11.5px; }
+.card-hd .hint { color: var(--ink-3); font-size: 11px; }
 .card-bd { padding: 13px 14px; }
 
 .cols { display: grid; gap: 16px; margin-bottom: 16px; align-items: start; }
@@ -185,9 +188,9 @@ svg.chart text { font-family: var(--font); fill: var(--ink-3); }
 svg.chart .axis { font-size: 10px; }
 svg.chart .grid { stroke: var(--line-soft); stroke-width: 1; shape-rendering: crispEdges; }
 svg.chart .band { fill: var(--brand-soft); opacity: 0; }
-svg.chart .band.on { opacity: .34; }
-svg.chart .seg { cursor: pointer; stroke: #fff; stroke-width: .75; }
-svg.chart .dim { opacity: .28; }
+svg.chart .band.on { opacity: .2; }
+svg.chart .seg { cursor: pointer; stroke: #fff; stroke-width: .5; }
+svg.chart .dim { opacity: .62; }
 svg.chart .sel { stroke: var(--brand); stroke-width: 1.5; }
 svg.chart .ln { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round; }
 svg.chart .dot { fill: #fff; stroke: var(--brand); stroke-width: 2; }
@@ -206,21 +209,21 @@ svg.chart .val { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabu
 .tip .r i { font-style: normal; opacity: .75; }
 .tip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
 
-.legend { display: flex; gap: 11px; flex-wrap: wrap; align-items: center; color: var(--ink-3); font-size: 11px; }
+.legend { display: flex; gap: 11px; flex-wrap: wrap; align-items: center; color: var(--ink-3); font-size: 10.5px; }
 .legend .tag { font-size: 11px; }
 .legend .key { display: inline-flex; align-items: center; gap: 5px; cursor: default; }
 .legend .key i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
 
 .ringwrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .ringlegend { display: grid; gap: 7px; flex: 1; min-width: 140px; }
-.ringlegend .r { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
+.ringlegend .r { display: flex; align-items: center; gap: 8px; font-size: 11px; }
 .ringlegend .r i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
 .ringlegend .r .n { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .ringlegend .r .p { color: var(--ink-3); width: 46px; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* 横向条榜：一行一个分组，条长表示低价链接数，浅底表示在架总数 */
 .hbars { display: grid; gap: 7px; }
-.hbar { display: grid; grid-template-columns: minmax(92px, auto) 1fr 86px; gap: 9px; align-items: center; font-size: 11.5px; }
+.hbar { display: grid; grid-template-columns: minmax(88px, auto) 1fr 84px; gap: 9px; align-items: center; font-size: 11px; }
 .hbar .lb { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hbar .tr { position: relative; height: 13px; background: var(--flat-bg); border-radius: 4px; overflow: hidden; }
 .hbar .fl { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
@@ -233,7 +236,7 @@ svg.chart .val { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabu
 /* table-layout: fixed 不是为了好看 —— 固定列的 left/right 偏移是写死的像素值，
    只有列宽严格等于 colgroup 才对得上。auto 布局下一条长备注就能把某一列撑宽，
    固定列随即和相邻列错位、互相压盖。 */
-table.grid { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1720px; table-layout: fixed; }
+table.grid { font-size: 11.5px; border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1720px; table-layout: fixed; }
 table.grid th, table.grid td {
   padding: 7px 9px; text-align: left; vertical-align: top;
   border-bottom: 1px solid var(--line-soft); white-space: nowrap;
@@ -242,7 +245,7 @@ table.grid th, table.grid td {
 table.grid thead th {
   position: sticky; top: 0; z-index: 3;
   background: var(--card-2); color: var(--ink-2);
-  font-weight: 500; font-size: 11.5px; white-space: nowrap;
+  font-weight: 500; font-size: 11px; white-space: nowrap;
   border-bottom: 1px solid var(--line);
 }
 table.grid tbody tr { --row-bg: var(--card); }
@@ -276,9 +279,9 @@ th.on .arrow { color: var(--brand); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .shopcell { display: grid; gap: 2px; white-space: normal; }
-.shopcell .name { font-weight: 500; font-size: 12px; overflow-wrap: anywhere; }
+.shopcell .name { font-weight: 500; font-size: 11.5px; overflow-wrap: anywhere; }
 .shopcell .meta {
-  font-size: 10.5px; color: var(--ink-3); font-family: var(--mono);
+  font-size: 10px; color: var(--ink-3); font-family: var(--mono);
   display: flex; gap: 6px; align-items: baseline; min-width: 0; flex-wrap: nowrap;
 }
 /* 淘宝的 appUid 有 51 位：ID 自己截断，「查看店铺」不许被它挤到第二行 */
@@ -298,7 +301,7 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 
 .tag {
   display: inline-block; padding: 1px 7px; border-radius: 999px;
-  font-size: 11px; line-height: 17px; border: 1px solid transparent; white-space: nowrap;
+  font-size: 10.5px; line-height: 16px; border: 1px solid transparent; white-space: nowrap;
 }
 .tag-mild { background: var(--mild-bg); color: var(--mild-ink); border-color: var(--mild-line); }
 .tag-medium { background: var(--medium-bg); color: var(--medium-ink); border-color: var(--medium-line); }
@@ -311,7 +314,7 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 .acts { display: flex; gap: 6px; }
 .act {
   border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
-  border-radius: 6px; padding: 2px 8px; font: inherit; font-size: 11.5px; cursor: pointer; white-space: nowrap;
+  border-radius: 5px; padding: 2px 7px; font: inherit; font-size: 11px; cursor: pointer; white-space: nowrap;
 }
 .act:hover { border-color: var(--brand-line); color: var(--brand); background: var(--brand-soft); }
 .act[disabled] { opacity: .4; cursor: not-allowed; }
@@ -320,12 +323,12 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 
 .tfoot {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  padding: 9px 14px; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: 11.5px;
+  padding: 9px 14px; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: 11px;
 }
 .pager { margin-left: auto; display: flex; gap: 4px; align-items: center; }
 .pager button {
-  min-width: 28px; height: 26px; padding: 0 7px; border: 1px solid var(--line);
-  background: var(--card); color: var(--ink-2); border-radius: 6px; font: inherit; font-size: 11.5px; cursor: pointer;
+  min-width: 26px; height: 24px; padding: 0 7px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink-2); border-radius: 5px; font: inherit; font-size: 11px; cursor: pointer;
 }
 .pager button:hover:not([disabled]) { border-color: var(--brand-line); color: var(--brand); }
 .pager button[aria-current="true"] { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 500; }
@@ -338,11 +341,11 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 
 .banner {
   border-radius: var(--radius); padding: 10px 13px; margin-bottom: 13px;
-  font-size: 11.5px; border: 1px solid var(--mild-line); background: var(--mild-bg); color: var(--mild-ink);
+  font-size: 11.5px; border: 1px solid #f0e3bf; background: #fdf8ec; color: #866312;
 }
 .banner ul { margin: 6px 0 0; padding-left: 18px; }
 
-.notes { display: grid; gap: 7px; font-size: 11.5px; color: var(--ink-2); }
+.notes { display: grid; gap: 7px; font-size: 11px; color: var(--ink-2); }
 .notes .n { display: flex; gap: 8px; align-items: flex-start; }
 .notes .n b { color: var(--ink); font-weight: 600; }
 .notes .i {
@@ -350,7 +353,7 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
   color: var(--brand-ink); font-size: 10.5px; font-weight: 600; display: grid; place-items: center;
 }
 
-.foot { color: var(--ink-3); font-size: 11px; padding: 4px 2px 0; display: grid; gap: 4px; }
+.foot { color: var(--ink-3); font-size: 10.5px; padding: 4px 2px 0; display: grid; gap: 4px; }
 
 .toast {
   position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(8px);
