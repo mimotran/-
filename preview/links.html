@@ -234,12 +234,21 @@ svg.chart .val { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabu
 .ringlegend .r .p { color: var(--ink-3); width: 46px; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* 横向条榜：一行一个分组，条长表示低价链接数，浅底表示在架总数 */
-.hbars { display: grid; gap: 7px; }
-.hbar { display: grid; grid-template-columns: minmax(96px, auto) 1fr 92px; gap: 10px; align-items: center; font-size: 12px; }
+/* 三列（名称 / 条 / 数值）的列宽由**外层**统一决定：
+   之前每个 .hbar 各自是一个 grid，名称一长，那一行的条就整体右移，
+   十行下来条的左缘参差不齐。改成外层一个 grid、每行 display:contents，
+   列宽就是全局的，所有条一律从同一条竖线起跑。名称放不下的省略号截断。 */
+.hbars {
+  display: grid; grid-template-columns: minmax(0, var(--lb, 116px)) 1fr auto;
+  gap: 7px 10px; align-items: center; font-size: 12px;
+}
+.hbar { display: contents; }
 .hbar .lb { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 产品分布的标签是「NotePin S · 淘宝 · 海外版」，比店铺名长，单独给宽一点 */
+#dist { --lb: 156px; }
 .hbar .tr { position: relative; height: 15px; background: var(--flat-bg); border-radius: 4px; overflow: hidden; }
 .hbar .fl { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
-.hbar .nm { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.hbar .nm { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .hbar .nm b { color: var(--high-ink); font-weight: 600; }
 .hbar .rk { color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
