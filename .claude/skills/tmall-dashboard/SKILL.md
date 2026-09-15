@@ -166,6 +166,11 @@ npm run build:static   # 烤进 HTML → dist/index.html
 单元格和表宽都从它生成 —— 改列宽只改那一处，别再去动 CSS 里的 `.pl*/.pr*` 偏移，
 除非动的是**左三列 / 右两列**的宽度（那才需要同步改偏移量）。
 
+**探针要断布局，不只断数值。** 有一次改 CSS 注释时吞掉了后面半行 `---- */`，
+`.kpis` 那条规则被解析器一起丢掉，六张 KPI 卡竖成了一列 —— 而所有数值断言照样全过。
+现在 probe 里有 `gridTemplateColumns` 的列数和「六张卡在同一行」两条兜底，
+另有一条「`td.num` 的 scrollWidth 不许超过 clientWidth」用来抓列宽/字号改动后的截断。
+
 趋势图是每期一根堆叠柱 + 一条低价占比虚线，**故意不用双轴**（理由同天猫看板的规矩 2）。
 图按容器像素宽度重画，不是 viewBox 拉伸，所以窗口 resize 要重新 render，否则字会糊。
 趋势和 KPI 迷你折线都用 `trendSeries(rowsIgnoringDate())` —— 传进去的行**不能**带日期

@@ -61,7 +61,7 @@ body {
   padding: 0 0 48px;
   background: var(--ground);
   color: var(--ink);
-  font: 400 13px/1.5 var(--font);
+  font: 400 12px/1.55 var(--font);
   -webkit-font-smoothing: antialiased;
 }
 a { color: var(--brand); text-decoration: none; }
@@ -79,21 +79,21 @@ a:hover { text-decoration: underline; }
 .top-in { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
 .brandmark {
   display: inline-flex; align-items: center; gap: 8px;
-  font-size: 12px; font-weight: 600; letter-spacing: .08em;
+  font-size: 11px; font-weight: 600; letter-spacing: .08em;
   color: var(--brand); text-transform: uppercase;
 }
 .brandmark::before { content: ""; width: 8px; height: 8px; border-radius: 3px; background: var(--brand); }
-h1 { margin: 6px 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
-.sub { margin: 0; color: var(--ink-2); font-size: 13px; max-width: 60ch; }
+h1 { margin: 5px 0 3px; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.sub { margin: 0; color: var(--ink-2); font-size: 12px; max-width: 60ch; }
 .top-right { margin-left: auto; text-align: right; display: grid; gap: 6px; justify-items: end; }
 .stamp {
   display: inline-flex; align-items: baseline; gap: 8px;
   background: var(--card-2); border: 1px solid var(--line);
   border-radius: 999px; padding: 6px 12px;
 }
-.stamp .k { color: var(--ink-3); font-size: 12px; }
-.stamp .v { font-weight: 600; font-variant-numeric: tabular-nums; }
-.srcline { font-size: 12px; color: var(--ink-3); }
+.stamp .k { color: var(--ink-3); font-size: 11px; }
+.stamp .v { font-weight: 600; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.srcline { font-size: 11px; color: var(--ink-3); }
 
 /* --- 通用卡片 ------------------------------------------------------------ */
 .card {
@@ -102,11 +102,11 @@ h1 { margin: 6px 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -.01e
 }
 .card-hd {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  padding: 13px 16px; border-bottom: 1px solid var(--line-soft);
+  padding: 11px 14px; border-bottom: 1px solid var(--line-soft);
 }
-.card-hd h2 { margin: 0; font-size: 14px; font-weight: 600; }
-.card-hd .hint { color: var(--ink-3); font-size: 12px; }
-.card-bd { padding: 14px 16px; }
+.card-hd h2 { margin: 0; font-size: 13px; font-weight: 600; }
+.card-hd .hint { color: var(--ink-3); font-size: 11.5px; }
+.card-bd { padding: 13px 14px; }
 
 .cols { display: grid; gap: 16px; margin-bottom: 16px; align-items: start; }
 .cols-trend { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
@@ -116,16 +116,16 @@ h1 { margin: 6px 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -.01e
 /* --- 筛选区 -------------------------------------------------------------- */
 .filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px 12px; }
 .field { display: grid; gap: 5px; min-width: 0; }
-.field > label { font-size: 12px; color: var(--ink-2); }
+.field > label { font-size: 11.5px; color: var(--ink-2); }
 .field.wide { grid-column: span 2; }
 select, input[type="date"], input[type="search"] {
-  width: 100%; height: 32px; padding: 0 9px;
-  border: 1px solid var(--line); border-radius: 8px;
-  background: var(--card); color: var(--ink); font: inherit; font-size: 13px;
+  width: 100%; height: 30px; padding: 0 8px;
+  border: 1px solid var(--line); border-radius: 7px;
+  background: var(--card); color: var(--ink); font: inherit; font-size: 12px;
 }
 select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: var(--brand); }
 .dates { display: flex; align-items: center; gap: 6px; }
-.dates span { color: var(--ink-3); font-size: 12px; }
+.dates span { color: var(--ink-3); font-size: 11px; }
 
 .filter-foot {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -134,40 +134,43 @@ select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: 
 .quick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .chip {
   border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
-  border-radius: 999px; padding: 5px 11px; font: inherit; font-size: 12px; cursor: pointer;
+  border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 11.5px; cursor: pointer;
 }
 .chip:hover { border-color: var(--brand-line); color: var(--brand); }
 .chip[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand-line); color: var(--brand-ink); font-weight: 500; }
 .chip[disabled] { opacity: .45; cursor: not-allowed; }
 .toggle {
-  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2);
-  border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px 4px 9px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px 3px 8px; cursor: pointer;
 }
 .toggle input { margin: 0; accent-color: var(--brand); }
 .toggle.off { opacity: .5; cursor: not-allowed; }
 .btn {
-  height: 32px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line);
-  background: var(--card); color: var(--ink); font: inherit; cursor: pointer;
+  height: 30px; padding: 0 15px; border-radius: 7px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer;
 }
 .btn:hover { border-color: var(--ink-3); }
 .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 500; }
 .btn-primary:hover { background: var(--brand-ink); border-color: var(--brand-ink); }
 .spacer { margin-left: auto; }
 
-/* --- KPI ----------------------------------------------------------------- */
+/* --- KPI ---
+   数字一律用正文色，只有「严重低价」那格标红。六个数字全红等于没有重点，
+   而且和表格里的红一起看，整屏都在喊。涨跌交给环比那行的箭头和颜色去表达。
+   --- */
 .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
 .kpi {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow); padding: 13px 15px 12px; min-width: 0;
+  box-shadow: var(--shadow); padding: 11px 13px 10px; min-width: 0;
 }
-.kpi .k { font-size: 12px; color: var(--ink-2); }
+.kpi .k { font-size: 11.5px; color: var(--ink-2); }
 .kpi .row { display: flex; align-items: flex-end; gap: 8px; margin-top: 5px; }
 .kpi .v {
-  font-size: 25px; font-weight: 600; letter-spacing: -.02em;
+  font-size: 21px; font-weight: 600; letter-spacing: -.02em;
   font-variant-numeric: tabular-nums; line-height: 1.1;
 }
 .kpi .spark { margin-left: auto; opacity: .9; flex: none; }
-.kpi .n { margin-top: 5px; font-size: 11.5px; color: var(--ink-3); min-height: 17px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.kpi .n { margin-top: 4px; font-size: 11px; color: var(--ink-3); min-height: 17px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
 .kpi.is-low .v { color: var(--high-ink); }
 .kpi.is-severe .v { color: var(--severe-bg); }
 .dlt { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -179,7 +182,7 @@ select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: 
 .chartbox { position: relative; }
 svg.chart { display: block; width: 100%; overflow: visible; }
 svg.chart text { font-family: var(--font); fill: var(--ink-3); }
-svg.chart .axis { font-size: 11px; }
+svg.chart .axis { font-size: 10px; }
 svg.chart .grid { stroke: var(--line-soft); stroke-width: 1; shape-rendering: crispEdges; }
 svg.chart .band { fill: var(--brand-soft); opacity: 0; }
 svg.chart .band.on { opacity: .34; }
@@ -194,7 +197,7 @@ svg.chart .val { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabu
   position: absolute; z-index: 20; pointer-events: none; opacity: 0;
   transition: opacity .12s; transform: translate(-50%, -100%);
   background: rgb(16 21 31 / .93); color: #fff; border-radius: 8px;
-  padding: 8px 10px; font-size: 12px; line-height: 1.5; white-space: nowrap;
+  padding: 7px 9px; font-size: 11.5px; line-height: 1.5; white-space: nowrap;
   box-shadow: 0 6px 20px -6px rgb(0 0 0 / .4);
 }
 .tip.on { opacity: 1; }
@@ -203,23 +206,23 @@ svg.chart .val { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabu
 .tip .r i { font-style: normal; opacity: .75; }
 .tip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
 
-.legend { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--ink-3); font-size: 12px; }
+.legend { display: flex; gap: 11px; flex-wrap: wrap; align-items: center; color: var(--ink-3); font-size: 11px; }
 .legend .tag { font-size: 11px; }
 .legend .key { display: inline-flex; align-items: center; gap: 5px; cursor: default; }
 .legend .key i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
 
 .ringwrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .ringlegend { display: grid; gap: 7px; flex: 1; min-width: 140px; }
-.ringlegend .r { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.ringlegend .r { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
 .ringlegend .r i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
 .ringlegend .r .n { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .ringlegend .r .p { color: var(--ink-3); width: 46px; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* 横向条榜：一行一个分组，条长表示低价链接数，浅底表示在架总数 */
-.hbars { display: grid; gap: 9px; }
-.hbar { display: grid; grid-template-columns: minmax(96px, auto) 1fr 92px; gap: 10px; align-items: center; font-size: 12px; }
+.hbars { display: grid; gap: 7px; }
+.hbar { display: grid; grid-template-columns: minmax(92px, auto) 1fr 86px; gap: 9px; align-items: center; font-size: 11.5px; }
 .hbar .lb { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hbar .tr { position: relative; height: 16px; background: var(--flat-bg); border-radius: 4px; overflow: hidden; }
+.hbar .tr { position: relative; height: 13px; background: var(--flat-bg); border-radius: 4px; overflow: hidden; }
 .hbar .fl { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
 .hbar .nm { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .hbar .nm b { color: var(--high-ink); font-weight: 600; }
@@ -230,21 +233,24 @@ svg.chart .val { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabu
 /* table-layout: fixed 不是为了好看 —— 固定列的 left/right 偏移是写死的像素值，
    只有列宽严格等于 colgroup 才对得上。auto 布局下一条长备注就能把某一列撑宽，
    固定列随即和相邻列错位、互相压盖。 */
-table.grid { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1970px; table-layout: fixed; }
+table.grid { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1720px; table-layout: fixed; }
 table.grid th, table.grid td {
-  padding: 9px 10px; text-align: left; vertical-align: top;
+  padding: 7px 9px; text-align: left; vertical-align: top;
   border-bottom: 1px solid var(--line-soft); white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
 }
 table.grid thead th {
   position: sticky; top: 0; z-index: 3;
   background: var(--card-2); color: var(--ink-2);
-  font-weight: 500; font-size: 12px; white-space: nowrap;
+  font-weight: 500; font-size: 11.5px; white-space: nowrap;
   border-bottom: 1px solid var(--line);
 }
 table.grid tbody tr { --row-bg: var(--card); }
 table.grid tbody tr:nth-child(even) { --row-bg: #fcfcfd; }
-table.grid tbody tr.sev { --row-bg: var(--severe-soft); }
+/* 整行粉底 + 深红数字 + 红标签，一屏下来红得发闷。留一条左侧色条 + 一层几乎看不见的底，
+   真正的强调交给价格列的深红数字和风险标签 */
+table.grid tbody tr.sev { --row-bg: #fdf7f6; }
+table.grid tbody tr.sev td.pl1 { box-shadow: inset 3px 0 0 var(--severe-bg); }
 table.grid tbody tr:hover { --row-bg: var(--row-hover); }
 table.grid tbody td { background: var(--row-bg); }
 
@@ -257,9 +263,9 @@ table.grid tbody td { background: var(--row-bg); }
 table.grid thead th.pl1, table.grid thead th.pl2, table.grid thead th.pl3,
 table.grid thead th.pr1, table.grid thead th.pr2 { z-index: 5; background: var(--card-2); }
 .pl1 { left: 0; }
-.pl2 { left: 84px; }
-.pl3 { left: 294px; box-shadow: 1px 0 0 var(--line); }
-.pr1 { right: 170px; box-shadow: -1px 0 0 var(--line); }
+.pl2 { left: 72px; }
+.pl3 { left: 268px; box-shadow: 1px 0 0 var(--line); }
+.pr1 { right: 156px; box-shadow: -1px 0 0 var(--line); }
 .pr2 { right: 0; }
 
 th.sortable { cursor: pointer; user-select: none; }
@@ -270,9 +276,9 @@ th.on .arrow { color: var(--brand); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .shopcell { display: grid; gap: 2px; white-space: normal; }
-.shopcell .name { font-weight: 500; overflow-wrap: anywhere; }
+.shopcell .name { font-weight: 500; font-size: 12px; overflow-wrap: anywhere; }
 .shopcell .meta {
-  font-size: 11px; color: var(--ink-3); font-family: var(--mono);
+  font-size: 10.5px; color: var(--ink-3); font-family: var(--mono);
   display: flex; gap: 6px; align-items: baseline; min-width: 0; flex-wrap: nowrap;
 }
 /* 淘宝的 appUid 有 51 位：ID 自己截断，「查看店铺」不许被它挤到第二行 */
@@ -291,8 +297,8 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 .price.hit-sev { font-weight: 700; color: var(--severe-bg); }
 
 .tag {
-  display: inline-block; padding: 2px 8px; border-radius: 999px;
-  font-size: 12px; line-height: 18px; border: 1px solid transparent; white-space: nowrap;
+  display: inline-block; padding: 1px 7px; border-radius: 999px;
+  font-size: 11px; line-height: 17px; border: 1px solid transparent; white-space: nowrap;
 }
 .tag-mild { background: var(--mild-bg); color: var(--mild-ink); border-color: var(--mild-line); }
 .tag-medium { background: var(--medium-bg); color: var(--medium-ink); border-color: var(--medium-line); }
@@ -305,21 +311,21 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 .acts { display: flex; gap: 6px; }
 .act {
   border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
-  border-radius: 6px; padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+  border-radius: 6px; padding: 2px 8px; font: inherit; font-size: 11.5px; cursor: pointer; white-space: nowrap;
 }
 .act:hover { border-color: var(--brand-line); color: var(--brand); background: var(--brand-soft); }
 .act[disabled] { opacity: .4; cursor: not-allowed; }
 .act-main { color: var(--brand); border-color: var(--brand-line); }
-.linkmini { font-size: 11px; color: var(--brand); }
+.linkmini { font-size: 10.5px; color: var(--brand); }
 
 .tfoot {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  padding: 11px 16px; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: 12px;
+  padding: 9px 14px; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: 11.5px;
 }
 .pager { margin-left: auto; display: flex; gap: 4px; align-items: center; }
 .pager button {
-  min-width: 30px; height: 28px; padding: 0 8px; border: 1px solid var(--line);
-  background: var(--card); color: var(--ink-2); border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer;
+  min-width: 28px; height: 26px; padding: 0 7px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink-2); border-radius: 6px; font: inherit; font-size: 11.5px; cursor: pointer;
 }
 .pager button:hover:not([disabled]) { border-color: var(--brand-line); color: var(--brand); }
 .pager button[aria-current="true"] { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 500; }
@@ -327,28 +333,28 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 .pager .gap { color: var(--ink-3); padding: 0 2px; }
 .sizesel { height: 28px; width: auto; padding: 0 6px; }
 
-.empty { padding: 36px 16px; text-align: center; color: var(--ink-3); }
-.empty strong { display: block; color: var(--ink-2); font-size: 14px; margin-bottom: 6px; }
+.empty { padding: 32px 14px; text-align: center; color: var(--ink-3); }
+.empty strong { display: block; color: var(--ink-2); font-size: 13px; margin-bottom: 6px; }
 
 .banner {
-  border-radius: var(--radius); padding: 11px 14px; margin-bottom: 14px;
-  font-size: 12.5px; border: 1px solid var(--mild-line); background: var(--mild-bg); color: var(--mild-ink);
+  border-radius: var(--radius); padding: 10px 13px; margin-bottom: 13px;
+  font-size: 11.5px; border: 1px solid var(--mild-line); background: var(--mild-bg); color: var(--mild-ink);
 }
 .banner ul { margin: 6px 0 0; padding-left: 18px; }
 
-.notes { display: grid; gap: 8px; font-size: 12px; color: var(--ink-2); }
+.notes { display: grid; gap: 7px; font-size: 11.5px; color: var(--ink-2); }
 .notes .n { display: flex; gap: 8px; align-items: flex-start; }
 .notes .n b { color: var(--ink); font-weight: 600; }
 .notes .i {
-  flex: none; width: 18px; height: 18px; border-radius: 5px; background: var(--brand-soft);
-  color: var(--brand-ink); font-size: 11px; font-weight: 600; display: grid; place-items: center;
+  flex: none; width: 17px; height: 17px; border-radius: 5px; background: var(--brand-soft);
+  color: var(--brand-ink); font-size: 10.5px; font-weight: 600; display: grid; place-items: center;
 }
 
-.foot { color: var(--ink-3); font-size: 12px; padding: 4px 2px 0; display: grid; gap: 4px; }
+.foot { color: var(--ink-3); font-size: 11px; padding: 4px 2px 0; display: grid; gap: 4px; }
 
 .toast {
   position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(8px);
-  background: var(--ink); color: #fff; border-radius: 999px; padding: 8px 18px; font-size: 13px;
+  background: var(--ink); color: #fff; border-radius: 999px; padding: 7px 16px; font-size: 12px;
   opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; z-index: 50;
 }
 .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -528,11 +534,11 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
       <button class="chip" id="shop-more" type="button" style="margin-left:auto">展开全部</button>
     </div>
     <div class="tablewrap" style="max-height:none">
-      <table class="grid" id="shoptbl" style="min-width:1234px">
+      <table class="grid" id="shoptbl" style="min-width:1168px">
         <colgroup>
-          <col style="width:84px"><col style="width:240px"><col style="width:120px">
-          <col style="width:100px"><col style="width:100px"><col style="width:110px">
-          <col style="width:110px"><col style="width:260px"><col style="width:110px">
+          <col style="width:72px"><col style="width:224px"><col style="width:130px">
+          <col style="width:92px"><col style="width:92px"><col style="width:96px">
+          <col style="width:110px"><col style="width:248px"><col style="width:104px">
         </colgroup>
         <thead><tr>
           <th>平台</th><th>店铺</th><th>店铺类型</th>
@@ -1124,7 +1130,12 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
 
   // --- 格式化 --------------------------------------------------------------
   const fmtInt = (v) => Number(v || 0).toLocaleString('zh-CN');
-  const fmtMoney = (v) => v === null || v === undefined ? '—' : '¥' + Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+  /**
+   * 价格：上千元的不显示小数。源表里 ¥1,077.58 这种小数是折算出来的，
+   * 到元和到分对判断没有区别，却会让「¥1,077.58」放不进列宽、被截成「¥1,077....」。
+   */
+  const fmtMoney = (v) => v === null || v === undefined ? '—'
+    : '¥' + Number(v).toLocaleString('zh-CN', { maximumFractionDigits: Math.abs(v) >= 1000 ? 0 : 2 });
   const fmtMoney0 = (v) => '¥' + Math.round(Number(v) || 0).toLocaleString('zh-CN');
   const fmtPct = (v, d) => v === null || v === undefined ? '—' : (v * 100).toFixed(d === undefined ? 2 : d) + '%';
   /** 价差：上百元时不再显示小数 —— 「+¥1,237.14」放不进列宽，而那 0.14 元没有意义 */
@@ -1415,9 +1426,9 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
    */
   const METRICS = [
     { key: 'records', label: '在架链接', fmt: fmtInt, bad: null, note: (s) => s.links < s.records ? `去重后 ${fmtInt(s.links)} 条链接` : '当前筛选下的巡检记录数' },
-    { key: 'low', label: '低价链接', fmt: fmtInt, bad: true, cls: (s) => s.low ? 'is-low' : '', note: () => '发现价格低于官方指导价' },
-    { key: 'lowRate', label: '低价占比', fmt: (v) => fmtPct(v, 1), bad: true, cls: (s) => s.low ? 'is-low' : '', note: (s) => `${fmtInt(s.low)} / ${fmtInt(s.records)}`, pctPoint: true },
-    { key: 'shops', label: '涉及店铺', fmt: fmtInt, bad: true, cls: (s) => s.shops ? 'is-low' : '', note: (s) => `有低价链接的店铺（在架共 ${fmtInt(s.allShops)} 家）` },
+    { key: 'low', label: '低价链接', fmt: fmtInt, bad: true, note: () => '发现价格低于官方指导价' },
+    { key: 'lowRate', label: '低价占比', fmt: (v) => fmtPct(v, 1), bad: true, note: (s) => `${fmtInt(s.low)} / ${fmtInt(s.records)}`, pctPoint: true },
+    { key: 'shops', label: '涉及店铺', fmt: fmtInt, bad: true, note: (s) => `有低价链接的店铺（在架共 ${fmtInt(s.allShops)} 家）` },
     { key: 'severe', label: '严重低价', fmt: fmtInt, bad: true, cls: (s) => s.severe ? 'is-severe' : '', note: (s) => s.abnormal ? `含 ${fmtInt(s.abnormal)} 条疑似异常价格` : '低价幅度 ≥ 20%' },
     { key: 'avgLowGap', label: '低价均差', fmt: fmtMoney0, bad: true, note: () => '低价链接平均便宜了多少' },
   ];
@@ -1650,8 +1661,8 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     if (!keys.length) {
       parts.push(`<circle cx="${cxy}" cy="${cxy}" r="${r}" fill="none" stroke="${css('--c-none')}" stroke-width="${sw}"/>`);
     }
-    parts.push(`<text x="${cxy}" y="${cxy - 4}" text-anchor="middle" style="font-size:24px;font-weight:600;fill:${css('--ink')}">${fmtInt(lowTotal)}</text>`);
-    parts.push(`<text x="${cxy}" y="${cxy + 15}" text-anchor="middle" style="font-size:11px">低价链接数</text>`);
+    parts.push(`<text x="${cxy}" y="${cxy - 4}" text-anchor="middle" style="font-size:21px;font-weight:600;fill:${css('--ink')}">${fmtInt(lowTotal)}</text>`);
+    parts.push(`<text x="${cxy}" y="${cxy + 15}" text-anchor="middle" style="font-size:10.5px">低价链接数</text>`);
 
     box.innerHTML = `<svg class="chart" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${parts.join('')}</svg><div class="tip" id="ring-tip"></div>`;
 
@@ -1682,23 +1693,25 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
   }
 
   // --- 横向条榜 ------------------------------------------------------------
-  /** items: [{ label, low, records, rate, title }]，条长＝低价数，浅底＝在架数 */
-  function renderHBars(el, items, opts) {
-    const o = opts || {};
+  /**
+   * 横向条榜：浅底＝在架链接数，其上叠两段 —— 其余低价（橙）和严重低价（深红）。
+   *
+   * 之前按占比阈值染色（≥20% 就深红），但这里的占比是「低价数 / 在架数」，
+   * 店铺榜上动辄 100%，结果整张榜全是深红，红色就不再是提示了。
+   */
+  function renderHBars(el, items) {
     if (!items.length) { el.innerHTML = '<div class="empty">无数据</div>'; return; }
     const max = Math.max(1, ...items.map((x) => x.records));
-    el.innerHTML = items.map((x) => {
-      const sev = x.rate >= 0.2;
-      const fill = sev ? css('--c-severe') : x.rate >= 0.1 ? css('--c-high') : x.rate > 0 ? css('--c-medium') : css('--c-none');
-      return `<div class="hbar">
+    const w = (v) => ((v / max) * 100).toFixed(1) + '%';
+    el.innerHTML = items.map((x) => `<div class="hbar">
         <span class="lb" title="${esc(x.title || x.label)}">${esc(x.label)}</span>
-        <span class="tr" title="低价 ${fmtInt(x.low)} / 在架 ${fmtInt(x.records)}">
-          <span class="fl" style="width:${((x.records / max) * 100).toFixed(1)}%;background:var(--flat-bg)"></span>
-          <span class="fl" style="width:${((x.low / max) * 100).toFixed(1)}%;background:${fill}"></span>
+        <span class="tr" title="低价 ${fmtInt(x.low)} / 在架 ${fmtInt(x.records)}${x.severe ? `，其中严重 ${fmtInt(x.severe)}` : ''}">
+          <span class="fl" style="width:${w(x.records)};background:var(--flat-bg)"></span>
+          <span class="fl" style="width:${w(x.low)};background:${css('--c-high')}"></span>
+          ${x.severe ? `<span class="fl" style="width:${w(x.severe)};background:${css('--c-severe')}"></span>` : ''}
         </span>
-        <span class="nm"><b>${fmtInt(x.low)}</b> / ${fmtInt(x.records)} <span class="rk">${o.hideRate ? '' : fmtPct(x.rate, 1)}</span></span>
-      </div>`;
-    }).join('');
+        <span class="nm"><b>${fmtInt(x.low)}</b> / ${fmtInt(x.records)} <span class="rk">${fmtPct(x.rate, 1)}</span></span>
+      </div>`).join('');
   }
 
   // --- 表格 ----------------------------------------------------------------
@@ -1714,29 +1727,29 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
   function columns() {
     const multi = periodsInWindow().length > 1;
     const cols = [
-      { label: '平台', cls: 'pl1', w: 84, cell: (r) => dash(r.platform) },
-      { label: '店铺名称', cls: 'pl2', w: 210, cell: shopCell },
-      { label: '产品型号', cls: 'pl3', w: 168, cell: (r) => `<span title="${esc(r.model)}">${dash(r.model)}</span>` },
+      { label: '平台', cls: 'pl1', w: 72, cell: (r) => dash(r.platform) },
+      { label: '店铺名称', cls: 'pl2', w: 196, cell: shopCell },
+      { label: '产品型号', cls: 'pl3', w: 152, cell: (r) => `<span title="${esc(r.model)}">${dash(r.model)}</span>` },
       { label: '发现价格', sort: 'price', num: true, w: 112, cell: (r) => `<span class="${priceCls(r)}">${fmtMoney(getPrice(r))}</span>` },
-      { label: '官方指导价', num: true, w: 116, cell: (r) => `<span class="price muted">${fmtMoney(getListPrice(r))}</span>` },
-      { label: '价差', sort: 'gap', num: true, w: 100, cell: (r) => {
+      { label: '官方指导价', num: true, w: 108, cell: (r) => `<span class="price muted">${fmtMoney(getListPrice(r))}</span>` },
+      { label: '价差', sort: 'gap', num: true, w: 96, cell: (r) => {
         const gap = getPriceGap(r);
         return `<span class="${gap !== null && gap > 0 ? priceCls(r) : 'price muted'}">${fmtGap(gap)}</span>`;
       } },
-      { label: '低价幅度', sort: 'rate', num: true, w: 104, cell: (r) => {
+      { label: '低价幅度', sort: 'rate', num: true, w: 100, cell: (r) => {
         const rate = getDiscountRate(r);
         return `<span class="${rate !== null && rate > 0 ? priceCls(r) : 'price muted'}">${rate === null ? '—' : fmtPct(rate)}</span>`;
       } },
     ];
-    if (multi) cols.push({ label: '排查日期', sort: 'date', w: 124, cell: (r) => dash(r.date) });
+    if (multi) cols.push({ label: '排查日期', sort: 'date', w: 104, cell: (r) => dash(r.date) });
     cols.push(
-      { label: '备注', w: multi ? 128 : 200, cls2: 'notecell', cell: (r) => `<div class="clamp2" title="${esc(r.note)}">${dash(r.note)}</div>` },
-      { label: '版本', w: 76, cell: (r) => dash(r.version) },
-      { label: '店铺类型', w: 150, cell: (r) => `<span title="${esc(r.shopType)}">${dash(r.shopType)}</span>` },
-      { label: '月销', sort: 'sales', num: true, w: 88, cell: (r) => r.monthlySales === null ? '<span class="muted">—</span>' : fmtInt(r.monthlySales) },
-      { label: '发货地', w: 110, cell: (r) => `<span title="${esc(r.region)}">${dash(r.region)}</span>` },
-      { label: '风险等级', sort: 'risk', cls: 'pr1', w: 150, cell: riskTag },
-      { label: '操作', cls: 'pr2', w: 170, cell: (r) => `<div class="acts">
+      { label: '备注', w: multi ? 140 : 200, cls2: 'notecell', cell: (r) => `<div class="clamp2" title="${esc(r.note)}">${dash(r.note)}</div>` },
+      { label: '版本', w: 68, cell: (r) => dash(r.version) },
+      { label: '店铺类型', w: 140, cell: (r) => `<span title="${esc(r.shopType)}">${dash(r.shopType)}</span>` },
+      { label: '月销', sort: 'sales', num: true, w: 80, cell: (r) => r.monthlySales === null ? '<span class="muted">—</span>' : fmtInt(r.monthlySales) },
+      { label: '发货地', w: 104, cell: (r) => `<span title="${esc(r.region)}">${dash(r.region)}</span>` },
+      { label: '风险等级', sort: 'risk', cls: 'pr1', w: 136, cell: riskTag },
+      { label: '操作', cls: 'pr2', w: 156, cell: (r) => `<div class="acts">
         <button class="act act-main" type="button" data-open="${esc(r.url)}"${r.url ? '' : ' disabled title="源表没有商品链接"'}>查看商品</button>
         <button class="act" type="button" data-copy="${esc(r.url)}"${r.url ? '' : ' disabled'}>复制链接</button>
       </div>` },
@@ -1876,14 +1889,14 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     renderRing(rows);
     renderHBars($('dist'), distribution(rows).slice(0, 10).map((d) => ({
       label: d.parts.map((p) => p.replace(/^PLAUD\s*/i, '')).join(' · '),
-      title: d.key, low: d.low, records: d.records, rate: d.lowRate,
+      title: d.key, low: d.low, severe: d.severe, records: d.records, rate: d.lowRate,
     })));
     renderHBars($('topshops'), aggregateShops(rows).slice(0, 10).map((s) => ({
       label: s.shop, title: `${s.platform} · ${s.shop}`,
-      low: s.low, records: s.records, rate: s.records ? s.low / s.records : 0,
+      low: s.low, severe: s.severe, records: s.records, rate: s.records ? s.low / s.records : 0,
     })));
     renderHBars($('regions'), breakdownBy(rows, 'region').slice(0, 10).map((b) => ({
-      label: b.key, low: b.low, records: b.records, rate: b.lowRate,
+      label: b.key, low: b.low, severe: b.severe, records: b.records, rate: b.lowRate,
     })));
     renderHead();
     renderRows(slice);
