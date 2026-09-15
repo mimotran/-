@@ -9,48 +9,53 @@
 :root {
   color-scheme: light;
 
-  /* 中性色走一条冷灰阶，不掺暖色：底 → 卡片 → 描边 → 三档文字 */
-  --ground: #f6f7f9;
+  --ground: #f5f7fa;
   --card: #ffffff;
-  --card-2: #fafbfc;
-  --line: #e5e7eb;
-  --line-soft: #f1f3f5;
+  --card-2: #fafbfd;
+  --line: #e8edf3;
+  --line-soft: #f1f4f8;
 
-  --ink: #111827;
-  --ink-2: #4b5563;
-  --ink-3: #98a0ad;
+  --ink: #1b2334;
+  --ink-2: #5b6575;
+  --ink-3: #98a2b3;
 
-  /* PLAUD 蓝：唯一的交互色，比之前沉一档，免得和红色抢 */
-  --brand: #2258e6;
-  --brand-ink: #1a44b8;
-  --brand-soft: #eef3ff;
-  --brand-line: #cbdcff;
+  /* 主色：偏亮的蓝，用于按钮、链接、选中态和折线 */
+  --brand: #2f6bff;
+  --brand-ink: #1d4ed8;
+  --brand-soft: #eef4ff;
+  --brand-line: #c9dbff;
 
-  /* 风险色：**同一个红色相的四个明度**，越深越严重。
-     之前轻度用黄、中度用橙、高风险用红，三个色相摆在一起像交通灯 ——
-     既看不出轻重顺序，颜色一多整页就花。现在深浅本身就是顺序。 */
-  --mild-bg: #fdf3ee; --mild-ink: #97522f; --mild-line: #f6ded1;
-  --medium-bg: #fdeae3; --medium-ink: #b04a2a; --medium-line: #f6cebd;
-  --high-bg: #fce9e6; --high-ink: #b32b1e; --high-line: #f4cac3;
-  --severe-bg: #a51f18; --severe-ink: #ffffff; --severe-line: #8e1a14;
-  --severe-soft: #fdf7f6;
-  --flat-bg: #f2f4f7; --flat-ink: #6b7280; --flat-line: #e5e7eb;
+  /* 风险四档走「蓝 → 橙 → 红」的渐进：轻度是蓝（还不用管），
+     中度转暖，高风险和严重进红区。标签一律浅底深字，不用实心块。 */
+  --mild-bg: #eaf2ff; --mild-ink: #2563eb; --mild-line: #cfe0ff;
+  --medium-bg: #fff4e3; --medium-ink: #c2751a; --medium-line: #ffdcae;
+  --high-bg: #ffeee4; --high-ink: #d4551b; --high-line: #ffd2b6;
+  --severe-bg: #ffecec; --severe-ink: #d92d20; --severe-line: #ffcdcd;
+  --severe-soft: #fffafa;
+  --flat-bg: #f2f4f7; --flat-ink: #667085; --flat-line: #e6eaf0;
 
-  /* 图表填充：同一条红阶，由深到浅，非低价用中性灰 */
-  --c-severe: #a51f18;
-  --c-high: #d64534;
-  --c-medium: #ec7a55;
-  --c-mild: #f2a98f;
-  --c-none: #c3ccd9;
-  --c-unknown: #b3bcca;
+  /* 图表填充：同一条渐进，饱和度比标签底色高一档，小色块才看得见 */
+  --c-severe: #ef4444;
+  --c-high: #f47b3f;
+  --c-medium: #f9a94a;
+  --c-mild: #6ba4f8;
+  --c-none: #d7dde7;
+  --c-unknown: #c4cbd6;
 
-  --gain: #0f8a63;
-  --loss: #b32b1e;
+  /* KPI 图标块的六种色调 */
+  --t-blue: #2f6bff; --t-blue-bg: #eaf2ff;
+  --t-green: #12a56a; --t-green-bg: #e7f7ef;
+  --t-violet: #7c5cf5; --t-violet-bg: #f0ecfe;
+  --t-cyan: #0d9dc4; --t-cyan-bg: #e6f6fb;
+  --t-red: #e5484d; --t-red-bg: #ffecec;
+  --t-amber: #e08c12; --t-amber-bg: #fff4e3;
 
-  --row-hover: #f7f9fe;
-  /* 阴影几乎去掉：一屏十几张卡片，每张都浮起来反而糊。留 1px 描边定边界 */
-  --shadow: 0 1px 2px rgb(17 24 39 / .04);
-  --radius: 10px;
+  --gain: #12a56a;
+  --loss: #e5484d;
+
+  --row-hover: #f7faff;
+  --shadow: 0 1px 2px rgb(27 35 52 / .04), 0 4px 16px -12px rgb(27 35 52 / .18);
+  --radius: 12px;
   --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
           "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -64,13 +69,13 @@ body {
   padding: 0 0 56px;
   background: var(--ground);
   color: var(--ink);
-  font: 400 12px/1.55 var(--font);
+  font: 400 13px/1.55 var(--font);
   -webkit-font-smoothing: antialiased;
 }
 a { color: var(--brand); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-.wrap { max-width: 1600px; margin: 0 auto; padding: 0 36px; }
+.wrap { max-width: 1680px; margin: 0 auto; padding: 0 36px; }
 
 /* --- 页头 ---------------------------------------------------------------- */
 .top {
@@ -86,17 +91,17 @@ a:hover { text-decoration: underline; }
   color: var(--brand); text-transform: uppercase;
 }
 .brandmark::before { content: ""; width: 8px; height: 8px; border-radius: 3px; background: var(--brand); }
-h1 { margin: 5px 0 3px; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
-.sub { margin: 0; color: var(--ink-2); font-size: 12px; max-width: 60ch; }
+h1 { margin: 5px 0 3px; font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
+.sub { margin: 0; color: var(--ink-2); font-size: 13px; max-width: 60ch; }
 .top-right { margin-left: auto; text-align: right; display: grid; gap: 6px; justify-items: end; }
 .stamp {
   display: inline-flex; align-items: baseline; gap: 8px;
   background: var(--card-2); border: 1px solid var(--line);
   border-radius: 999px; padding: 6px 12px;
 }
-.stamp .k { color: var(--ink-3); font-size: 11px; }
-.stamp .v { font-weight: 600; font-size: 12.5px; font-variant-numeric: tabular-nums; }
-.srcline { font-size: 11px; color: var(--ink-3); }
+.stamp .k { color: var(--ink-3); font-size: 12px; }
+.stamp .v { font-weight: 600; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.srcline { font-size: 12px; color: var(--ink-3); }
 
 /* --- 通用卡片 ------------------------------------------------------------ */
 .card {
@@ -107,8 +112,8 @@ h1 { margin: 5px 0 3px; font-size: 17px; font-weight: 600; letter-spacing: -.01e
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   padding: 11px 14px; border-bottom: 1px solid var(--line-soft);
 }
-.card-hd h2 { margin: 0; font-size: 13px; font-weight: 600; }
-.card-hd .hint { color: var(--ink-3); font-size: 11px; }
+.card-hd h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.card-hd .hint { color: var(--ink-3); font-size: 12px; }
 .card-bd { padding: 13px 14px; }
 
 .cols { display: grid; gap: 16px; margin-bottom: 16px; align-items: start; }
@@ -119,16 +124,16 @@ h1 { margin: 5px 0 3px; font-size: 17px; font-weight: 600; letter-spacing: -.01e
 /* --- 筛选区 -------------------------------------------------------------- */
 .filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px 12px; }
 .field { display: grid; gap: 5px; min-width: 0; }
-.field > label { font-size: 11.5px; color: var(--ink-2); }
+.field > label { font-size: 12px; color: var(--ink-2); }
 .field.wide { grid-column: span 2; }
 select, input[type="date"], input[type="search"] {
-  width: 100%; height: 30px; padding: 0 8px;
-  border: 1px solid var(--line); border-radius: 7px;
-  background: var(--card); color: var(--ink); font: inherit; font-size: 12px;
+  width: 100%; height: 32px; padding: 0 9px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card); color: var(--ink); font: inherit; font-size: 13px;
 }
 select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: var(--brand); }
 .dates { display: flex; align-items: center; gap: 6px; }
-.dates span { color: var(--ink-3); font-size: 11px; }
+.dates span { color: var(--ink-3); font-size: 12px; }
 
 .filter-foot {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -137,20 +142,20 @@ select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: 
 .quick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .chip {
   border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
-  border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 11.5px; cursor: pointer;
+  border-radius: 999px; padding: 5px 11px; font: inherit; font-size: 12px; cursor: pointer;
 }
 .chip:hover { border-color: var(--brand-line); color: var(--brand); }
 .chip[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand-line); color: var(--brand-ink); font-weight: 500; }
 .chip[disabled] { opacity: .45; cursor: not-allowed; }
 .toggle {
-  display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink-2);
-  border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px 3px 8px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px 4px 9px; cursor: pointer;
 }
 .toggle input { margin: 0; accent-color: var(--brand); }
 .toggle.off { opacity: .5; cursor: not-allowed; }
 .btn {
-  height: 30px; padding: 0 15px; border-radius: 7px; border: 1px solid var(--line);
-  background: var(--card); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer;
+  height: 32px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
 }
 .btn:hover { border-color: var(--ink-3); }
 .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 500; }
@@ -164,18 +169,25 @@ select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: 
 .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
 .kpi {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow); padding: 11px 13px 10px; min-width: 0;
+  box-shadow: var(--shadow); padding: 12px 14px 11px; min-width: 0;
+  display: flex; gap: 11px; align-items: flex-start;
 }
-.kpi .k { font-size: 11.5px; color: var(--ink-2); }
+.kpi .ic {
+  flex: none; width: 36px; height: 36px; border-radius: 10px;
+  display: grid; place-items: center; margin-top: 2px;
+}
+.kpi .ic svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.kpi .bd { min-width: 0; flex: 1; }
+.kpi .k { font-size: 12.5px; color: var(--ink-2); }
 .kpi .row { display: flex; align-items: flex-end; gap: 8px; margin-top: 5px; }
 .kpi .v {
-  font-size: 21px; font-weight: 600; letter-spacing: -.02em;
+  font-size: 24px; font-weight: 600; letter-spacing: -.02em;
   font-variant-numeric: tabular-nums; line-height: 1.1;
 }
 .kpi .spark { margin-left: auto; opacity: .9; flex: none; }
-.kpi .n { margin-top: 4px; font-size: 11px; color: var(--ink-3); min-height: 17px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.kpi .n { margin-top: 5px; font-size: 11.5px; color: var(--ink-3); min-height: 17px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
 .kpi.is-low .v { color: var(--high-ink); }
-.kpi.is-severe .v { color: var(--severe-bg); }
+.kpi.is-severe .v { color: var(--severe-ink); }
 .dlt { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .dlt.up-bad { color: var(--loss); }
 .dlt.down-good { color: var(--gain); }
@@ -185,7 +197,7 @@ select:focus, input:focus { outline: 2px solid var(--brand-soft); border-color: 
 .chartbox { position: relative; }
 svg.chart { display: block; width: 100%; overflow: visible; }
 svg.chart text { font-family: var(--font); fill: var(--ink-3); }
-svg.chart .axis { font-size: 10px; }
+svg.chart .axis { font-size: 11px; }
 svg.chart .grid { stroke: var(--line-soft); stroke-width: 1; shape-rendering: crispEdges; }
 svg.chart .band { fill: var(--brand-soft); opacity: 0; }
 svg.chart .band.on { opacity: .2; }
@@ -200,7 +212,7 @@ svg.chart .val { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabu
   position: absolute; z-index: 20; pointer-events: none; opacity: 0;
   transition: opacity .12s; transform: translate(-50%, -100%);
   background: rgb(16 21 31 / .93); color: #fff; border-radius: 8px;
-  padding: 7px 9px; font-size: 11.5px; line-height: 1.5; white-space: nowrap;
+  padding: 8px 10px; font-size: 12px; line-height: 1.5; white-space: nowrap;
   box-shadow: 0 6px 20px -6px rgb(0 0 0 / .4);
 }
 .tip.on { opacity: 1; }
@@ -209,23 +221,23 @@ svg.chart .val { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabu
 .tip .r i { font-style: normal; opacity: .75; }
 .tip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
 
-.legend { display: flex; gap: 11px; flex-wrap: wrap; align-items: center; color: var(--ink-3); font-size: 10.5px; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--ink-3); font-size: 11.5px; }
 .legend .tag { font-size: 11px; }
 .legend .key { display: inline-flex; align-items: center; gap: 5px; cursor: default; }
 .legend .key i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
 
 .ringwrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .ringlegend { display: grid; gap: 7px; flex: 1; min-width: 140px; }
-.ringlegend .r { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.ringlegend .r { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .ringlegend .r i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
 .ringlegend .r .n { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .ringlegend .r .p { color: var(--ink-3); width: 46px; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* 横向条榜：一行一个分组，条长表示低价链接数，浅底表示在架总数 */
 .hbars { display: grid; gap: 7px; }
-.hbar { display: grid; grid-template-columns: minmax(88px, auto) 1fr 84px; gap: 9px; align-items: center; font-size: 11px; }
+.hbar { display: grid; grid-template-columns: minmax(96px, auto) 1fr 92px; gap: 10px; align-items: center; font-size: 12px; }
 .hbar .lb { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hbar .tr { position: relative; height: 13px; background: var(--flat-bg); border-radius: 4px; overflow: hidden; }
+.hbar .tr { position: relative; height: 15px; background: var(--flat-bg); border-radius: 4px; overflow: hidden; }
 .hbar .fl { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
 .hbar .nm { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .hbar .nm b { color: var(--high-ink); font-weight: 600; }
@@ -236,16 +248,16 @@ svg.chart .val { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabu
 /* table-layout: fixed 不是为了好看 —— 固定列的 left/right 偏移是写死的像素值，
    只有列宽严格等于 colgroup 才对得上。auto 布局下一条长备注就能把某一列撑宽，
    固定列随即和相邻列错位、互相压盖。 */
-table.grid { font-size: 11.5px; border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1438px; table-layout: fixed; }
+table.grid { font-size: 12.5px; border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1562px; table-layout: fixed; }
 table.grid th, table.grid td {
-  padding: 7px 9px; text-align: center; vertical-align: middle;
+  padding: 8px 10px; text-align: center; vertical-align: middle;
   border-bottom: 1px solid var(--line-soft); white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
 }
 table.grid thead th {
   position: sticky; top: 0; z-index: 3;
   background: var(--card-2); color: var(--ink-2);
-  font-weight: 500; font-size: 11px; white-space: nowrap;
+  font-weight: 500; font-size: 12px; white-space: nowrap;
   border-bottom: 1px solid var(--line);
 }
 table.grid tbody tr { --row-bg: var(--card); }
@@ -253,7 +265,7 @@ table.grid tbody tr:nth-child(even) { --row-bg: #fcfcfd; }
 /* 整行粉底 + 深红数字 + 红标签，一屏下来红得发闷。留一条左侧色条 + 一层几乎看不见的底，
    真正的强调交给价格列的深红数字和风险标签 */
 table.grid tbody tr.sev { --row-bg: #fdf7f6; }
-table.grid tbody tr.sev td.pl1 { box-shadow: inset 3px 0 0 var(--severe-bg); }
+table.grid tbody tr.sev td.pl1 { box-shadow: inset 3px 0 0 var(--severe-ink); }
 table.grid tbody tr:hover { --row-bg: var(--row-hover); }
 table.grid tbody td { background: var(--row-bg); }
 
@@ -282,10 +294,14 @@ th.on .arrow { color: var(--brand); }
 /* 数值列也居中（删掉备注后每列内容都短，居中比右对齐整齐）。
    tabular-nums 保留：数字等宽，上下两行的位数仍然是对齐的 */
 td.num, th.num { text-align: center; font-variant-numeric: tabular-nums; }
+/* 发现价格是这张表的主角，给一层很淡的黄底把它挑出来（参考图同款）。
+   用 color-mix 和行底色混，斑马纹和 hover 才不会被盖掉 */
+table.grid td.hl { background: color-mix(in srgb, var(--row-bg) 72%, #ffe9b0); }
+table.grid thead th.hl { background: #fffaf0; }
 
 .shopcell { display: flex; gap: 5px; align-items: baseline; justify-content: center; min-width: 0; }
 .shopcell .name {
-  font-weight: 500; font-size: 11.5px;
+  font-weight: 500; font-size: 12.5px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
 .shopcell .linkmini { flex: none; white-space: nowrap; }
@@ -299,11 +315,11 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 
 .price { font-variant-numeric: tabular-nums; }
 .price.hit { font-weight: 600; color: var(--high-ink); }
-.price.hit-sev { font-weight: 700; color: var(--severe-bg); }
+.price.hit-sev { font-weight: 700; color: var(--severe-ink); }
 
 .tag {
-  display: inline-block; padding: 1px 7px; border-radius: 999px;
-  font-size: 10.5px; line-height: 16px; border: 1px solid transparent; white-space: nowrap;
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 11.5px; line-height: 17px; border: 1px solid transparent; white-space: nowrap;
 }
 .tag-mild { background: var(--mild-bg); color: var(--mild-ink); border-color: var(--mild-line); }
 .tag-medium { background: var(--medium-bg); color: var(--medium-ink); border-color: var(--medium-line); }
@@ -316,21 +332,21 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 .acts { display: flex; gap: 6px; justify-content: center; }
 .act {
   border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
-  border-radius: 5px; padding: 2px 7px; font: inherit; font-size: 11px; cursor: pointer; white-space: nowrap;
+  border-radius: 6px; padding: 3px 8px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
 }
 .act:hover { border-color: var(--brand-line); color: var(--brand); background: var(--brand-soft); }
 .act[disabled] { opacity: .4; cursor: not-allowed; }
 .act-main { color: var(--brand); border-color: var(--brand-line); }
-.linkmini { font-size: 10.5px; color: var(--brand); }
+.linkmini { font-size: 11.5px; color: var(--brand); }
 
 .tfoot {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  padding: 9px 14px; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: 11px;
+  padding: 10px 14px; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: 12px;
 }
 .pager { margin-left: auto; display: flex; gap: 4px; align-items: center; }
 .pager button {
-  min-width: 26px; height: 24px; padding: 0 7px; border: 1px solid var(--line);
-  background: var(--card); color: var(--ink-2); border-radius: 5px; font: inherit; font-size: 11px; cursor: pointer;
+  min-width: 28px; height: 26px; padding: 0 8px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink-2); border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer;
 }
 .pager button:hover:not([disabled]) { border-color: var(--brand-line); color: var(--brand); }
 .pager button[aria-current="true"] { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 500; }
@@ -339,23 +355,23 @@ table.grid td.notecell { white-space: normal; color: var(--ink-2); overflow-wrap
 .sizesel { height: 28px; width: auto; padding: 0 6px; }
 
 .empty { padding: 32px 14px; text-align: center; color: var(--ink-3); }
-.empty strong { display: block; color: var(--ink-2); font-size: 13px; margin-bottom: 6px; }
+.empty strong { display: block; color: var(--ink-2); font-size: 14px; margin-bottom: 6px; }
 
 .banner {
   border-radius: var(--radius); padding: 10px 13px; margin-bottom: 13px;
-  font-size: 11.5px; border: 1px solid #f0e3bf; background: #fdf8ec; color: #866312;
+  font-size: 12.5px; border: 1px solid #f0e3bf; background: #fdf8ec; color: #866312;
 }
 .banner ul { margin: 6px 0 0; padding-left: 18px; }
 
-.notes { display: grid; gap: 7px; font-size: 11px; color: var(--ink-2); }
+.notes { display: grid; gap: 8px; font-size: 12px; color: var(--ink-2); }
 .notes .n { display: flex; gap: 8px; align-items: flex-start; }
 .notes .n b { color: var(--ink); font-weight: 600; }
 .notes .i {
-  flex: none; width: 17px; height: 17px; border-radius: 5px; background: var(--brand-soft);
-  color: var(--brand-ink); font-size: 10.5px; font-weight: 600; display: grid; place-items: center;
+  flex: none; width: 18px; height: 18px; border-radius: 5px; background: var(--brand-soft);
+  color: var(--brand-ink); font-size: 11px; font-weight: 600; display: grid; place-items: center;
 }
 
-.foot { color: var(--ink-3); font-size: 10.5px; padding: 4px 2px 0; display: grid; gap: 4px; }
+.foot { color: var(--ink-3); font-size: 11.5px; padding: 4px 2px 0; display: grid; gap: 4px; }
 
 .toast {
   position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(8px);
@@ -1429,13 +1445,26 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
    * 指标定义集中在这里：主值、迷你折线取哪个字段、涨了是好是坏。
    * 「在架链接」涨跌本身不代表好坏（巡检范围变了也会动），所以 bad 给 null，显示灰色。
    */
+  const ICONS = {
+    grid: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>',
+    link: '<path d="M9.5 14.5l5-5"/><path d="M11.5 7.2l1.6-1.6a3.8 3.8 0 015.3 5.3l-1.6 1.6"/><path d="M12.5 16.8l-1.6 1.6a3.8 3.8 0 01-5.3-5.3l1.6-1.6"/>',
+    pie: '<path d="M12 3.5a8.5 8.5 0 108.5 8.5H12V3.5z"/><path d="M15.5 3.9A8.5 8.5 0 0120.1 8.5h-4.6V3.9z"/>',
+    store: '<path d="M4.5 9.5h15V19a1 1 0 01-1 1h-13a1 1 0 01-1-1V9.5z"/><path d="M3.2 9.5L5 4.5h14l1.8 5"/><path d="M9.8 20v-5.2h4.4V20"/>',
+    alert: '<path d="M12 4.6l8.4 14.8H3.6L12 4.6z"/><path d="M12 10.2v3.8"/><circle cx="12" cy="16.8" r="0.9" fill="currentColor" stroke="none"/>',
+    yen: '<path d="M8 5.5l4 6 4-6"/><path d="M8.4 12.6h7.2"/><path d="M8.4 15.6h7.2"/><path d="M12 11.5v7"/>',
+  };
+
   const METRICS = [
-    { key: 'records', label: '在架链接', fmt: fmtInt, bad: null, note: (s) => s.links < s.records ? `去重后 ${fmtInt(s.links)} 条链接` : '当前筛选下的巡检记录数' },
-    { key: 'low', label: '低价链接', fmt: fmtInt, bad: true, note: () => '发现价格低于官方指导价' },
-    { key: 'lowRate', label: '低价占比', fmt: (v) => fmtPct(v, 1), bad: true, note: (s) => `${fmtInt(s.low)} / ${fmtInt(s.records)}`, pctPoint: true },
-    { key: 'shops', label: '涉及店铺', fmt: fmtInt, bad: true, note: (s) => `有低价链接的店铺（在架共 ${fmtInt(s.allShops)} 家）` },
-    { key: 'severe', label: '严重低价', fmt: fmtInt, bad: true, cls: (s) => s.severe ? 'is-severe' : '', note: (s) => s.abnormal ? `含 ${fmtInt(s.abnormal)} 条疑似异常价格` : '低价幅度 ≥ 20%' },
-    { key: 'avgLowGap', label: '低价均差', fmt: fmtMoney0, bad: true, note: () => '低价链接平均便宜了多少' },
+    { key: 'records', label: '在架链接', tip: '当前筛选下的巡检记录条数', fmt: fmtInt, bad: null, icon: 'grid', tone: 'blue',
+      note: (s) => s.links < s.records ? `去重后 ${fmtInt(s.links)} 条链接` : '' },
+    { key: 'low', label: '低价链接', tip: '发现价格低于官方指导价的记录数', fmt: fmtInt, bad: true, icon: 'link', tone: 'green', note: () => '' },
+    { key: 'lowRate', label: '低价占比', fmt: (v) => fmtPct(v, 1), bad: true, icon: 'pie', tone: 'violet', pctPoint: true,
+      note: (s) => `${fmtInt(s.low)} / ${fmtInt(s.records)}` },
+    { key: 'shops', label: '涉及店铺', tip: '有低价链接的店铺数（按卖家 ID 去重）', fmt: fmtInt, bad: true, icon: 'store', tone: 'cyan',
+      note: (s) => `在架共 ${fmtInt(s.allShops)} 家` },
+    { key: 'severe', label: '严重低价', tip: '低价幅度 ≥ 20% 的记录数', fmt: fmtInt, bad: true, icon: 'alert', tone: 'red', cls: (s) => s.severe ? 'is-severe' : '',
+      note: (s) => s.abnormal ? `含 ${fmtInt(s.abnormal)} 条异常` : '' },
+    { key: 'avgLowGap', label: '低价均差', tip: '低价链接平均比官方指导价低多少', fmt: fmtMoney0, bad: true, icon: 'yen', tone: 'amber', note: () => '' },
   ];
 
   function deltaHtml(metric, curr, prev) {
@@ -1482,9 +1511,14 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
     $('kpis').innerHTML = METRICS.map((m) => {
       const spark = sparkline(trend.map((p) => p[m.key]), m.bad);
       return `<div class="kpi ${m.cls ? m.cls(s) : ''}">
-        <div class="k">${esc(m.label)}</div>
-        <div class="row"><span class="v">${m.fmt(s[m.key])}</span>${spark}</div>
-        <div class="n">${deltaHtml(m, s[m.key], prev ? prev[m.key] : null)}<span>${esc(m.note(s))}</span></div>
+        <span class="ic" style="background:var(--t-${m.tone}-bg);color:var(--t-${m.tone})">
+          <svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[m.icon]}</svg>
+        </span>
+        <div class="bd">
+          <div class="k" title="${esc(m.tip || m.label)}">${esc(m.label)}</div>
+          <div class="row"><span class="v">${m.fmt(s[m.key])}</span>${spark}</div>
+            <div class="n">${deltaHtml(m, s[m.key], prev ? prev[m.key] : null)}${m.note(s) ? `<span>${esc(m.note(s))}</span>` : ''}</div>
+        </div>
       </div>`;
     }).join('');
 
@@ -1733,28 +1767,28 @@ const DATA = {"rows":[],"source":"none","syncedAt":"","docUrl":"https://nicebuil
   function columns() {
     const multi = periodsInWindow().length > 1;
     const cols = [
-      { label: '平台', cls: 'pl1', w: 72, cell: (r) => dash(r.platform) },
-      { label: '店铺名称', cls: 'pl2', w: 180, cell: shopCell },
-      { label: '产品型号', cls: 'pl3', w: 150, cell: (r) => `<span title="${esc(r.model)}">${dash(r.model)}</span>` },
-      { label: '发现价格', sort: 'price', num: true, w: 104, cell: (r) => `<span class="${priceCls(r)}">${fmtMoney(getPrice(r))}</span>` },
-      { label: '官方指导价', num: true, w: 98, cell: (r) => `<span class="price muted">${fmtMoney(getListPrice(r))}</span>` },
-      { label: '价差', sort: 'gap', num: true, w: 90, cell: (r) => {
+      { label: '平台', cls: 'pl1', w: 78, cell: (r) => dash(r.platform) },
+      { label: '店铺名称', cls: 'pl2', w: 196, cell: shopCell },
+      { label: '产品型号', cls: 'pl3', w: 162, cell: (r) => `<span title="${esc(r.model)}">${dash(r.model)}</span>` },
+      { label: '发现价格', sort: 'price', num: true, w: 112, cls2: 'hl', cell: (r) => `<span class="${priceCls(r)}">${fmtMoney(getPrice(r))}</span>` },
+      { label: '官方指导价', num: true, w: 106, cell: (r) => `<span class="price muted">${fmtMoney(getListPrice(r))}</span>` },
+      { label: '价差', sort: 'gap', num: true, w: 98, cell: (r) => {
         const gap = getPriceGap(r);
         return `<span class="${gap !== null && gap > 0 ? priceCls(r) : 'price muted'}">${fmtGap(gap)}</span>`;
       } },
-      { label: '低价幅度', sort: 'rate', num: true, w: 94, cell: (r) => {
+      { label: '低价幅度', sort: 'rate', num: true, w: 102, cell: (r) => {
         const rate = getDiscountRate(r);
         return `<span class="${rate !== null && rate > 0 ? priceCls(r) : 'price muted'}">${rate === null ? '—' : fmtPct(rate)}</span>`;
       } },
     ];
-    if (multi) cols.push({ label: '排查日期', sort: 'date', w: 104, cell: (r) => dash(r.date) });
+    if (multi) cols.push({ label: '排查日期', sort: 'date', w: 112, cell: (r) => dash(r.date) });
     cols.push(
-      { label: '版本', w: 62, cell: (r) => dash(r.version) },
-      { label: '店铺类型', w: 140, cell: (r) => `<span title="${esc(r.shopType)}">${dash(r.shopType)}</span>` },
-      { label: '月销', sort: 'sales', num: true, w: 72, cell: (r) => r.monthlySales === null ? '<span class="muted">—</span>' : fmtInt(r.monthlySales) },
-      { label: '发货地', w: 96, cell: (r) => `<span title="${esc(r.region)}">${dash(r.region)}</span>` },
-      { label: '风险等级', sort: 'risk', cls: 'pr1', w: 124, cell: riskTag },
-      { label: '操作', cls: 'pr2', w: 156, cell: (r) => `<div class="acts">
+      { label: '版本', w: 68, cell: (r) => dash(r.version) },
+      { label: '店铺类型', w: 152, cell: (r) => `<span title="${esc(r.shopType)}">${dash(r.shopType)}</span>` },
+      { label: '月销', sort: 'sales', num: true, w: 80, cell: (r) => r.monthlySales === null ? '<span class="muted">—</span>' : fmtInt(r.monthlySales) },
+      { label: '发货地', w: 104, cell: (r) => `<span title="${esc(r.region)}">${dash(r.region)}</span>` },
+      { label: '风险等级', sort: 'risk', cls: 'pr1', w: 136, cell: riskTag },
+      { label: '操作', cls: 'pr2', w: 168, cell: (r) => `<div class="acts">
         <button class="act act-main" type="button" data-open="${esc(r.url)}"${r.url ? '' : ' disabled title="源表没有商品链接"'}>查看商品</button>
         <button class="act" type="button" data-copy="${esc(r.url)}"${r.url ? '' : ' disabled'}>复制链接</button>
       </div>` },
