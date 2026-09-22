@@ -18,7 +18,8 @@
     "build:links": "tsx scripts/build-links.ts",
     "check:links": "tsx scripts/check-links.ts",
     "import:search": "tsx scripts/import-search.ts",
-    "flag:review": "tsx scripts/flag-review.ts"
+    "flag:review": "tsx scripts/flag-review.ts",
+    "recalc:gap": "tsx scripts/recalc-gap.ts"
   },
   "dependencies": {
     "next": "16.3.0",

@@ -10,6 +10,8 @@
  *                     但价格本身可疑，多半是代购加价或者挂错 SKU
  *
  * 默认只标最新一个批次 —— 往期数据大多已经人工核过，重新刷一遍底色只会制造噪音。
+ *
+ * 核完之后 `--clear` 把底色刷回白底：`npm run flag:review -- --clear`
  */
 
 import { feishuGet, feishuPut } from '../lib/feishu/client';
@@ -23,6 +25,7 @@ loadLocalEnv();
 const LOG_SHEET = '1WDztC';
 const MUST_REVIEW = '#FFE08A'; // 深黄
 const WORTH_A_LOOK = '#FFF5D1'; // 浅黄
+const WHITE = '#FFFFFF';
 /** 高于指导价多少倍算「价格离谱」 */
 const OVERPRICED_MULTIPLE = 1.5;
 
@@ -89,6 +92,8 @@ async function main() {
   const target = arg('date') ?? dates[dates.length - 1];
   if (!target) throw new Error('表里没有可识别的排查日期');
 
+  const clear = process.argv.includes('--clear');
+  const batchRows: number[] = [];
   const must: number[] = [];
   const look: number[] = [];
   const detail: Array<[number, string, string]> = [];
@@ -97,6 +102,7 @@ async function main() {
     const row = grid[i];
     if (text(row[col('排查日期')]) !== target) continue;
     const rowNo = i + 1;
+    batchRows.push(rowNo);
     const shop = text(row[col('卖家昵称')]);
     const model = text(row[col('产品型号')]);
     const price = num(row[col('违规售价')]);
@@ -122,6 +128,21 @@ async function main() {
   console.log(`  必须核验 ${must.length} 行，顺带看一眼 ${look.length} 行`);
   for (const [rowNo, shop, why] of detail.sort((a, b) => a[0] - b[0])) {
     console.log(`    第 ${String(rowNo).padStart(3)} 行  ${shop.padEnd(22)} ${why}`);
+  }
+
+  // --clear：把这批的底色刷回白底。刷的是「按当前规则会被标的行」，
+  // 所以要在改数据**之前**清，或者干脆用 --all 把整批刷白 —— 数据改完之后
+  // 规则命中的行会变少，只清命中的行会留下几格洗不掉的黄。
+  if (clear) {
+    const all = process.argv.includes('--all');
+    const rows = all ? batchRows : [...must, ...look];
+    if (rows.length === 0) { console.log('  没有要清的行。'); return; }
+    await feishuPut(`/sheets/v2/spreadsheets/${token}/styles_batch_update`, {
+      data: [{ ranges: toRanges(rows, lastColumn), style: { backColor: WHITE } }],
+    }, cfg);
+    console.log('');
+    console.log(`✓ 已把 ${rows.length} 行刷回白底${all ? '（--all：整批）' : ''}`);
+    return;
   }
 
   const payload = [
