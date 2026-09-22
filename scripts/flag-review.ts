@@ -11,7 +11,10 @@
  *
  * 默认只标最新一个批次 —— 往期数据大多已经人工核过，重新刷一遍底色只会制造噪音。
  *
- * 核完之后 `--clear` 把底色刷回白底：`npm run flag:review -- --clear`
+ * 核完之后 `--clear` 把底色刷回白底：`npm run flag:review -- --clear --all`
+ *
+ * **这个脚本默认会写底色。** 只想看看有哪些行可疑就加 `--dry` ——
+ * 不加的话，一次「随手查一下」就会把刚清干净的表重新刷黄。
  */
 
 import { feishuGet, feishuPut } from '../lib/feishu/client';
@@ -93,6 +96,7 @@ async function main() {
   if (!target) throw new Error('表里没有可识别的排查日期');
 
   const clear = process.argv.includes('--clear');
+  const dry = process.argv.includes('--dry');
   const batchRows: number[] = [];
   const must: number[] = [];
   const look: number[] = [];
@@ -128,6 +132,12 @@ async function main() {
   console.log(`  必须核验 ${must.length} 行，顺带看一眼 ${look.length} 行`);
   for (const [rowNo, shop, why] of detail.sort((a, b) => a[0] - b[0])) {
     console.log(`    第 ${String(rowNo).padStart(3)} 行  ${shop.padEnd(22)} ${why}`);
+  }
+
+  if (dry) {
+    console.log('');
+    console.log('（--dry：只看不写，表格底色没动）');
+    return;
   }
 
   // --clear：把这批的底色刷回白底。刷的是「按当前规则会被标的行」，
