@@ -123,3 +123,29 @@ export async function feishuGet<T>(
   }
   return body.data;
 }
+
+/**
+ * 发起一次带 tenant token 的 PUT，返回 data 字段。
+ *
+ * 只有导入脚本会用到写接口 —— 日常同步全是只读的。写之前请确认应用开了
+ * sheets:spreadsheet（不是 :readonly）并且已经发版，否则这里会拿到权限错误。
+ */
+export async function feishuPut<T>(
+  path: string,
+  body: unknown,
+  cfg: FeishuConfig = loadFeishuConfig(),
+): Promise<T> {
+  const token = await getTenantAccessToken(cfg);
+  const res = await fetchWithRetry(`${cfg.baseUrl}${path}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  });
+
+  const envelope = await parseJson<FeishuEnvelope<T>>(res, `飞书接口 ${path}`);
+  if (envelope.code !== 0) {
+    throw new FeishuError(`飞书接口 ${path} 返回错误：${envelope.msg}（code ${envelope.code}）`, envelope.code);
+  }
+  return envelope.data;
+}

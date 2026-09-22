@@ -16,7 +16,8 @@
     "build:static": "tsx scripts/build-static.ts",
     "sync:links": "tsx scripts/sync-links.ts",
     "build:links": "tsx scripts/build-links.ts",
-    "check:links": "tsx scripts/check-links.ts"
+    "check:links": "tsx scripts/check-links.ts",
+    "import:search": "tsx scripts/import-search.ts"
   },
   "dependencies": {
     "next": "16.3.0",
