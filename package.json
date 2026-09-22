@@ -17,7 +17,8 @@
     "sync:links": "tsx scripts/sync-links.ts",
     "build:links": "tsx scripts/build-links.ts",
     "check:links": "tsx scripts/check-links.ts",
-    "import:search": "tsx scripts/import-search.ts"
+    "import:search": "tsx scripts/import-search.ts",
+    "flag:review": "tsx scripts/flag-review.ts"
   },
   "dependencies": {
     "next": "16.3.0",
