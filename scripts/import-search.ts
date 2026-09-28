@@ -6,7 +6,7 @@
  *
  * 其他参数：
  *   --date=2026-09-22      排查日期，默认今天
- *   --exclude=A,B          按店名排除，默认排除「PLAUD旗舰店」
+ *   --exclude=A,B          按店名排除；不传则用内置的官方店名单（见 DEFAULT_EXCLUDE）
  *
  * **为什么一定要先看一遍再 --write**：搜索页展示的是最低 SKU 价，不一定是整机价。
  * 历史上那几行 ¥158 / ¥189 的「严重低价」就是这么来的 —— 实际整机价是 ¥1508 / ¥1472。
@@ -36,6 +36,15 @@ const LOG_COLUMNS = [
   '产品型号', '版本', '违规售价', '官方指导价', '价差(元)', '低价幅度', '月销', '发货地', '备注',
 ];
 const KNOCKOFF_COLUMNS = ['平台', '卖家昵称', '商品标题', '售价', '商品链接URL', '判定'];
+
+/**
+ * 默认排除的官方店。
+ *
+ * 官方店在各平台的挂名不一样 ——「PLAUD旗舰店」「PLAUD京东自营旗舰店」都是同一家，
+ * 只写死一个名字会漏。所以匹配规则是「店名以 PLAUD 开头且带旗舰店/自营字样」，
+ * 新平台再开官方店也能自动认出来。第三方的「XX旗舰店」不会被误伤，因为不以 PLAUD 开头。
+ */
+const OFFICIAL_SHOP = /^PLAUD.*(旗舰店|自营)/i;
 
 type Cell = string | number | { type: 'url'; text: string; link: string };
 
@@ -120,7 +129,8 @@ async function main() {
 
   const write = process.argv.includes('--write');
   const date = arg('date', new Date().toISOString().slice(0, 10));
-  const excludeShops = arg('exclude', 'PLAUD旗舰店').split(',').filter(Boolean);
+  const explicitExclude = arg('exclude', '');
+  const excludeShops = explicitExclude ? explicitExclude.split(',').filter(Boolean) : [];
 
   // 同一个商品会在多页重复出现，按 平台+ID 去重
   const seen = new Map<string, RawItem>();
@@ -134,7 +144,11 @@ async function main() {
     console.log(`· ${file.split('/').pop()}  解析 ${items.length} 条，新增 ${added} 条`);
   }
 
-  const result = classify([...seen.values()], { excludeShops });
+  const items = [...seen.values()];
+  // 传了 --exclude 就完全照它来；没传就按 OFFICIAL_SHOP 自动认官方店
+  const official = explicitExclude ? [] : [...new Set(items.filter((i) => OFFICIAL_SHOP.test(i.shop)).map((i) => i.shop))];
+  if (official.length) console.log(`· 识别为官方店并排除：${official.join('、')}`);
+  const result = classify(items, { excludeShops: [...excludeShops, ...official] });
   console.log('');
   console.log(`✓ 排查登记表 ${result.keep.length} 条 | 蹭词仿品 ${result.knockoff.length} 条 | 剔除 ${result.drop.length} 条`);
 
