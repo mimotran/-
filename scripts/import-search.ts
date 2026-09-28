@@ -2,7 +2,10 @@
  * 把淘宝 / 京东搜索页的「另存为完整网页」导入「排查登记表」：
  *
  *   npm run import:search -- <文件...>              只解析并打印，不写表（默认）
- *   npm run import:search -- <文件...> --write      确认无误后写入飞书
+ *   npm run import:search -- <文件...> --write      确认无误后写入
+ *
+ * 同一个批次可以分几次导（比如淘宝先存好、京东晚点补）—— 写入前会拿本批次
+ * 已有的商品链接去重，重复跑同一个文件不会把行写两遍。飞书
  *
  * 其他参数：
  *   --date=2026-09-22      排查日期，默认今天
@@ -202,6 +205,22 @@ async function main() {
     });
   }
 
+  // 本批次已经导过的商品链接：同一个批次可能分几次导（淘宝先、京东后），
+  // 也可能同一个文件被重复跑。按 商品链接URL 去重，避免同一条链接进两行。
+  const header2 = log[0]?.map(text) ?? [];
+  const cDate = header2.indexOf('排查日期');
+  const cUrl = header2.indexOf('商品链接URL');
+  const already = new Set(
+    log.slice(1).filter((r) => text(r[cDate]) === date).map((r) => text(r[cUrl])).filter(Boolean),
+  );
+  const fresh = result.keep.filter((r) => !already.has(r.item.url));
+  const skipped = result.keep.length - fresh.length;
+  if (skipped) console.log(`· 本批次已有 ${already.size} 条链接，其中 ${skipped} 条与本次重复，跳过`);
+  if (fresh.length === 0) {
+    console.log('· 没有新链接要写入。');
+    return;
+  }
+
   const firstRow = log.length + 1;
   let seq = Math.max(0, ...log.slice(1).map((r) => Number(text(r[0])) || 0)) + 1;
   const noteBase = `本行由 ${date} 淘宝/京东搜索页存档自动导入；售价取自搜索页展示价（可能是最低 SKU，非整机价），需人工复核`;
@@ -220,7 +239,7 @@ async function main() {
       [noteBase, r.review, `原标题：${r.item.title}`].filter(Boolean).join('；'),
     ];
   };
-  const rows = result.keep.map(toRow);
+  const rows = fresh.map(toRow);
 
   await feishuPut(`/sheets/v2/spreadsheets/${token}/values`, {
     valueRange: { range: `${LOG_SHEET}!A${firstRow}:Q${firstRow + rows.length - 1}`, values: rows },
@@ -231,8 +250,16 @@ async function main() {
   if (result.knockoff.length) {
     const knock = await readRange(cfg, token, `${KNOCKOFF_SHEET}!A1:F20000`);
     requireColumns(knock[0]?.map(text) ?? [], KNOCKOFF_COLUMNS, '同款仿品与蹭词');
+    const knockUrls = new Set(
+      knock.slice(1).map((r) => text(r[KNOCKOFF_COLUMNS.indexOf('商品链接URL')])).filter(Boolean),
+    );
+    const freshKnock = result.knockoff.filter(({ item }) => !knockUrls.has(item.url));
+    if (freshKnock.length === 0) {
+      console.log('· 蹭词仿品没有新链接要写入。');
+      return;
+    }
     const start = knock.length + 1;
-    const values: Cell[][] = result.knockoff.map(({ item, reason }) => [
+    const values: Cell[][] = freshKnock.map(({ item, reason }) => [
       item.platform, item.shop, item.title, item.price as number, linkCell(item.url), reason,
     ]);
     await feishuPut(`/sheets/v2/spreadsheets/${token}/values`, {
