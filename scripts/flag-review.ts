@@ -1,13 +1,16 @@
 /**
  * 给「排查登记表」里需要人工核验的行标底色：`npm run flag:review [-- --date=YYYY-MM-DD]`
  *
- * 每次 import:search 之后跑一次。两档颜色，因为两类问题的紧迫程度不一样：
+ * 每次 import:search 之后跑一次。两档颜色：
  *
- *   深黄 必须核验 —— 型号认不出（整行判不了低价，看板归入「缺口径」）
- *                     或低价幅度 ≥ 40%（几乎可以肯定是最低 SKU 价，不是整机价，
- *                     会把「严重低价」这个数顶上去）
- *   浅黄 顺带看一眼 —— 售价高于指导价 1.5 倍。不影响低价统计（这些是非低价行），
- *                     但价格本身可疑，多半是代购加价或者挂错 SKU
+ *   深黄 必须核验 —— 售价低于 ¥1000，或型号认不出（整行判不了低价，看板归入「缺口径」）。
+ *                     ¥999 是最低一档指导价，售价比它还低的不是最低 SKU 价就是配件价，
+ *                     不核就会把「严重低价」顶上去。最早的规则是「低价幅度 ≥ 40%」，
+ *                     但 ¥799 / ¥800 这种 38% 的卡在线下面漏过去好几期 —— 按产品方
+ *                     的口径改成了价格线。
+ *   浅黄 顺带看一眼 —— 标题没写型号、型号是沿用往期人工核定填进去的。
+ *
+ * 售价远高于指导价的代购加价行不再标：产品方确认过这些价格不用改，每周标一遍只是噪音。
  *
  * 默认只标最新一个批次 —— 往期数据大多已经人工核过，重新刷一遍底色只会制造噪音。
  *
@@ -20,7 +23,6 @@
 import { feishuGet, feishuPut } from '../lib/feishu/client';
 import { loadFeishuConfig, type FeishuConfig } from '../lib/feishu/config';
 import { DEFAULT_SPREADSHEET_TOKEN, loadLowPriceSource } from '../lib/lowprice/feishu';
-import { ABNORMAL_RATE } from '../lib/lowprice/rules.js';
 import { loadLocalEnv } from './env';
 
 loadLocalEnv();
@@ -29,8 +31,8 @@ const LOG_SHEET = '1WDztC';
 const MUST_REVIEW = '#FFE08A'; // 深黄
 const WORTH_A_LOOK = '#FFF5D1'; // 浅黄
 const WHITE = '#FFFFFF';
-/** 高于指导价多少倍算「价格离谱」 */
-const OVERPRICED_MULTIPLE = 1.5;
+/** 售价低于这个数就要二次确认（产品方定的线，¥999 是最低一档指导价） */
+const PRICE_FLOOR = 1000;
 
 const text = (cell: unknown): string =>
   Array.isArray(cell)
@@ -111,20 +113,22 @@ async function main() {
     const model = text(row[col('产品型号')]);
     const price = num(row[col('违规售价')]);
     const list = num(row[col('官方指导价')]);
+    const note = text(row[col('备注')]);
 
     if (!model || !list) {
       must.push(rowNo);
       detail.push([rowNo, shop, '型号/指导价缺失，判不了低价']);
       continue;
     }
-    if (price === null) continue;
-    const rate = (list - price) / list;
-    if (rate >= ABNORMAL_RATE) {
+    if (price !== null && price < PRICE_FLOOR) {
       must.push(rowNo);
-      detail.push([rowNo, shop, `低价幅度 ${(rate * 100).toFixed(1)}%，疑似最低 SKU 价`]);
-    } else if (price > list * OVERPRICED_MULTIPLE) {
+      const hint = note.match(/该链接 \S+ 批次人工核定售价 ¥[\d.]+/);
+      detail.push([rowNo, shop, `售价 ¥${price} 低于 ¥${PRICE_FLOOR}，需二次确认${hint ? `（${hint[0]}）` : ''}`]);
+      continue;
+    }
+    if (note.includes('型号/版本沿用')) {
       look.push(rowNo);
-      detail.push([rowNo, shop, `售价 ¥${price} 是指导价 ¥${list} 的 ${(price / list).toFixed(1)} 倍`]);
+      detail.push([rowNo, shop, `型号「${model}」是沿用往期人工核定，标题里没写`]);
     }
   }
 

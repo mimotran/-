@@ -19,7 +19,7 @@
 import { readFileSync } from 'node:fs';
 import { feishuGet, feishuPut } from '../lib/feishu/client';
 import { loadFeishuConfig, type FeishuConfig } from '../lib/feishu/config';
-import { classify, type KeptRow } from '../lib/lowprice/import/classify';
+import { classify, LIST_PRICE, type KeptRow } from '../lib/lowprice/import/classify';
 import { parseJdSearch } from '../lib/lowprice/import/jd';
 import { parseTaobaoSearch } from '../lib/lowprice/import/taobao';
 import type { RawItem } from '../lib/lowprice/import/types';
@@ -221,12 +221,47 @@ async function main() {
     return;
   }
 
+  // 往期人工核过的结果：同一条链接每周都会被重新抓到，而搜索页给的又总是同一个
+  // 最低 SKU 价（¥158 / ¥799 这种），人工每周订正一遍同样的东西。按商品链接取
+  // 最近一期的型号 / 版本 / 售价，拿来补型号、并在备注里提示上期核定价。
+  const cModel = header2.indexOf('产品型号');
+  const cVersion = header2.indexOf('版本');
+  const cPrice = header2.indexOf('违规售价');
+  const history = new Map<string, { date: string; model: string; version: string; price: number | null }>();
+  for (const r of log.slice(1)) {
+    const d = text(r[cDate]);
+    const url = text(r[cUrl]);
+    if (!url || !d || d >= date) continue;
+    const prev = history.get(url);
+    if (prev && prev.date >= d) continue;
+    const price = Number(text(r[cPrice]).replace(/[^\d.\-]/g, ''));
+    history.set(url, {
+      date: d, model: text(r[cModel]), version: text(r[cVersion]),
+      price: Number.isFinite(price) && text(r[cPrice]) !== '' ? price : null,
+    });
+  }
+
   const firstRow = log.length + 1;
   let seq = Math.max(0, ...log.slice(1).map((r) => Number(text(r[0])) || 0)) + 1;
   const noteBase = `本行由 ${date} 淘宝/京东搜索页存档自动导入；售价取自搜索页展示价（可能是最低 SKU，非整机价），需人工复核`;
 
   const toRow = (r: KeptRow): Cell[] => {
     const p = profiles.get(`${r.item.platform}|${r.item.shop}`);
+    const h = history.get(r.item.url);
+    const notes = [noteBase, r.review];
+
+    // 标题认不出型号、但这条链接往期人工填过 → 沿用往期的型号和版本
+    if (!r.model && h?.model && LIST_PRICE[h.model] && (h.version === '国内版' || h.version === '海外版')) {
+      const list = LIST_PRICE[h.model][h.version];
+      r = { ...r, model: h.model, version: h.version, listPrice: list,
+        gap: list - r.price, rate: (list - r.price) / list, review: '' };
+      notes[1] = `型号/版本沿用 ${h.date} 批次的人工核定`;
+    }
+    // 这次抓到的价和往期人工核定价差得远 → 多半又是最低 SKU，把上期的价写出来方便对照
+    if (h?.price != null && Math.abs(h.price - r.price) >= 100) {
+      notes.push(`该链接 ${h.date} 批次人工核定售价 ¥${h.price}`);
+    }
+
     return [
       seq++, date, r.item.platform, r.item.shop,
       p?.sellerId ?? '', p?.shopType || guessShopType(r.item),
@@ -236,7 +271,7 @@ async function main() {
       r.rate === null ? '' : Number(r.rate.toFixed(6)),
       r.item.platform === '淘宝' ? r.item.salesText : jdHeat(r.item.heatText ?? ''),
       r.item.region,
-      [noteBase, r.review, `原标题：${r.item.title}`].filter(Boolean).join('；'),
+      [...notes, `原标题：${r.item.title}`].filter(Boolean).join('；'),
     ];
   };
   const rows = fresh.map(toRow);
