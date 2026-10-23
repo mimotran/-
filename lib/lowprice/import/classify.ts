@@ -38,7 +38,7 @@ const KNOCKOFF = /同款|适用|替代|TWJU|WITCEO|酷叮当|森拓思|拓思曼
  * （10-23 那批京东一次误剔了 20 多条）。所以这一档只在标题里**没有**整机字样时才算配件。
  */
 const ACCESSORY = new RegExp([
-  '充电线|数据线|贴膜|手环|表带|腕带|挂绳|磁吸卡包|戒指|耗材|打印|饼干|曲奇',
+  '充电线|数据线|贴膜|手环|表带|腕带|挂绳|戒指|耗材|打印|饼干|曲奇',
   '\\bfor\\s+plaud|\\badapter\\b|\\bstrap\\b|\\bwrist|\\bband\\b|\\bcharger\\b|\\bcable\\b',
 ].join('|'), 'i');
 const MAYBE_ACCESSORY = /会员|服务费|卡套|保护壳|保护套|皮套|收纳|电池|\bcase\b|\bcover\b/i;
@@ -112,7 +112,10 @@ export function classify(items: RawItem[], options: ClassifyOptions = {}): Class
       out.knockoff.push({ item, reason: '「同款/适用/替代」表述或挂他牌，非 PLAUD 正品' });
       continue;
     }
-    if (isAccessory(title)) {
+    // 价格兜底：PLAUD 整机最便宜的一档指导价是 ¥999，仿品在上一步已经分走了，
+    // 剩下售价不到 ¥100 的不可能是整机。「PLAUD录音笔磁吸卡包便携充电」¥21
+    // 这种靠关键词分不出来 —— Note Pro 标配里本来就带「黑色磁吸卡包」。
+    if (isAccessory(title) || (item.price !== null && item.price < 100)) {
       out.drop.push({ item, reason: '配件/服务，非整机' });
       continue;
     }
