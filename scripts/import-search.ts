@@ -116,6 +116,7 @@ function guessShopType(item: RawItem): string {
     if (item.isSelfRun) return '京东自营';
     return /专营/.test(item.shop) ? '京东专营店' : '京东POP店';
   }
+  if (item.isTmall) return '天猫店铺';
   return /企业店/.test(item.shop) ? '淘宝企业店铺' : '淘宝个人店铺(C店)';
 }
 
@@ -227,18 +228,27 @@ async function main() {
   const cModel = header2.indexOf('产品型号');
   const cVersion = header2.indexOf('版本');
   const cPrice = header2.indexOf('违规售价');
-  const history = new Map<string, { date: string; model: string; version: string; price: number | null }>();
+  const cNote = header2.indexOf('备注');
+  type Past = { date: string; model: string; version: string; price: number | null };
+  const history = new Map<string, Past>();
+  // 同一个商品换了链接（广告跳转链 / 换了 skuId）时按链接对不上，再按原标题对一次。
+  // 表里没有标题列，标题存在备注的「原标题：」后面。
+  const byTitle = new Map<string, Past>();
   for (const r of log.slice(1)) {
     const d = text(r[cDate]);
     const url = text(r[cUrl]);
-    if (!url || !d || d >= date) continue;
-    const prev = history.get(url);
-    if (prev && prev.date >= d) continue;
+    if (!d || d >= date) continue;
     const price = Number(text(r[cPrice]).replace(/[^\d.\-]/g, ''));
-    history.set(url, {
+    const past: Past = {
       date: d, model: text(r[cModel]), version: text(r[cVersion]),
       price: Number.isFinite(price) && text(r[cPrice]) !== '' ? price : null,
-    });
+    };
+    // 同一条链接出现在多期时，取最近一期
+    const prevUrl = url ? history.get(url) : undefined;
+    if (url && (!prevUrl || prevUrl.date < d)) history.set(url, past);
+    const title = text(r[cNote]).match(/原标题：(.+)$/)?.[1]?.trim();
+    const prevTitle = title ? byTitle.get(title) : undefined;
+    if (title && past.model && (!prevTitle || prevTitle.date < d)) byTitle.set(title, past);
   }
 
   const firstRow = log.length + 1;
@@ -249,16 +259,32 @@ async function main() {
     const p = profiles.get(`${r.item.platform}|${r.item.shop}`);
     const h = history.get(r.item.url);
     const notes = [noteBase, r.review];
+    const known = (x?: Past): x is Past =>
+      !!x?.model && !!LIST_PRICE[x.model] && (x.version === '国内版' || x.version === '海外版');
 
-    // 标题认不出型号、但这条链接往期人工填过 → 沿用往期的型号和版本
-    if (!r.model && h?.model && LIST_PRICE[h.model] && (h.version === '国内版' || h.version === '海外版')) {
-      const list = LIST_PRICE[h.model][h.version];
-      r = { ...r, model: h.model, version: h.version, listPrice: list,
-        gap: list - r.price, rate: (list - r.price) / list, review: '' };
-      notes[1] = `型号/版本沿用 ${h.date} 批次的人工核定`;
+    // 标题认不出型号 → 先按链接、再按原标题找往期人工填过的型号和版本
+    if (!r.model) {
+      const past = known(h) ? h : known(byTitle.get(r.item.title)) ? byTitle.get(r.item.title)! : null;
+      if (past) {
+        const list = LIST_PRICE[past.model][past.version as '国内版' | '海外版'];
+        r = { ...r, model: past.model, version: past.version, listPrice: list,
+          gap: list - r.price, rate: (list - r.price) / list, review: '' };
+        notes[1] = `型号/版本沿用 ${past.date} 批次的人工核定${past === h ? '' : '（按相同标题匹配）'}`;
+      }
     }
-    // 这次抓到的价和往期人工核定价差得远 → 多半又是最低 SKU，把上期的价写出来方便对照
-    if (h?.price != null && Math.abs(h.price - r.price) >= 100) {
+
+    // 售价低于 ¥1000 的几乎都是最低 SKU / 配件价。这条链接往期人工核过价的，
+    // 直接填往期核定价（产品方口径：价格不确定时优先参考往期数据），
+    // 但保留「需二次确认」的标记，flag:review 会照样把它标黄。
+    if (r.price < 1000 && h?.price != null && h.price >= 1000) {
+      const shown = r.price;
+      const list = r.listPrice;
+      r = { ...r, price: h.price,
+        gap: list === null ? null : list - h.price,
+        rate: list === null ? null : (list - h.price) / list };
+      notes.push(`搜索页显示 ¥${shown}（低于 ¥1000），已按 ${h.date} 批次人工核定售价 ¥${h.price} 填入，需二次确认`);
+    } else if (h?.price != null && Math.abs(h.price - r.price) >= 100) {
+      // 价差得远但没低于 ¥1000：不替换，只把上期的价写出来方便对照
       notes.push(`该链接 ${h.date} 批次人工核定售价 ¥${h.price}`);
     }
 

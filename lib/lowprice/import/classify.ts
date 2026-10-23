@@ -24,10 +24,18 @@ export const LIST_PRICE: Record<string, { 国内版: number; 海外版: number }
  * 品牌名要列举 —— 「TWJUai智能录音笔…转写plaudNotePro」这种把 PLAUD 塞进功能描述里的，
  * 光看关键词分不出来，只能认出前面那个真正的品牌。遇到新的蹭词品牌就往这里加。
  */
-const KNOCKOFF = /同款|适用|替代|TWJU|WITCEO|酷叮当|森拓思|拓思曼|GUSR|迈莱姆|得到\s*Getseed/i;
+const KNOCKOFF = /同款|适用|替代|TWJU|WITCEO|酷叮当|森拓思|拓思曼|GUSR|迈莱姆|得到\s*Getseed|转写\s*plaud/i;
 
-/** 配件 / 服务：不是整机，不该进排查表 */
-const ACCESSORY = /充电线|数据线|贴膜|卡套|保护壳|手环|收纳|挂绳|会员|服务费|耗材|打印|戒指|电池/;
+/**
+ * 配件 / 服务：不是整机，不该进排查表。
+ * 淘宝主站搜索（s.taobao.com）里混着大量英文标题的跨境配件 ——「Wrist Strap for
+ * PLAUD NotePin」「USB C Adapter for PLAUD NOTE」，¥20–60 一条，不拦住就全成了
+ * 「严重低价」。「for PLAUD」本身就说明是给 PLAUD 用的周边，不是 PLAUD。
+ */
+const ACCESSORY = new RegExp([
+  '充电线|数据线|贴膜|卡套|保护壳|保护套|手环|表带|腕带|收纳|挂绳|会员|服务费|耗材|打印|戒指|电池|饼干|曲奇',
+  '\\bfor\\s+plaud|\\badapter\\b|\\bstrap\\b|\\bwrist|\\bband\\b|\\bcase\\b|\\bcover\\b|\\bcharger\\b|\\bcable\\b',
+].join('|'), 'i');
 
 const OVERSEAS = /海外版|港版|国际版|香港行货|海外模型|海外大模型|跨境|global/i;
 

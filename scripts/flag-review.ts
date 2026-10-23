@@ -3,7 +3,8 @@
  *
  * 每次 import:search 之后跑一次。两档颜色：
  *
- *   深黄 必须核验 —— 售价低于 ¥1000，或型号认不出（整行判不了低价，看板归入「缺口径」）。
+ *   深黄 必须核验 —— 售价低于 ¥1000，或型号认不出（整行判不了低价，看板归入「缺口径」），
+ *                     或搜索页价低于 ¥1000、导入时已按往期人工核定价替换的（备注里有「需二次确认」）。
  *                     ¥999 是最低一档指导价，售价比它还低的不是最低 SKU 价就是配件价，
  *                     不核就会把「严重低价」顶上去。最早的规则是「低价幅度 ≥ 40%」，
  *                     但 ¥799 / ¥800 这种 38% 的卡在线下面漏过去好几期 —— 按产品方
@@ -118,6 +119,12 @@ async function main() {
     if (!model || !list) {
       must.push(rowNo);
       detail.push([rowNo, shop, '型号/指导价缺失，判不了低价']);
+      continue;
+    }
+    const replaced = note.match(/搜索页显示 ¥([\d.]+)（低于 ¥1000），已按 (\S+) 批次人工核定售价 ¥([\d.]+) 填入/);
+    if (replaced) {
+      must.push(rowNo);
+      detail.push([rowNo, shop, `搜索页 ¥${replaced[1]}，已按 ${replaced[2]} 核定价 ¥${replaced[3]} 填入，需二次确认`]);
       continue;
     }
     if (price !== null && price < PRICE_FLOOR) {

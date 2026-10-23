@@ -7,7 +7,10 @@
  *      会提前闭合外层 a，店铺信息变成卡片的兄弟节点，在 DOM 里反而不好按「卡片的子节点」取。
  *      源码顺序里它就紧跟在那张卡后面，顺着扫最直接。
  *
- * class 名带哈希后缀（Title--title--wJY8TeA），一律用前缀匹配。
+ * class 名带哈希后缀，一律用前缀匹配。而且有两代写法，都要认：
+ *   uland.taobao.com 的 SEM 落地页：Title--title--wJY8TeA / Price--priceInt--BXYeCOI
+ *   s.taobao.com 的主站搜索（2026-10 起）：title--ASSt27UY / priceInt--yqqZMJ5a
+ * 后者把模块前缀去掉了。写成「(?:Price--)?priceInt--」两边都能命中。
  */
 
 import type { RawItem } from './types';
@@ -15,13 +18,14 @@ import type { RawItem } from './types';
 /** 每个标记各自一个捕获组，合起来做一次顺序扫描 */
 const MARKERS = new RegExp(
   [
-    '<a[^>]*\\bid="item_id_(\\d+)"([^>]*)>', // 1=商品ID 2=这个 a 标签的其余属性（判广告位用）
-    '<div class="Title--title--[^"]*"[^>]*>([\\s\\S]*?)</div>', // 3=标题（内含高亮 span）
-    'class="Price--priceInt--[^"]*">([^<]*)<', // 4=整数部分
-    'class="Price--priceFloat--[^"]*">([^<]*)<', // 5=小数部分
-    'class="Price--realSales--[^"]*">([^<]*)<', // 6=「82人付款」
-    'class="Price--procity--[^"]*"><span>([^<]*)</span>', // 7=省 / 市，一张卡可能出现两次
-    'class="ShopInfo--shopNameText--[^"]*">([^<]*)<', // 8=店名
+    // href 在 id 前面，所以要把 id 前后的属性都截下来（判广告位 / 天猫用）
+    '<a([^>]*)\\bid="item_id_(\\d+)"([^>]*)>', // 1=id 前的属性 2=商品ID 3=id 后的属性
+    '<div class="(?:Title--)?title--[^"]*"[^>]*>([\\s\\S]*?)</div>', // 3=标题（内含高亮 span）
+    'class="(?:Price--)?priceInt--[^"]*">([^<]*)<', // 4=整数部分
+    'class="(?:Price--)?priceFloat--[^"]*">([^<]*)<', // 5=小数部分
+    'class="(?:Price--)?realSales--[^"]*">([^<]*)<', // 6=「82人付款」
+    'class="(?:Price--)?procity--[^"]*"><span>([^<]*)</span>', // 7=省 / 市，一张卡可能出现两次
+    'class="(?:ShopInfo--)?shopNameText--[^"]*">([^<]*)<', // 8=店名
   ].join('|'),
   'g',
 );
@@ -46,7 +50,8 @@ export function parseTaobaoSearch(html: string): RawItem[] {
   MARKERS.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = MARKERS.exec(html)) !== null) {
-    const [, id, attrs, title, priceInt, priceFloat, sales, procity, shop] = m;
+    const [, attrsBefore, id, attrsAfter, title, priceInt, priceFloat, sales, procity, shop] = m;
+    const attrs = id ? `${attrsBefore ?? ''} ${attrsAfter ?? ''}` : '';
 
     if (id) {
       cur =
@@ -64,6 +69,8 @@ export function parseTaobaoSearch(html: string): RawItem[] {
           _region: [],
         } as RawItem & { _region: string[] });
       if (attrs && attrs.includes('click.simba.taobao.com')) cur.isAd = true;
+      // 主站搜索里混着天猫商品（链接指向 detail.tmall.com），店铺类型要和淘宝 C 店分开
+      if (attrs && attrs.includes('detail.tmall.com')) cur.isTmall = true;
       byId.set(id, cur);
       continue;
     }

@@ -14,5 +14,7 @@ export interface RawItem {
   isSelfRun?: boolean;
   /** 直通车 / 广告位 */
   isAd?: boolean;
+  /** 淘宝搜索结果里的天猫商品 */
+  isTmall?: boolean;
   url: string;
 }
