@@ -121,7 +121,8 @@ async function main() {
       detail.push([rowNo, shop, '型号/指导价缺失，判不了低价']);
       continue;
     }
-    const replaced = note.match(/搜索页显示 ¥([\d.]+)（低于 ¥1000），已按 (\S+) 批次人工核定售价 ¥([\d.]+) 填入/);
+    // 人工确认过的会把「需二次确认」改成「已人工确认」，只认还没确认的
+    const replaced = note.match(/搜索页显示 ¥([\d.]+)（低于 ¥1000），已按 (\S+) 批次人工核定售价 ¥([\d.]+) 填入，需二次确认/);
     if (replaced) {
       must.push(rowNo);
       detail.push([rowNo, shop, `搜索页 ¥${replaced[1]}，已按 ${replaced[2]} 核定价 ¥${replaced[3]} 填入，需二次确认`]);
