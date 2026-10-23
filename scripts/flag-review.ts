@@ -1,7 +1,7 @@
 /**
  * 给「排查登记表」里需要人工核验的行标底色：`npm run flag:review [-- --date=YYYY-MM-DD]`
  *
- * 每次 import:search 之后跑一次。两档颜色：
+ * 每次 import:search 之后跑一次。只标一种颜色（深黄 = 必须核验）：
  *
  *   深黄 必须核验 —— 售价低于 ¥1000，或型号认不出（整行判不了低价，看板归入「缺口径」），
  *                     或搜索页价低于 ¥1000、导入时已按往期人工核定价替换的（备注里有「需二次确认」）。
@@ -9,7 +9,9 @@
  *                     不核就会把「严重低价」顶上去。最早的规则是「低价幅度 ≥ 40%」，
  *                     但 ¥799 / ¥800 这种 38% 的卡在线下面漏过去好几期 —— 按产品方
  *                     的口径改成了价格线。
- *   浅黄 顺带看一眼 —— 标题没写型号、型号是沿用往期人工核定或按关键词推断填进去的。
+ *
+ * 型号是沿用往期 / 按关键词推断填进去的行不标 —— 产品方看过一轮觉得没必要
+ * （推断错了改个型号就行，不影响别的格子），备注里写着来源，要查随时能查。
  *
  * 售价远高于指导价的代购加价行不再标：产品方确认过这些价格不用改，每周标一遍只是噪音。
  *
@@ -30,7 +32,6 @@ loadLocalEnv();
 
 const LOG_SHEET = '1WDztC';
 const MUST_REVIEW = '#FFE08A'; // 深黄
-const WORTH_A_LOOK = '#FFF5D1'; // 浅黄
 const WHITE = '#FFFFFF';
 /** 售价低于这个数就要二次确认（产品方定的线，¥999 是最低一档指导价） */
 const PRICE_FLOOR = 1000;
@@ -102,7 +103,6 @@ async function main() {
   const dry = process.argv.includes('--dry');
   const batchRows: number[] = [];
   const must: number[] = [];
-  const look: number[] = [];
   const detail: Array<[number, string, string]> = [];
 
   for (let i = 1; i < grid.length; i++) {
@@ -133,17 +133,10 @@ async function main() {
       detail.push([rowNo, shop, `售价 ¥${price} 低于 ¥${PRICE_FLOOR}，需二次确认${hint ? `（${hint[0]}）` : ''}`]);
       continue;
     }
-    if (note.includes('型号/版本沿用')) {
-      look.push(rowNo);
-      detail.push([rowNo, shop, `型号「${model}」是沿用往期人工核定，标题里没写`]);
-    } else if (note.includes('型号按标题关键词')) {
-      look.push(rowNo);
-      detail.push([rowNo, shop, `型号「${model}」是按标题关键词推断的，标题里没写`]);
-    }
   }
 
   console.log(`· 批次 ${target}`);
-  console.log(`  必须核验 ${must.length} 行，顺带看一眼 ${look.length} 行`);
+  console.log(`  必须核验 ${must.length} 行`);
   for (const [rowNo, shop, why] of detail.sort((a, b) => a[0] - b[0])) {
     console.log(`    第 ${String(rowNo).padStart(3)} 行  ${shop.padEnd(22)} ${why}`);
   }
@@ -159,7 +152,7 @@ async function main() {
   // 规则命中的行会变少，只清命中的行会留下几格洗不掉的黄。
   if (clear) {
     const all = process.argv.includes('--all');
-    const rows = all ? batchRows : [...must, ...look];
+    const rows = all ? batchRows : must;
     if (rows.length === 0) { console.log('  没有要清的行。'); return; }
     await feishuPut(`/sheets/v2/spreadsheets/${token}/styles_batch_update`, {
       data: [{ ranges: toRanges(rows, lastColumn), style: { backColor: WHITE } }],
@@ -171,7 +164,6 @@ async function main() {
 
   const payload = [
     { ranges: toRanges(must, lastColumn), style: { backColor: MUST_REVIEW } },
-    { ranges: toRanges(look, lastColumn), style: { backColor: WORTH_A_LOOK } },
   ].filter((d) => d.ranges.length > 0);
 
   if (payload.length === 0) {
@@ -180,7 +172,7 @@ async function main() {
   }
   await feishuPut(`/sheets/v2/spreadsheets/${token}/styles_batch_update`, { data: payload }, cfg);
   console.log('');
-  console.log(`✓ 已标色（深黄 ${MUST_REVIEW} / 浅黄 ${WORTH_A_LOOK}）`);
+  console.log(`✓ 已标深黄 ${MUST_REVIEW}`);
 }
 
 main().catch((err) => {

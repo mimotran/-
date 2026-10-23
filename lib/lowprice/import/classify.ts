@@ -38,13 +38,13 @@ const KNOCKOFF = /同款|适用|替代|TWJU|WITCEO|酷叮当|森拓思|拓思曼
  * （10-23 那批京东一次误剔了 20 多条）。所以这一档只在标题里**没有**整机字样时才算配件。
  */
 const ACCESSORY = new RegExp([
-  '充电线|数据线|贴膜|手环|表带|腕带|挂绳|戒指|耗材|打印|饼干|曲奇',
+  '充电线|数据线|贴膜|手环|表带|腕带|挂绳|磁吸卡包|戒指|耗材|打印|饼干|曲奇',
   '\\bfor\\s+plaud|\\badapter\\b|\\bstrap\\b|\\bwrist|\\bband\\b|\\bcharger\\b|\\bcable\\b',
 ].join('|'), 'i');
 const MAYBE_ACCESSORY = /会员|服务费|卡套|保护壳|保护套|皮套|收纳|电池|\bcase\b|\bcover\b/i;
 // 不能用型号名当整机字样：「Plaud Note Pro 磁吸卡套」也带型号，但它是配件
 const DEVICE = /录音|转录助手|胶囊|recorder/i;
-const isAccessory = (title: string) => ACCESSORY.test(title) || (MAYBE_ACCESSORY.test(title) && !DEVICE.test(title));
+export const isAccessory = (title: string) => ACCESSORY.test(title) || (MAYBE_ACCESSORY.test(title) && !DEVICE.test(title));
 
 export const OVERSEAS = /海外版|港版|国际版|香港行货|海外模型|海外大模型|跨境|global/i;
 
@@ -100,7 +100,14 @@ export function classify(items: RawItem[], options: ClassifyOptions = {}): Class
       out.drop.push({ item, reason: '标题里没有 PLAUD，非本品' });
       continue;
     }
-    // 蹭词判定要排在配件之前：「迈莱姆WITCEO…会员」两边都沾，按品牌归类更准
+    // 配件一律剔除，不写进任何表（产品方要求）。带「适用」又不是「同款」仿品的，
+    // 几乎都是给 PLAUD 用的充电线 / 保护壳 / 收纳包，以前因为「适用」被归成蹭词，
+    // 蹭词表里一度攒了 80 行配件。转录加时包是服务，也不是设备。
+    if (ACCESSORY.test(title) || (/适用/.test(title) && !/同款/.test(title)) || /加時包|加时包/.test(title)) {
+      out.drop.push({ item, reason: '配件/服务，非整机' });
+      continue;
+    }
+    // 蹭词判定要排在「可能是配件」之前：「迈莱姆WITCEO…会员」两边都沾，按品牌归类更准
     if (KNOCKOFF.test(title)) {
       out.knockoff.push({ item, reason: '「同款/适用/替代」表述或挂他牌，非 PLAUD 正品' });
       continue;
