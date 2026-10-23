@@ -16,5 +16,11 @@ export interface RawItem {
   isAd?: boolean;
   /** 淘宝搜索结果里的天猫商品 */
   isTmall?: boolean;
+  /** 京东主站价格旁的标签，多为「到手价」 */
+  priceLabel?: string;
+  /** 京东主站的灰色划线价 */
+  listedText?: string;
+  /** 页面没显示店名，按自营 + 标题推断出来的 */
+  shopInferred?: boolean;
   url: string;
 }

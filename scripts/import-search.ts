@@ -19,7 +19,7 @@
 import { readFileSync } from 'node:fs';
 import { feishuGet, feishuPut } from '../lib/feishu/client';
 import { loadFeishuConfig, type FeishuConfig } from '../lib/feishu/config';
-import { classify, LIST_PRICE, type KeptRow } from '../lib/lowprice/import/classify';
+import { classify, LIST_PRICE, OVERSEAS, type KeptRow } from '../lib/lowprice/import/classify';
 import { parseJdSearch } from '../lib/lowprice/import/jd';
 import { parseTaobaoSearch } from '../lib/lowprice/import/taobao';
 import type { RawItem } from '../lib/lowprice/import/types';
@@ -69,7 +69,7 @@ const linkCell = (url: string): Cell => (url ? { type: 'url', text: url, link: u
 function parseFile(path: string): RawItem[] {
   const html = readFileSync(path, 'utf8');
   if (/\bid="item_id_\d+"/.test(html)) return parseTaobaoSearch(html);
-  if (/data-item="/.test(html)) return parseJdSearch(html);
+  if (/data-item="|plugin_goodsCardWrapper/.test(html)) return parseJdSearch(html);
   throw new Error(`${path} 既不像淘宝搜索页也不像京东搜索页，认不出结构`);
 }
 
@@ -259,6 +259,10 @@ async function main() {
     const p = profiles.get(`${r.item.platform}|${r.item.shop}`);
     const h = history.get(r.item.url);
     const notes = [noteBase, r.review];
+    if (r.item.priceLabel) {
+      notes.push(`售价为页面「${r.item.priceLabel}」${r.item.listedText ? `，划线价 ¥${r.item.listedText}` : ''}`);
+    }
+    if (r.item.shopInferred) notes.push('页面未显示店名，按京东自营 + 标题推断');
     const known = (x?: Past): x is Past =>
       !!x?.model && !!LIST_PRICE[x.model] && (x.version === '国内版' || x.version === '海外版');
 
@@ -270,6 +274,13 @@ async function main() {
         r = { ...r, model: past.model, version: past.version, listPrice: list,
           gap: list - r.price, rate: (list - r.price) / list, review: '' };
         notes[1] = `型号/版本沿用 ${past.date} 批次的人工核定${past === h ? '' : '（按相同标题匹配）'}`;
+      } else if (/胶囊|穿戴/.test(r.item.title)) {
+        // 往期标题只写「AI纪要胶囊」「穿戴录音器」、没写型号的，人工每次都判成 NotePin S
+        const version = OVERSEAS.test(r.item.title) ? '海外版' : '国内版';
+        const list = LIST_PRICE['PLAUD NotePin S'][version];
+        r = { ...r, model: 'PLAUD NotePin S', version, listPrice: list,
+          gap: list - r.price, rate: (list - r.price) / list, review: '' };
+        notes[1] = '型号按标题关键词「胶囊/穿戴」推断为 NotePin S（往期同类标题人工均判为 NotePin S）';
       }
     }
 

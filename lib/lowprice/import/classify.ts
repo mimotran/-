@@ -24,20 +24,29 @@ export const LIST_PRICE: Record<string, { 国内版: number; 海外版: number }
  * 品牌名要列举 —— 「TWJUai智能录音笔…转写plaudNotePro」这种把 PLAUD 塞进功能描述里的，
  * 光看关键词分不出来，只能认出前面那个真正的品牌。遇到新的蹭词品牌就往这里加。
  */
-const KNOCKOFF = /同款|适用|替代|TWJU|WITCEO|酷叮当|森拓思|拓思曼|GUSR|迈莱姆|得到\s*Getseed|转写\s*plaud/i;
+const KNOCKOFF = /同款|适用|替代|TWJU|WITCEO|酷叮当|森拓思|拓思曼|GUSR|迈莱姆|得到\s*Getseed|转写\s*plaud|八荒|开放\s*api|\bsdk\b/i;
 
 /**
- * 配件 / 服务：不是整机，不该进排查表。
- * 淘宝主站搜索（s.taobao.com）里混着大量英文标题的跨境配件 ——「Wrist Strap for
- * PLAUD NotePin」「USB C Adapter for PLAUD NOTE」，¥20–60 一条，不拦住就全成了
- * 「严重低价」。「for PLAUD」本身就说明是给 PLAUD 用的周边，不是 PLAUD。
+ * 配件 / 服务：不是整机，不该进排查表。分两档：
+ *
+ * 一定是配件 —— 淘宝主站里那批英文跨境配件（「Wrist Strap for PLAUD NotePin」
+ * 「USB C Adapter for PLAUD NOTE」，¥20–60 一条），以及充电线、表带这类。
+ * 「for PLAUD」本身就说明是给 PLAUD 用的周边。
+ *
+ * 可能是套装赠品 —— 会员、皮套、保护套…… 京东主站大量整机标题写着
+ * 「…录音笔 黑色-(含基础会员+黑色皮套) 64GB」，按关键词一刀切会把整机当配件剔掉
+ * （10-23 那批京东一次误剔了 20 多条）。所以这一档只在标题里**没有**整机字样时才算配件。
  */
 const ACCESSORY = new RegExp([
-  '充电线|数据线|贴膜|卡套|保护壳|保护套|手环|表带|腕带|收纳|挂绳|会员|服务费|耗材|打印|戒指|电池|饼干|曲奇',
-  '\\bfor\\s+plaud|\\badapter\\b|\\bstrap\\b|\\bwrist|\\bband\\b|\\bcase\\b|\\bcover\\b|\\bcharger\\b|\\bcable\\b',
+  '充电线|数据线|贴膜|手环|表带|腕带|挂绳|戒指|耗材|打印|饼干|曲奇',
+  '\\bfor\\s+plaud|\\badapter\\b|\\bstrap\\b|\\bwrist|\\bband\\b|\\bcharger\\b|\\bcable\\b',
 ].join('|'), 'i');
+const MAYBE_ACCESSORY = /会员|服务费|卡套|保护壳|保护套|皮套|收纳|电池|\bcase\b|\bcover\b/i;
+// 不能用型号名当整机字样：「Plaud Note Pro 磁吸卡套」也带型号，但它是配件
+const DEVICE = /录音|转录助手|胶囊|recorder/i;
+const isAccessory = (title: string) => ACCESSORY.test(title) || (MAYBE_ACCESSORY.test(title) && !DEVICE.test(title));
 
-const OVERSEAS = /海外版|港版|国际版|香港行货|海外模型|海外大模型|跨境|global/i;
+export const OVERSEAS = /海外版|港版|国际版|香港行货|海外模型|海外大模型|跨境|global/i;
 
 /**
  * 型号要同时在「保留空格」和「去掉空格」两种写法上试 ——
@@ -96,7 +105,7 @@ export function classify(items: RawItem[], options: ClassifyOptions = {}): Class
       out.knockoff.push({ item, reason: '「同款/适用/替代」表述或挂他牌，非 PLAUD 正品' });
       continue;
     }
-    if (ACCESSORY.test(title)) {
+    if (isAccessory(title)) {
       out.drop.push({ item, reason: '配件/服务，非整机' });
       continue;
     }
