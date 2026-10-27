@@ -47,6 +47,7 @@ const pct = (v: number) => (v * 100).toFixed(1) + '%';
  */
 function delta(cur: number, prev: number | null, kind: 'ratio' | 'pt' = 'ratio'): string {
   if (prev === null) return '环比 —';
+  if (Math.abs(cur - prev) < 1e-9) return '环比持平';
   if (kind === 'pt') {
     const x = (cur - prev) * 100;
     return `${x >= 0 ? '▲ +' : '▼ '}${x.toFixed(1)} pt`;
