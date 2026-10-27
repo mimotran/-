@@ -62,7 +62,10 @@ function parseJdMainSearch(html: string): RawItem[] {
       id,
       title,
       price: Number.isFinite(price as number) ? price : null,
-      salesText: pick(seg, new RegExp(`${cls('goods_volume')}[\\s\\S]*?title="([^"]*)"`)),
+      // 这一格有时是「已售300+」，有时是「13人看过」，有时只是「100%好评」——
+      // 最后一种会被解析成月销 100，宁可留空
+      salesText: ((v: string) => (/好评/.test(v) ? '' : v))(
+        pick(seg, new RegExp(`${cls('goods_volume')}[\\s\\S]*?title="([^"]*)"`))),
       heatText: '',
       region: '',
       shop,

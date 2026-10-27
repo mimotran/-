@@ -306,7 +306,8 @@ async function main() {
       r.model, r.version, r.price, r.listPrice ?? '',
       r.gap === null ? '' : Number(r.gap.toFixed(2)),
       r.rate === null ? '' : Number(r.rate.toFixed(6)),
-      r.item.platform === '淘宝' ? r.item.salesText : jdHeat(r.item.heatText ?? ''),
+      // 京东落地页只有累计评价（heatText），主站搜索有「已售2000+」（salesText），有哪个用哪个
+      r.item.platform === '淘宝' ? r.item.salesText : (r.item.salesText || jdHeat(r.item.heatText ?? '')),
       r.item.region,
       [...notes, `原标题：${r.item.title}`].filter(Boolean).join('；'),
     ];
