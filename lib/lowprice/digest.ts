@@ -12,7 +12,6 @@ import {
   collectDates,
   getDiscountRate,
   previousRange,
-  sortRows,
   summarize,
 } from './rules.js';
 import type { LinkRecord } from './types';
@@ -21,6 +20,15 @@ import type { LinkRecord } from './types';
 const PLATFORMS = ['淘宝', '京东'] as const;
 const VERSION = '国内版';
 const DASHBOARD = 'https://mimotran.github.io/-/links.html';
+
+/**
+ * 售价从低到高；同价按月销从高到低。淘宝一批里常有十几条同是 ¥1,050，
+ * 不加第二排序键的话谁进前十全凭原始顺序。
+ */
+function byPrice(rows: LinkRecord[]): LinkRecord[] {
+  return [...rows].sort((a, b) =>
+    (a.price ?? Infinity) - (b.price ?? Infinity) || (b.monthlySales ?? -1) - (a.monthlySales ?? -1));
+}
 
 export interface DigestOptions {
   /** 推送当天的日期，决定标题里的「N月N日」。默认今天。 */
@@ -133,9 +141,8 @@ export function buildDigestCard(all: LinkRecord[], options: DigestOptions = {}) 
       });
       continue;
     }
-    // 这批低价链接的幅度几乎全是 19.2%，按幅度排等于随机；
-    // 同样的折扣下月销高的影响更大，所以按月销降序。
-    elements.push(table(sortRows(low, 'sales', 'desc').slice(0, topN)));
+    // 按售价从低到高（产品方要求）：最便宜的排最前，一眼看到价压得最狠的。
+    elements.push(table(byPrice(low).slice(0, topN)));
   }
 
   elements.push({ tag: 'hr' });
@@ -169,7 +176,7 @@ export function describeDigest(all: LinkRecord[], options: DigestOptions = {}): 
     const onPlatform = applyFilters(scope, { platform });
     const low = applyFilters(onPlatform, { lowPrice: 'low' });
     lines.push(`\n${platform}：在架 ${onPlatform.length}，低价 ${low.length}`);
-    for (const [i, r] of sortRows(low, 'sales', 'desc').slice(0, options.topN ?? 10).entries()) {
+    for (const [i, r] of byPrice(low).slice(0, options.topN ?? 10).entries()) {
       lines.push(
         `  ${String(i + 1).padStart(2)}. ${(r.shop || '—').padEnd(20)} ${(r.model || '').replace(/^PLAUD\s*/i, '').padEnd(12)}` +
           ` ${yuan(r.price ?? 0).padStart(7)} ${pct(getDiscountRate(r) ?? 0).padStart(6)} 月销 ${String(r.monthlySales ?? '—').padStart(3)}` +
