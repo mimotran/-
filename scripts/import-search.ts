@@ -50,6 +50,12 @@ const KNOCKOFF_COLUMNS = ['平台', '卖家昵称', '商品标题', '售价', '�
  */
 const OFFICIAL_SHOP = /^PLAUD.*(旗舰店|自营)/i;
 
+/**
+ * 不计入统计的授权店（产品方指定）。名字以 PLAUD 开头但不是旗舰店 / 自营，
+ * OFFICIAL_SHOP 认不出来，单独列。
+ */
+const AUTHORIZED_SHOP = /海纳川/;
+
 type Cell = string | number | { type: 'url'; text: string; link: string };
 
 function arg(name: string, fallback: string): string {
@@ -151,8 +157,8 @@ async function main() {
 
   const items = [...seen.values()];
   // 传了 --exclude 就完全照它来；没传就按 OFFICIAL_SHOP 自动认官方店
-  const official = explicitExclude ? [] : [...new Set(items.filter((i) => OFFICIAL_SHOP.test(i.shop)).map((i) => i.shop))];
-  if (official.length) console.log(`· 识别为官方店并排除：${official.join('、')}`);
+  const official = explicitExclude ? [] : [...new Set(items.filter((i) => OFFICIAL_SHOP.test(i.shop) || AUTHORIZED_SHOP.test(i.shop)).map((i) => i.shop))];
+  if (official.length) console.log(`· 识别为官方店 / 授权店并排除：${official.join('、')}`);
   const result = classify(items, { excludeShops: [...excludeShops, ...official] });
   console.log('');
   console.log(`✓ 排查登记表 ${result.keep.length} 条 | 蹭词仿品 ${result.knockoff.length} 条 | 剔除 ${result.drop.length} 条`);
