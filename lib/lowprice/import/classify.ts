@@ -96,6 +96,12 @@ export function classify(items: RawItem[], options: ClassifyOptions = {}): Class
       out.drop.push({ item, reason: '按要求排除的店铺' });
       continue;
     }
+    // 二手不算低价链接（产品方口径）：二手价低于新品指导价是常态，不是违规。
+    // 京东的「拍拍二手」整个店都是二手；淘宝 / 闲鱼链接则看标题里的成色字样
+    if (/二手|拍拍|闲置|翻新|官翻|准新|9\d新|9\d成新|[九]成新/.test(`${item.shop} ${title}`)) {
+      out.drop.push({ item, reason: '二手 / 翻新，不计入' });
+      continue;
+    }
     if (!/plaud|普拉德/i.test(title)) {
       out.drop.push({ item, reason: '标题里没有 PLAUD，非本品' });
       continue;
