@@ -22,5 +22,7 @@ export interface RawItem {
   listedText?: string;
   /** 页面没显示店名，按自营 + 标题推断出来的 */
   shopInferred?: boolean;
+  /** 淘宝没登录时被打码的价格原文，如「1???」；此时 price 只是补 0 的估值 */
+  priceMasked?: string;
   url: string;
 }

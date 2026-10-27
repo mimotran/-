@@ -215,10 +215,10 @@ async function main() {
   const already = new Set(
     log.slice(1).filter((r) => text(r[cDate]) === date).map((r) => text(r[cUrl])).filter(Boolean),
   );
-  const fresh = result.keep.filter((r) => !already.has(r.item.url));
-  const skipped = result.keep.length - fresh.length;
+  const fresh0 = result.keep.filter((r) => !already.has(r.item.url));
+  const skipped = result.keep.length - fresh0.length;
   if (skipped) console.log(`· 本批次已有 ${already.size} 条链接，其中 ${skipped} 条与本次重复，跳过`);
-  if (fresh.length === 0) {
+  if (fresh0.length === 0) {
     console.log('· 没有新链接要写入。');
     return;
   }
@@ -265,6 +265,16 @@ async function main() {
     console.log(`· 读入重导前备份 ${extra.length} 条`);
   }
 
+  // 价格被打码的：有往期核定价就用，没有就不写，列出来让人工补
+  const fresh = fresh0.filter((r) => {
+    if (!r.item.priceMasked) return true;
+    const h = history.get(r.item.url);
+    if (h?.price != null) return true;
+    console.log(`· 价格被打码（¥${r.item.priceMasked}）且没有往期核定价，未写入：${r.item.shop}｜${r.item.title.slice(0, 30)}`);
+    return false;
+  });
+  if (fresh.length === 0) { console.log('· 没有新链接要写入。'); return; }
+
   const firstRow = log.length + 1;
   let seq = Math.max(0, ...log.slice(1).map((r) => Number(text(r[0])) || 0)) + 1;
   const noteBase = `本行由 ${date} 淘宝/京东搜索页存档自动导入；售价取自搜索页展示价（可能是最低 SKU，非整机价），需人工复核`;
@@ -298,6 +308,13 @@ async function main() {
       }
     }
 
+    if (r.item.priceMasked && h?.price != null) {
+      const list = r.listPrice;
+      r = { ...r, price: h.price,
+        gap: list === null ? null : list - h.price,
+        rate: list === null ? null : (list - h.price) / list };
+      notes.push(`搜索页价格被打码（显示 ¥${r.item.priceMasked}），已按 ${h.date} 批次人工核定售价 ¥${h.price} 填入，需二次确认`);
+    } else
     // 售价低于 ¥1000 的几乎都是最低 SKU / 配件价。这条链接往期人工核过价的，
     // 直接填往期核定价（产品方口径：价格不确定时优先参考往期数据），
     // 但保留「需二次确认」的标记，flag:review 会照样把它标黄。

@@ -123,6 +123,12 @@ async function main() {
     }
     // 人工确认过的会把「需二次确认」改成「已人工确认」，只认还没确认的
     const replaced = note.match(/搜索页显示 ¥([\d.]+)（低于 ¥1000），已按 (\S+) 批次人工核定售价 ¥([\d.]+) 填入，需二次确认/);
+    const masked = note.match(/搜索页价格被打码（显示 ¥([^）]+)），已按 (\S+) 批次人工核定售价 ¥([\d.]+) 填入，需二次确认/);
+    if (masked) {
+      must.push(rowNo);
+      detail.push([rowNo, shop, `搜索页价格打码 ¥${masked[1]}，已按 ${masked[2]} 核定价 ¥${masked[3]} 填入，需二次确认`]);
+      continue;
+    }
     if (replaced) {
       must.push(rowNo);
       detail.push([rowNo, shop, `搜索页 ¥${replaced[1]}，已按 ${replaced[2]} 核定价 ¥${replaced[3]} 填入，需二次确认`]);

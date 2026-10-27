@@ -95,7 +95,10 @@ export function parseJdSearch(html: string): RawItem[] {
     }
     const id = String(d.id ?? '');
     if (!id) continue;
-    const price = d.price === '' || d.price == null ? null : Number(d.price);
+    // 口径：按到手价（券后实付）。data-item 里 price 是标价，fp 是到手价（有券时才有）
+    const listed = d.price === '' || d.price == null ? null : Number(d.price);
+    const final = d.fp === '' || d.fp == null ? null : Number(d.fp);
+    const price = final !== null && Number.isFinite(final) && final > 0 ? final : listed;
     out.push({
       platform: '京东',
       id,
@@ -106,6 +109,7 @@ export function parseJdSearch(html: string): RawItem[] {
       region: '', // 京东搜索页不给发货地，既有数据里这一列也是空的
       shop: String(d.shopName ?? ''),
       isSelfRun: String(d.zy) === '1',
+      ...(price !== listed && listed !== null ? { priceLabel: '到手价', listedText: String(listed) } : {}),
       url: String(d.landUrl || `https://item.jd.com/${id}.html`),
     });
   }

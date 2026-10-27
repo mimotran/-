@@ -78,10 +78,19 @@ export function parseTaobaoSearch(html: string): RawItem[] {
 
     if (title !== undefined && !cur.title) cur.title = decode(stripTags(title));
     if (priceInt !== undefined && cur.price === null) {
-      cur.price = Number(priceInt.trim().replace(/[,，]/g, ''));
-      if (!Number.isFinite(cur.price)) cur.price = null;
+      const raw = priceInt.trim().replace(/[,，]/g, '');
+      if (/\?/.test(raw)) {
+        // 没登录时淘宝会把价格打码成「1???」。不能当没价格丢掉 —— 那会把整条链接从
+        // 批次里悄悄抹掉。记下打码文本，先用 0 补位当估值（只用来过配件 / 价格兜底），
+        // 导入时有往期核定价就用往期的，没有就不写并列出来。
+        cur.priceMasked = raw;
+        cur.price = Number(raw.replace(/\?/g, '0'));
+      } else {
+        cur.price = Number(raw);
+        if (!Number.isFinite(cur.price)) cur.price = null;
+      }
     }
-    if (priceFloat !== undefined && cur.price !== null && Number.isInteger(cur.price)) {
+    if (priceFloat !== undefined && cur.price !== null && Number.isInteger(cur.price) && !cur.priceMasked) {
       const frac = Number('0' + priceFloat.trim());
       if (Number.isFinite(frac) && frac > 0) cur.price = Number((cur.price + frac).toFixed(2));
     }
