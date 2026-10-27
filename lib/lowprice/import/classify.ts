@@ -103,7 +103,11 @@ export function classify(items: RawItem[], options: ClassifyOptions = {}): Class
     // 配件一律剔除，不写进任何表（产品方要求）。带「适用」又不是「同款」仿品的，
     // 几乎都是给 PLAUD 用的充电线 / 保护壳 / 收纳包，以前因为「适用」被归成蹭词，
     // 蹭词表里一度攒了 80 行配件。转录加时包是服务，也不是设备。
-    if (ACCESSORY.test(title) || (/适用/.test(title) && !/同款/.test(title)) || /加時包|加时包/.test(title)) {
+    // 「加时包」要看有没有型号：「海外版录音Plaud AI 轉錄加時包」是单卖的转写时长，
+    // 但「PLAUD NOTE Pin S AI 海外版…轉錄加時包」是整机，加时包只是其中一个 SKU 选项
+    // （这家店的 ¥199 人工核过，整机价 ¥1,549）。
+    const addOnOnly = /加時包|加时包/.test(title) && !detectModel(title);
+    if (ACCESSORY.test(title) || (/适用/.test(title) && !/同款/.test(title)) || addOnOnly) {
       out.drop.push({ item, reason: '配件/服务，非整机' });
       continue;
     }

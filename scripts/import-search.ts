@@ -10,13 +10,14 @@
  * 其他参数：
  *   --date=2026-09-22      排查日期，默认今天
  *   --exclude=A,B          按店名排除；不传则用内置的官方店名单（见 DEFAULT_EXCLUDE）
+ *   --history=备份.json    额外的往期结果（整批删掉重导时，用删之前的备份沿用人工填过的型号 / 价格）
  *
  * **为什么一定要先看一遍再 --write**：搜索页展示的是最低 SKU 价，不一定是整机价。
  * 历史上那几行 ¥158 / ¥189 的「严重低价」就是这么来的 —— 实际整机价是 ¥1508 / ¥1472。
  * 脚本会把这类行标出来，但判断只能靠人点进商品页看。
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { feishuGet, feishuPut } from '../lib/feishu/client';
 import { loadFeishuConfig, type FeishuConfig } from '../lib/feishu/config';
 import { classify, LIST_PRICE, OVERSEAS, type KeptRow } from '../lib/lowprice/import/classify';
@@ -249,6 +250,19 @@ async function main() {
     const title = text(r[cNote]).match(/原标题：(.+)$/)?.[1]?.trim();
     const prevTitle = title ? byTitle.get(title) : undefined;
     if (title && past.model && (!prevTitle || prevTitle.date < d)) byTitle.set(title, past);
+  }
+  // 整批删掉重导时，删之前的那份备份也算往期结果，而且比表里任何一期都新
+  const historyFile = arg('history', '');
+  if (historyFile) {
+    if (!existsSync(historyFile)) throw new Error(`找不到 --history 指定的文件：${historyFile}`);
+    const extra = (JSON.parse(readFileSync(historyFile, 'utf8')).history ?? []) as Array<
+      { date: string; url: string; title: string; model: string; version: string; price: number | null }>;
+    for (const e of extra) {
+      const past: Past = { date: `${e.date}（重导前）`, model: e.model, version: e.version, price: e.price };
+      if (e.url) history.set(e.url, past);
+      if (e.title && e.model) byTitle.set(e.title, past);
+    }
+    console.log(`· 读入重导前备份 ${extra.length} 条`);
   }
 
   const firstRow = log.length + 1;
