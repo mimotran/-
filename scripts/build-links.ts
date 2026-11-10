@@ -77,6 +77,11 @@ async function loadSnapshot(): Promise<LinkSnapshot | null> {
   }
   const cached = await readLinkSnapshot();
   if (cached) console.log(`· 使用本地快照（${cached.rows.length} 行，同步于 ${cached.syncedAt}）`);
+  // 配了凭证却拉不到、又没有快照（CI 上就是这样）：宁可让这次发布失败，也不能发一个空页面
+  // 把线上看板冲掉。2026-11 应用的 App Secret 被重置过一次，旧 secret 跑构建就会走到这里。
+  if (!cached && isLowPriceConfigured()) {
+    throw new Error('飞书凭证已配置但拉取失败，且没有本地快照 —— 拒绝发布空页面。先检查 FEISHU_APP_SECRET 是否过期');
+  }
   return cached;
 }
 
