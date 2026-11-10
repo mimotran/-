@@ -82,6 +82,11 @@ async function loadSnapshot(): Promise<LinkSnapshot | null> {
   if (!cached && isLowPriceConfigured()) {
     throw new Error('飞书凭证已配置但拉取失败，且没有本地快照 —— 拒绝发布空页面。先检查 FEISHU_APP_SECRET 是否过期');
   }
+  // CI 上连凭证都没有（仓库的 Actions secrets 被删过一次）：同样不发布。
+  // 本地没凭证时仍允许生成带「非真实数据」横幅的空页面，方便调样式。
+  if (!cached && process.env.CI === 'true') {
+    throw new Error('CI 上没有飞书凭证（FEISHU_APP_ID / FEISHU_APP_SECRET），也没有快照 —— 拒绝发布空页面');
+  }
   return cached;
 }
 
