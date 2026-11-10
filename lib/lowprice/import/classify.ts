@@ -113,7 +113,10 @@ export function classify(items: RawItem[], options: ClassifyOptions = {}): Class
     // 但「PLAUD NOTE Pin S AI 海外版…轉錄加時包」是整机，加时包只是其中一个 SKU 选项
     // （这家店的 ¥199 人工核过，整机价 ¥1,549）。
     const addOnOnly = /加時包|加时包/.test(title) && !detectModel(title);
-    if (ACCESSORY.test(title) || (/适用/.test(title) && !/同款/.test(title)) || addOnOnly) {
+    // 认得出型号、价格又是整机价位的，不按配件关键词剔：NotePin 本身就能当手环 / 项链戴，
+    // 「PLAUD NotePin 支持iPhone…电话录音手环项链」¥1,698 是整机，不是手环配件
+    const deviceAtDevicePrice = !!detectModel(title) && item.price !== null && item.price >= 500;
+    if ((ACCESSORY.test(title) && !deviceAtDevicePrice) || (/适用/.test(title) && !/同款/.test(title)) || addOnOnly) {
       out.drop.push({ item, reason: '配件/服务，非整机' });
       continue;
     }
@@ -125,7 +128,7 @@ export function classify(items: RawItem[], options: ClassifyOptions = {}): Class
     // 价格兜底：PLAUD 整机最便宜的一档指导价是 ¥999，仿品在上一步已经分走了，
     // 剩下售价不到 ¥100 的不可能是整机。「PLAUD录音笔磁吸卡包便携充电」¥21
     // 这种靠关键词分不出来 —— Note Pro 标配里本来就带「黑色磁吸卡包」。
-    if (isAccessory(title) || (item.price !== null && item.price < 100)) {
+    if ((isAccessory(title) && !deviceAtDevicePrice) || (item.price !== null && item.price < 100)) {
       out.drop.push({ item, reason: '配件/服务，非整机' });
       continue;
     }

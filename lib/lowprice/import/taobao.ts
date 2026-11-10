@@ -26,6 +26,7 @@ const MARKERS = new RegExp(
     'class="(?:Price--)?realSales--[^"]*">([^<]*)<', // 6=「82人付款」
     'class="(?:Price--)?procity--[^"]*"><span>([^<]*)</span>', // 7=省 / 市，一张卡可能出现两次
     'class="(?:ShopInfo--)?shopNameText--[^"]*">([^<]*)<', // 8=店名
+    'class="(?:Price--)?priceDesc--[^"]*"[^>]*>([^<]*)<', // 9=价格标签（主站是「券后价」）
   ].join('|'),
   'g',
 );
@@ -50,7 +51,7 @@ export function parseTaobaoSearch(html: string): RawItem[] {
   MARKERS.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = MARKERS.exec(html)) !== null) {
-    const [, attrsBefore, id, attrsAfter, title, priceInt, priceFloat, sales, procity, shop] = m;
+    const [, attrsBefore, id, attrsAfter, title, priceInt, priceFloat, sales, procity, shop, priceDesc] = m;
     const attrs = id ? `${attrsBefore ?? ''} ${attrsAfter ?? ''}` : '';
 
     if (id) {
@@ -97,6 +98,7 @@ export function parseTaobaoSearch(html: string): RawItem[] {
     if (sales !== undefined && !cur.salesText) cur.salesText = sales.trim();
     if (procity !== undefined && cur._region.length < 2 && procity.trim()) cur._region.push(procity.trim());
     if (shop !== undefined && !cur.shop) cur.shop = decode(shop.trim());
+    if (priceDesc !== undefined && !cur.priceLabel && priceDesc.trim()) cur.priceLabel = priceDesc.trim();
   }
 
   return [...byId.values()]
