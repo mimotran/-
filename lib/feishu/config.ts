@@ -65,8 +65,15 @@ export interface FeishuConfig {
   sheets: { spreadsheetToken: string; ranges: TableTargets };
 }
 
+/**
+ * 读环境变量；空字符串也当成没配置。
+ *
+ * GitHub Actions 里 `${{ secrets.X }}` 引用了一个不存在的 secret 时，传进来的是 ''
+ * 而不是 undefined —— 用 ?? 的话 '' 会顶掉默认值。2026-11 仓库的 secrets 被删过一次，
+ * FEISHU_BASE_URL 变成 ''，所有请求都拼成了「/auth/v3/…」这种没有域名的地址。
+ */
 function env(name: string, fallback = ''): string {
-  return (process.env[name] ?? fallback).trim();
+  return (process.env[name] ?? '').trim() || fallback;
 }
 
 function readTargets(prefix: string): TableTargets {
