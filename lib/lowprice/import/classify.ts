@@ -24,7 +24,7 @@ export const LIST_PRICE: Record<string, { 国内版: number; 海外版: number }
  * 品牌名要列举 —— 「TWJUai智能录音笔…转写plaudNotePro」这种把 PLAUD 塞进功能描述里的，
  * 光看关键词分不出来，只能认出前面那个真正的品牌。遇到新的蹭词品牌就往这里加。
  */
-const KNOCKOFF = /同款|适用|替代|TWJU|WITCEO|酷叮当|森拓思|拓思曼|GUSR|迈莱姆|得到\s*Getseed|转写\s*plaud|八荒|开放\s*api|\bsdk\b/i;
+const KNOCKOFF = /同款|适用|替代|TWJU|WITCEO|酷叮当|森拓思|拓思曼|GUSR|迈莱姆|得到\s*Getseed|转写\s*plaud|八荒|索爱|soaiy|开放\s*api|\bsdk\b/i;
 
 /**
  * 配件 / 服务：不是整机，不该进排查表。分两档：
@@ -112,7 +112,9 @@ export function classify(items: RawItem[], options: ClassifyOptions = {}): Class
     // 「加时包」要看有没有型号：「海外版录音Plaud AI 轉錄加時包」是单卖的转写时长，
     // 但「PLAUD NOTE Pin S AI 海外版…轉錄加時包」是整机，加时包只是其中一个 SKU 选项
     // （这家店的 ¥199 人工核过，整机价 ¥1,549）。
-    const addOnOnly = /加時包|加时包/.test(title) && !detectModel(title);
+    // 标题里写明「不含机器」的（京东 11-10：「NOTE Pro … 轉錄加時包（不含机器）」¥199）
+    // 带了型号也只是单卖的服务
+    const addOnOnly = (/加時包|加时包/.test(title) && !detectModel(title)) || /不含(机器|機器|主机|主機)/.test(title);
     // 认得出型号、价格又是整机价位的，不按配件关键词剔：NotePin 本身就能当手环 / 项链戴，
     // 「PLAUD NotePin 支持iPhone…电话录音手环项链」¥1,698 是整机，不是手环配件
     const deviceAtDevicePrice = !!detectModel(title) && item.price !== null && item.price >= 500;
