@@ -19,9 +19,7 @@ import type { LinkRecord } from './types';
 /** 卡片只关心这两个平台，顺序就是卡片上的顺序 */
 const PLATFORMS = ['淘宝', '京东'] as const;
 const VERSION = '国内版';
-// 线上看板地址（已停用，见 buildDigestCard 末尾）
 const DASHBOARD = 'https://mimotran.github.io/-/links.html';
-void DASHBOARD;
 
 /**
  * 售价从低到高；同价按月销从高到低。淘宝一批里常有十几条同是 ¥1,050，
@@ -148,10 +146,11 @@ export function buildDigestCard(all: LinkRecord[], options: DigestOptions = {}) 
     elements.push(table(byPrice(low).slice(0, topN)));
   }
 
-  // 不再附「查看完整看板」链接：2026-11 起仓库改为私有、GitHub Pages 已关闭（产品方决定
-  // 不公开竞品店铺数据），链接点不开。要恢复看板的话，把下面这段加回来即可：
-  //   elements.push({ tag: 'hr' });
-  //   elements.push({ tag: 'markdown', content: `[查看完整看板 →](${DASHBOARD}?version=…)` });
+  elements.push({ tag: 'hr' });
+  elements.push({
+    tag: 'markdown',
+    content: `[查看完整看板 →](${DASHBOARD}?version=${encodeURIComponent(VERSION)})`,
+  });
 
   return {
     schema: '2.0',
